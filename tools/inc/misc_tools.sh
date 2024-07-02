@@ -24,6 +24,7 @@ inc_counter() {
         ((value++))
         result=$value
     else
+    #why setting both value and result? SHAHIN
         value=1
         result=1
     fi
@@ -239,9 +240,9 @@ buildjargs() {
     local str=
     for x in $@; do
         str+=" "
+        
         local xtail="${x##*=}"
         local xhead="${x%=*}"
-
         if [ ! -z $xtail ]; then
             str+=$x
         fi
@@ -250,6 +251,7 @@ buildjargs() {
     str+=" --$type"
 
     results=$str
+   
 }
 
 buildcargs() {
@@ -261,8 +263,12 @@ buildcargs() {
 
         if [ ! -z $xtail ]; then
             str+="$xhead $xtail"
+            
         fi
+        
     done
-
+    
     results=$str
+    # echo "${results}"
 }
+# echo "${results}
