@@ -164,17 +164,22 @@ async function startmqtt(port, cFile){
     }
 }
 //missing argument for dojamOut_p2 querion what is happeing
-async function dojamout(type, iport, folder, group=null) {
-    await dojamout_p1 (type , iport ,folder)
-    await dojamout_p2 (type , iport ,folder)
+async function dojamout(iport, folder, group=null) {
+    await dojamout_p1 (iport ,folder)
+    await dojamout_p2 (iport ,folder)
 }
 
 async function dojamout_p1(pnum ,floc) {
     
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
     //just writing the string?
+
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
+
+
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
+
+
     //SHELL PID CAN BE PROCESS ID IN NODE WHAT DO WE EXACTLY WANT OVER HERE< CAN THEU BE USED INTERCHANGABLY?
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
     //just writing string?//WE can do more
@@ -196,9 +201,7 @@ function cleanup(){
         // console.log(`Killing broker with PID: ${mqttPromiseProcess}`)
         mqttPromiseProcesses.kill("SIGTERM");
     }
-    // for (let p of childs){
-    //     p.kill("SIGTERM")
-    // }
+
     /**
      * ADD TMUX HERE IF IT CAN"T BE DONE WITHOUT TMUX
      **/
@@ -214,7 +217,7 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
     // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data}  --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
     let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
 
-    console.log("these are my jargs: ", jargs)
+
     
     if(type === "cloud" || type === "fog" || type === "device"){
         //not really running in the fg. we just await so it's blockking(maybe use the current approch in bash script)
@@ -222,7 +225,7 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
         // console.log(floc)
         // const p =await $`cd ${floc} && node jstart.js ${jargs}`
         // const p =await $`node jstart.js ${jargs}`
-        console.log(floc)
+
         const command = 'node';
         const args = ['jstart.js', ...jargs];
         const options = {
@@ -232,10 +235,10 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
         
         // const child = spawn(command, args, options);
         const child = spawnSync(command, args, options);
-        childs.push(child)
+
     }
 
-    // cleanup()
+    cleanup()
 }
 //don't forget to address the missmatching argument
 function dojamout_p2_bg(type, pnum, floc, group=null){
@@ -273,7 +276,6 @@ async function doaout(num,port,group,datap,myf){
         if(fs.existsSync('a.out')){
             // let cargs = ` -a ${jappid} -p ${port} -n ${counter} -g ${group} -t ${tags} -o ${datap}`
             let cargs = ` -a ${jappid} -p ${port} -n ${counter} -g ${group} -o ${datap}`
-            console.log("these are my cargs", cargs)
             if(!DISABLE_STDOUT_REDIRECT){
                 if (!log)
                     {
@@ -290,22 +292,19 @@ async function doaout(num,port,group,datap,myf){
                     if(Machine === "Linux"){
                         //TO BE FIXE
                         let p = await $`${TMUX} new-session -s ${tmuxapp}-${counter} -d  script -a -c "${VALGRIND} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
-                        // console.log(p.stdout)
-                        // console.log(p.stdout)
+
                     }
                     
                     else{
                         //TO BE FIXE
                         let p = await $`${TMUX} new-session -s ${tmuxapp}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
-                        // console.log(p.stdout)
-                        // console.log(p.stdout)
+
                     }
                 }
             }
             else{
                 let p = await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe")
-                // console.log(p.stdout)
-                // console.log(p.stdout)
+
             }
     }
     counter++;
@@ -414,17 +413,28 @@ function cleanuptmux() {
 //there should be better ways to do this(CHECK THIS STEP)
 function startredis(port) {
     //should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
-    //discuss the version you have in the bash vs this
+
     $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow();
+
+
 }
 //there should be better ways to do this(CHECK THIS STEP)
 async function waitforredis(port){
     while (true) {
-        const p = await $`redis-cli -p ${port} -c PING`.stdio('ignore', 'pipe', 'ignore').quiet()
-        // console.log(p.stdout)
+        console.log("this is the port we have", port)
+        let p
+        try{
+        // const p = await $`redis-cli -p ${port} -c PING`.stdio('ignore', 'pipe', 'ignore').quiet()
+        p = await $`redis-cli -p ${port} -c PING`
         if (p.stdout.trim() === "PONG") {
-          break;
+            break;
+          }
+        
         }
+        catch(error){
+        }
+
+   
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
         }
@@ -861,7 +871,9 @@ if(fs.existsSync(`./${file}`)){
         //soppused to overwrite?
         fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
         fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
+        let iport;
         switch(Type){
+            
             case "cloud":
                 iport=9883
                 while(true){
@@ -885,7 +897,7 @@ if(fs.existsSync(`./${file}`)){
                 fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
                 
                 getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout( Type, iport, folder)
+                await dojamout(iport, folder)
             
             case "fog":
                 iport=5883
@@ -910,11 +922,11 @@ if(fs.existsSync(`./${file}`)){
                 fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
                 
                 getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout( Type, iport, folder)
+                await dojamout(iport, folder)
 
             case "device":
                 //SHAHIN: EVEN WHEN IT IS RUNNING I'M FACING NO AN JUST GET ANOTHER PORTISSUES
-                const iport=1883;
+                iport=1883;
                 while(true){
                     await portavailable(folder ,iport)
                     if(porttaken !== 1){
@@ -973,138 +985,3 @@ if(fs.existsSync(`./${file}`)){
 else{
     die( `File: ${file} not found`)
 }
-
-
-
-// if [ -e "$file" ]; then
-
-//     # Check whether the global .jamruns folder is there
-//     jamfolder=$HOME"/.jamruns"
-//     create_missingdir $jamfolder
-
-//     # Check whether the app folder is there
-//     appfolder=$jamfolder/apps
-//     create_missingdir $appfolder
-
-//     # Get the folder
-//     filenoext="${file%.*}"
-//     filenoext="${filenoext##*/}"
-//     folder=$appfolder/$filenoext"_"$app
-//     create_missingdir $folder
-
-//     #save handle to file
-//     ifile="$(cd "$(dirname "$file")"; pwd)/$(basename "$file")"
-//     cd $folder
-//     unpack $ifile  # We are already in $folder
-//     # find the machine height
-//     getheight
-//     getjdata
-
-//     if [ -e jstart.js ]; then
-//         # save the current program information for short cut use
-//         save "$filenoext" $appfolder/program
-//         save "$app" $appfolder/app
-
-//         # execute the program.. we are in the folder..
-//         case $type in
-//             cloud)
-//                 iport=9883
-//                 while [ : ]; do
-//                     portavailable $folder $iport
-//                     [[ $porttaken == 1 ]] || break
-//                     ((iport++))
-//                 done
-//                 if [ "$jdata" = true ]; then
-//                     dport=$((iport + 20000))
-//                     resolvedata "127.0.0.1:$dport"
-//                 fi
-//                 create_missingdir $folder/$iport
-//                 create_conffile "${folder}/${iport}/mqtt.conf"  $iport
-//                 getappid $jamfolder $folder/$iport $app
-//                 dojamout $type $iport $folder
-//             ;;
-//             fog)
-//                 iport=5883
-//                 while [ : ]; do
-//                     portavailable $folder $iport
-//                     [[ $porttaken == 1 ]] || break
-//                     ((iport++))
-//                 done
-//                 if [ "$jdata" = true ]; then
-//                     dport=$((iport + 20000))
-//                     resolvedata "127.0.0.1:$dport"
-//                 fi
-//                 create_missingdir $folder/$iport
-//                 create_conffile "${folder}/${iport}/mqtt.conf"  $iport
-//                 getappid $jamfolder $folder/$iport $app
-//                 dojamout $type $iport $folder
-//             ;;
-//             device)
-//                 iport=1883
-//                 while [ : ]; do
-//                     portavailable $folder $iport
-//                     [[ $porttaken == 1 ]] || break
-//                     ((iport++))
-//                 done
-//                 if [ -z $local ]; then
-//                     group="$((iport-1882))"
-//                 else
-//                     group=0
-//                 fi
-//                 if [ "$jdata" = true ]; then
-//                     dport=$((iport + 20000))
-//                     resolvedata "127.0.0.1:$dport"
-//                 fi
-//                 create_missingdir $folder/$iport
-//                 create_conffile "${folder}/${iport}/mqtt.conf"  $iport
-//                 getappid $jamfolder $folder/$iport $app
-//                 dojamout_p1 $type $iport $folder
-//                 setuptmux $folder/$iport
-//                 doaout $num $iport $group $dport
-//                 dojamout_p2 $type $iport $folder $group
-//                 if [ -z $bg ]; then
-//                     cleanuptmux
-//                 fi
-//             ;;
-//         esac
-//     else
-//         die "File: $file is not a valid JAMScript executable"
-//     fi
-
-// else
-//     die "File: $file not found"
-// fi
-
-
-
-
-
-
-
-
-
-
-// if(fs.existsSync(`./${file}`)){
-//     /**
-//      * replace by try catch
-//      */
-//     const jamfolder=`${HOME}/.jamruns`
-//     if(!fs.existsSync(jamfolder,{ recursive: true })){
-//         fs.mkdirSync(jamfolder)
-//     }
-//     /**
-//      * replace by try catch
-//      */
-//     //FileManager for all the scripts
-//     appfolder=`${jamfolder}/apps`;
-//     /**
-//      * replace by try catch
-//      */
-//     if(!fs.existsSync(appfolder,{ recursive: true })){
-//         fs.mkdirSync(appfolder)
-//     }
-//     /**
-//      * replace by try catch
-//      */
-//     const filenoext = path.basename(file, path.extname(file));
-//     const folder=`${appfolder}/${filenoext}_${app}`
