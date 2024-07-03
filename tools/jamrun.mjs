@@ -201,7 +201,11 @@ function cleanup(){
         // console.log(`Killing broker with PID: ${mqttPromiseProcess}`)
         mqttPromiseProcesses.kill("SIGTERM");
     }
-
+    if(childs.length!=0){
+        for(let p of childs){
+            p.kill("SIGTERM")
+        }
+    }
     /**
      * ADD TMUX HERE IF IT CAN"T BE DONE WITHOUT TMUX
      **/
@@ -234,7 +238,7 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
         };
         
         // const child = spawn(command, args, options);
-        const child = spawnSync(command, args, options);
+        spawnSync(command, args, options);
 
     }
 
@@ -242,7 +246,7 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
 }
 //don't forget to address the missmatching argument
 function dojamout_p2_bg(type, pnum, floc, group=null){
-    const args = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --${type}`
+    // const jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --${type}`
     
     // if(Machine === "Linux"){
     //     //NOT TRUE BG .SEE IF IT CAUSES ERROR OR NOT(make sure to check if it is terminated or not before existing )
@@ -254,11 +258,25 @@ function dojamout_p2_bg(type, pnum, floc, group=null){
     // }
     //I don't think it needs to be machine specific
     // const p = $`node jstart.js ${args}`.stdio('ignore', 'pipe', 'pipe');
-    const p = $`node jstart.js ${args}`.stdio('ignore', 'pipe', 'pipe');
+    let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
+    const command = 'node';
+    const args = ['jstart.js', ...jargs];
+    const options = {
+      cwd: floc,
+      stdio: ['ignore', 'pipe', 'pipe']
+    };
 
-    p.stdout.pipe(fs.createWriteStream("./log.j"), { flags: 'a' });
-    p.stderr.pipe(fs.createWriteStream("./log.j"), { flags: 'a' });
-
+    const p = spawn(command, args, options);
+    childs.push(p);
+    p.stdout.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
+    p.stderr.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
+    p.on('error', (error) => {
+        console.error(`Error: ${error.message}`);
+      });
+      
+    p.on('close', (code) => {
+        console.log(`Child process exited with code ${code}`);
+    });
     
 
     if(!NOVERBOSE){
