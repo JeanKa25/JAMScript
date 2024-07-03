@@ -3,6 +3,8 @@ import { fileURLToPath } from 'url';
 import { dirname, basename, extname} from 'path';
 import { homedir, type } from 'os';
 import { fs } from 'zx';
+const { spawn } = require('child_process');
+
 //REPLACE $RANDOM WITH MORE REAL VALUES
 //PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected
 //ABSTRACT ALL THE WRITES AWAAAAYYY
@@ -25,6 +27,7 @@ let jappid;
 let VALGRIND;
 let iflow;
 let oflow;
+const childs =[]
 //NOTE: don't need to check if the directory exists
 //NODE: ABSOLUTE PATH INSTEAD OF RELATIVE
 //source "$IDIR/inc/misc_tools.sh" (IMPORT THE FUNCTIONS ONE BY ONE WHEN IT IS NEEDED)
@@ -191,7 +194,10 @@ async function dojamout_p2(type, iport, folder, group=null){
 function cleanup(){
     if(killbroker === 1){
         // console.log(`Killing broker with PID: ${mqttPromiseProcess}`)
-        mqttPromiseProcess.kill("SIGTERM");
+        mqttPromiseProcesses.kill("SIGTERM");
+    }
+    for (let p of childs){
+        p.kill("SIGTERM")
     }
     /**
      * ADD TMUX HERE IF IT CAN"T BE DONE WITHOUT TMUX
@@ -205,7 +211,8 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
     //why shouldn't I do this in place?
     // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
     //what if it is not?
-    let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data}  --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
+    // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data}  --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
+    let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
 
     console.log("these are my jargs: ", jargs)
     
@@ -213,14 +220,21 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
         //not really running in the fg. we just await so it's blockking(maybe use the current approch in bash script)
         // console.log("STARTING THE JS FILE")
         // console.log(floc)
-        const p =await $`cd ${floc} && node jstart.js ${jargs}`
+        // const p =await $`cd ${floc} && node jstart.js ${jargs}`
         // const p =await $`node jstart.js ${jargs}`
-
-        // console.log(p.stdout)
+        console.log(floc)
+        const command = 'node';
+        const args = ['jstart.js', ...jargs];
+        const options = {
+          cwd: floc,
+          stdio: 'inherit'
+        };
         
+        const child = spawn(command, args, options);
+        childs.push(child)
     }
 
-    cleanup()
+    // cleanup()
 }
 //don't forget to address the missmatching argument
 function dojamout_p2_bg(type, pnum, floc, group=null){
@@ -383,17 +397,22 @@ function getappid(mainf, localf, appid){
     fs.writeFileSync(`${appfolder}/appid`,`${jappid}`)
 }
 
-// async function killtmux(sesh){
-//     const result = await $`tmux ls | grep ${sesh} | cut -d ':' -f 1`;
-//     for (const q of result.stdout.trim().split('\n')) {
-//         console.log(q);
-//         await $`tmux kill-session -t ${q}`;
-//     }
-// }
+async function killtmux(sesh){
+    const result = await $`tmux ls | grep ${sesh} | cut -d ':' -f 1`;
+    for (const q of result.stdout.trim().split('\n')) {
+        console.log(q);
+        await $`tmux kill-session -t ${q}`;
+    }
+}
 // ASK about this function logic specially how it exists
-// function cleanuptmux() {
-//     process.exit(1);
-// }
+function cleanuptmux() {
+    for(p of childs){
+        console.log(p);
+        p.kill('SIGTERM');
+    }
+    process.exit(1);
+
+}
 //there should be better ways to do this(CHECK THIS STEP)
 function startredis(port) {
     //should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
@@ -881,7 +900,7 @@ if(fs.existsSync(`./${file}`)){
                 
                 getappid(jamfolder, `${folder}/${iport}` ,app)
                 // console.log("data before jamout", data)
-                await dojamout_p1(iport,folsder)
+                await dojamout_p1(iport,folder)
                 setuptmux(`${folder}/${iport}`)
                 await doaout(num,iport, group, dport,folder)
                 // const p = await $`redis-cli -p ${iport} -c PING`.stdio('ignore', 'pipe', 'ignore').quiet()
@@ -1017,5 +1036,27 @@ else{
 
 
 
-
-
+// if(fs.existsSync(`./${file}`)){
+//     /**
+//      * replace by try catch
+//      */
+//     const jamfolder=`${HOME}/.jamruns`
+//     if(!fs.existsSync(jamfolder,{ recursive: true })){
+//         fs.mkdirSync(jamfolder)
+//     }
+//     /**
+//      * replace by try catch
+//      */
+//     //FileManager for all the scripts
+//     appfolder=`${jamfolder}/apps`;
+//     /**
+//      * replace by try catch
+//      */
+//     if(!fs.existsSync(appfolder,{ recursive: true })){
+//         fs.mkdirSync(appfolder)
+//     }
+//     /**
+//      * replace by try catch
+//      */
+//     const filenoext = path.basename(file, path.extname(file));
+//     const folder=`${appfolder}/${filenoext}_${app}`
