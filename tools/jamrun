@@ -164,7 +164,7 @@ cleanup() {
     #kill -9 ${AOUT_PIDS[@]}
 
     #reset
-    # cleanuptmux
+    cleanuptmux
     exit 1
 }
 
@@ -177,7 +177,7 @@ dojamout_p2_fg() {
 
     buildjargs "--app=$jappid" "--port=$pnum" "--group=$group" "--data=$data" "--tags=$tags" "--iflow=$iflow" "--oflow=$oflow" "--edge=$edge" "--long=$long" "--lat=$lat" "--localregistryhost=$localregistryhost"
     local args=$results
-    echo "these are my jArgs : ${args}"
+    echo $args
     case $type in
         cloud)
             node jstart.js $args
@@ -202,7 +202,6 @@ dojamout_p2_bg() {
 
     buildjargs "--app=$jappid" "--port=$pnum" "--group=$group" "--data=$data" "--tags=$tags" "--iflow=$iflow" "--oflow=$oflow" "--edge=$edge" "--long=$long" "--lat=$lat"
     local args=$results
-    echo "${args}, there are my args"
 
     if [ `uname` == "Linux" ]; then
         script -a -c "node jstart.js $args" -f log.j > /dev/null &
@@ -232,7 +231,7 @@ doaout() {
             # execute the program.. we are in the folder..
             buildcargs "-a=$jappid" "-p=$port" "-n=$counter" "-g=$group" "-t=$tags" "-o=$datap"
             local cargs=$results
-            echo "these are my c args : ${cargs}"
+
             if [ -z $DISABLE_STDOUT_REDIRECT ]; then
                 if [ -z $log ]; then
                     $TMUX new-session -s $tmuxapp-$counter -d  "$VALGRIND ./a.out $cargs"
@@ -294,7 +293,7 @@ setuptmux() {
     echo "$tmuxapp" > $1/tmuxid
     save "$tmuxapp" $appfolder/tmuxid
 
-    # trap cleanuptmux SIGINT
+    trap cleanuptmux SIGINT
 }
 
 getappid() {
@@ -314,19 +313,19 @@ getappid() {
     save "$jappid" $appfolder/appid
 }
 
-# killtmux() {
-#     for q in `tmux ls | grep $1 | cut -d ':' -f 1`; do
-#         echo $q
-#         tmux kill-session -t $q
-#     done
-# }
+killtmux() {
+    for q in `tmux ls | grep $1 | cut -d ':' -f 1`; do
+        echo $q
+        tmux kill-session -t $q
+    done
+}
 
-# cleanuptmux() {
-#     #if [ ! -z $tmuxapp ]; then
-#         #killtmux $tmuxapp
-#     #fi
-#     exit
-# }
+cleanuptmux() {
+    #if [ ! -z $tmuxapp ]; then
+        #killtmux $tmuxapp
+    #fi
+    exit
+}
 
 startredis() {
     local port=$1
@@ -737,9 +736,9 @@ if [ -e "$file" ]; then
                 setuptmux $folder/$iport
                 doaout $num $iport $group $dport
                 dojamout_p2 $type $iport $folder $group
-                # if [ -z $bg ]; then
-                #     # cleanuptmux
-                # fi
+                if [ -z $bg ]; then
+                    cleanuptmux
+                fi
             ;;
         esac
     else

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, basename, extname} from 'path';
 import { homedir, type } from 'os';
 import { fs } from 'zx';
-const { spawn } = require('child_process');
+const { spawn,spawnSync } = require('child_process');
 
 //REPLACE $RANDOM WITH MORE REAL VALUES
 //PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected
@@ -164,10 +164,10 @@ async function startmqtt(port, cFile){
     }
 }
 //missing argument for dojamOut_p2 querion what is happeing
-// function dojamout(type, iport, folder, group=null) {
-//     dojamout_p1 (type , iport ,folder)
-//     dojamout_p2 (type , iport ,folder)
-// }
+async function dojamout(type, iport, folder, group=null) {
+    await dojamout_p1 (type , iport ,folder)
+    await dojamout_p2 (type , iport ,folder)
+}
 
 async function dojamout_p1(pnum ,floc) {
     
@@ -196,9 +196,9 @@ function cleanup(){
         // console.log(`Killing broker with PID: ${mqttPromiseProcess}`)
         mqttPromiseProcesses.kill("SIGTERM");
     }
-    for (let p of childs){
-        p.kill("SIGTERM")
-    }
+    // for (let p of childs){
+    //     p.kill("SIGTERM")
+    // }
     /**
      * ADD TMUX HERE IF IT CAN"T BE DONE WITHOUT TMUX
      **/
@@ -230,7 +230,8 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
           stdio: 'inherit'
         };
         
-        const child = spawn(command, args, options);
+        // const child = spawn(command, args, options);
+        const child = spawnSync(command, args, options);
         childs.push(child)
     }
 
@@ -406,10 +407,7 @@ async function killtmux(sesh){
 }
 // ASK about this function logic specially how it exists
 function cleanuptmux() {
-    for(p of childs){
-        console.log(p);
-        p.kill('SIGTERM');
-    }
+
     process.exit(1);
 
 }
@@ -864,6 +862,56 @@ if(fs.existsSync(`./${file}`)){
         fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
         fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
         switch(Type){
+            case "cloud":
+                iport=9883
+                while(true){
+                    await portavailable(folder ,iport)
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                if(jdata){
+                    // console.log("data is true")
+                    dport=iport + 20000;
+                    await resolvedata(`127.0.0.1:${dport}`)
+                }
+                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                    fs.mkdirSync(`${folder}/${iport}`)
+                }
+                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+                
+                getappid(jamfolder, `${folder}/${iport}` ,app)
+                await dojamout( Type, iport, folder)
+            
+            case "fog":
+                iport=5883
+                while(true){
+                    await portavailable(folder ,iport)
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                if(jdata){
+                    // console.log("data is true")
+                    dport=iport + 20000;
+                    await resolvedata(`127.0.0.1:${dport}`)
+                }
+                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                    fs.mkdirSync(`${folder}/${iport}`)
+                }
+                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+                
+                getappid(jamfolder, `${folder}/${iport}` ,app)
+                await dojamout( Type, iport, folder)
+
             case "device":
                 //SHAHIN: EVEN WHEN IT IS RUNNING I'M FACING NO AN JUST GET ANOTHER PORTISSUES
                 const iport=1883;
