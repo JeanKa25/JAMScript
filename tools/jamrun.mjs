@@ -1,60 +1,76 @@
 #!/usr/bin/env zx
+import {jamrunParsArg} from './parsArg.mjs'
+
+
 import { fileURLToPath } from 'url';
 import { dirname, basename, extname} from 'path';
 import { homedir, type } from 'os';
 import { fs } from 'zx';
 const { spawn,spawnSync } = require('child_process');
-
-//REPLACE $RANDOM WITH MORE REAL VALUES
-//PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected
-//ABSTRACT ALL THE WRITES AWAAAAYYY
-//QUESTION: WE ONLY CREATE ONE MQTT BROKER?!?!?!
-//HOW TO REPLACE THE RANDOM VARIABLE IN BASH SCRIPTING??
-/**
- * trap cleanup SIGTERM SIGINT SIGKILL
- * QUESTION: I do not thing the SIGKILL is being trapped at all
+/***
+ * NOTES
+ * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected
+ * 2) ABSTRACT ALL THE WRITES AWAY
+ * 3)  the SIGKILL is being trapped at all
+ * 4) iFlow , oflow NOT BEING SET, I ADDED THEM. MAKE SURE IT'S NEEDED AND IT'S STRING
+ * 5) TODO: MAKE SURE ALL THE DIRECTORIES WE USE EXIST
+ * 6) TAKE CARE OF THE RELATIVE PATHS
+ * 7) abstract waiting for mqtt and redis
+ * 8) CLEAR FILES ONCLOSE(EX: LOG FILE)
+ * 9)if [ -e jstart.js ]; then Search this up in the js file. this does not make sence to me. it should check if the jxe has the jStart or not
+ * 10) why aren't we checking the content of the jxe file?
  */
+//
 
+
+
+
+//SETUP CLEANING
 process.on('SIGINT', () => {cleanup(), cleanuptmux()});
 process.on('SIGTERM', () => cleanup());
 
+//REPLACE DIE WITH THROWING DIRECT ERROR
 function die(error){
     process.stderr.write(`${error}\n`);
     process.exit(1);
 };
+//MOVE HOME TO CONST FILE
 let HOME = os.homedir();
+//MOVE IT TO THE MAIN PROCESS, RETURN CONST IN APP ID
 let jappid;
+//SET IN THE ARGCHECK FILE
 let VALGRIND;
+//SET IN THE ARGCHECK FILE
 let iflow;
+//SET IN THE ARGCHECK FILE
 let oflow;
+//TO KEEP TRACK OF BG PROCESSES
 const childs =[]
-//NOTE: don't need to check if the directory exists
-//NODE: ABSOLUTE PATH INSTEAD OF RELATIVE
-//source "$IDIR/inc/misc_tools.sh" (IMPORT THE FUNCTIONS ONE BY ONE WHEN IT IS NEEDED)
+//DO WE NEED THE MQTT PROCESSES
+//RETURN IT InStEAD
 const mqttPromiseProcesses= [];
+//SET REDIS PATH UP
 const filePath = fileURLToPath(import.meta.url);
 const IDIR = dirname(filePath);
 const REDISFUNCS = fs.realpathSync(`${IDIR}/../deps/lua/jredlib.lua`);
+
 //we run on node not shell(this is not shellPID but node PID)
 const SHELLPID = process.pid;
+
+//ADD TO THE CONSTATNT FILES
 const VALGRIND_OPTS = 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s';
+//SET IN THE ARGCHECK FILE
 let NOVERBOSE=1
+//THIS IS ALWAYS EQUAL TMAXID
+//SET IN THE ARGCHECK FILE
 let tmuxapp;
-let RANDOM;
+//SET IN THE MAIN PROCESS
 let appfolder;
+//SET IN THE ARGCHECK FILE
 let DISABLE_STDOUT_REDIRECT;
 
-// const Machine = (() =>{
-//     switch (type().toLowerCase()) {
-//         case "linux":
-//             return "Linux";
-//         case "darwin":
-//             return "Mac";
-//         default:
-//             return `UNKNOWN:${type()}`
-//       }
-// })();
 
+//setup
 const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
     ["mosquitto","mosquitto_pub", "tmux"].map(
         async (entry)=> {
@@ -75,6 +91,7 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
         }
     )
 )
+
 
 function show_usage(){
     const usageMessage = 
@@ -147,11 +164,7 @@ function show_usage(){
 
 //TOBE TESTED
 async function startmqtt(port, cFile){
-    // console.log(cFile, "this is my cfile")
     //Check whether the MQTT server is running.. if not start it
-    //QUESTION : why aren't we throwing an error?SHAHIN: what if it is running on another server??
-    //how does the error hanfling work over here?
-    //what ensures tht it is waiting for the mqtt to actually run ?
     try{
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
     }
@@ -163,7 +176,7 @@ async function startmqtt(port, cFile){
         return;
     }
 }
-//missing argument for dojamOut_p2 querion what is happeing
+
 async function dojamout(iport, folder, group=null) {
     await dojamout_p1 (iport ,folder)
     await dojamout_p2 (iport ,folder)
@@ -172,17 +185,12 @@ async function dojamout(iport, folder, group=null) {
 async function dojamout_p1(pnum ,floc) {
     
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
-    //just writing the string?
 
+    //TODO: JAMOUT FILE DIRECTORY ABSTRACTION TODO
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
-
-
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
-
-
-    //SHELL PID CAN BE PROCESS ID IN NODE WHAT DO WE EXACTLY WANT OVER HERE< CAN THEU BE USED INTERCHANGABLY?
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
-    //just writing string?//WE can do more
+    //just writing string?WE CAN KEEP TRACK OF ACTUAL PROCESS ID
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
 }
 
@@ -198,7 +206,7 @@ async function dojamout_p2(type, iport, folder, group=null){
 
 function cleanup(){
     if(killbroker === 1){
-        // console.log(`Killing broker with PID: ${mqttPromiseProcess}`)
+        console.log(`Killing broker with PID: ${mqttPromiseProcesses}`)
         mqttPromiseProcesses.kill("SIGTERM");
     }
     if(childs.length!=0){
@@ -215,20 +223,14 @@ function cleanup(){
 
 async function dojamout_p2_fg(type, pnum, floc, group=null){
 
-    //why shouldn't I do this in place?
+    //TODO: parsArg for J FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
     // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
-    //what if it is not?
     // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data}  --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
     let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
 
 
     
     if(type === "cloud" || type === "fog" || type === "device"){
-        //not really running in the fg. we just await so it's blockking(maybe use the current approch in bash script)
-        // console.log("STARTING THE JS FILE")
-        // console.log(floc)
-        // const p =await $`cd ${floc} && node jstart.js ${jargs}`
-        // const p =await $`node jstart.js ${jargs}`
 
         const command = 'node';
         const args = ['jstart.js', ...jargs];
@@ -236,28 +238,14 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
           cwd: floc,
           stdio: 'inherit'
         };
-        
-        // const child = spawn(command, args, options);
         spawnSync(command, args, options);
-
     }
-
     cleanup()
 }
-//don't forget to address the missmatching argument
 function dojamout_p2_bg(type, pnum, floc, group=null){
+    
+    //TODO: parsArg for J FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
     // const jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --${type}`
-    
-    // if(Machine === "Linux"){
-    //     //NOT TRUE BG .SEE IF IT CAUSES ERROR OR NOT(make sure to check if it is terminated or not before existing )
-    //    const p = $`script -a -c "node jstart.js ${args}" -f log.j > /dev/null`.stdio('ignore', 'pipe', 'pipe')
-    // }
-    
-    // else{
-    //     const p = $`script -a -t 1 log.j node jstart.js $args > /dev/null`
-    // }
-    //I don't think it needs to be machine specific
-    // const p = $`node jstart.js ${args}`.stdio('ignore', 'pipe', 'pipe');
     let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
     const command = 'node';
     const args = ['jstart.js', ...jargs];
@@ -284,7 +272,6 @@ function dojamout_p2_bg(type, pnum, floc, group=null){
     }
 }
 
-//how to check this?SHAHIN
 async function doaout(num,port,group,datap,myf){
     let counter=1
     if (fs.existsSync('a.out')) {
@@ -292,6 +279,7 @@ async function doaout(num,port,group,datap,myf){
     }
     while(counter <= num){
         if(fs.existsSync('a.out')){
+            //TODO: parsArg for C FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
             // let cargs = ` -a ${jappid} -p ${port} -n ${counter} -g ${group} -t ${tags} -o ${datap}`
             let cargs = ` -a ${jappid} -p ${port} -n ${counter} -g ${group} -o ${datap}`
             if(!DISABLE_STDOUT_REDIRECT){
@@ -330,13 +318,12 @@ async function doaout(num,port,group,datap,myf){
     console.log("Started a C node")
     }
 }
-//THIS IS VERY HARD TO TEST FOR ME
+
+
 async function portavailable(folder,port) {
     let pid;
     if(fs.existsSync(`./${folder}/${port}`)){
-        // console.log("folder exist")
         if(fs.existsSync(`${folder}/${port}/processId`)){
-            // console.log("process ID exists")
             try{
                 pid = fs.readFileSync(`${folder}/${port}/processId`)
             }
@@ -345,32 +332,24 @@ async function portavailable(folder,port) {
             }
 
             if(pid === "new"){
-                // console.log("PID is new")
                 porttaken=1;
             }
             else if(pid){
-                // console.log("pid is in the folder")
-                //this can be imporved by keeping track of the proccessesPromise directly(why do we do all this writes?)
                 porttaken= await $`ps -o pid= -p $pid | wc -l | tr -d '[:space:]'`
             }
             else{
-                // console.log("pid is not in the folder")
                 porttaken=0;
             }
         }
         else{
-            // console.log("process ID Not exists")
             porttaken=0;
         }
     }
     else{
-        // console.log("folder NOT exist")
         porttaken=0;
     }
     if(porttaken === 0){
-        // console.log("port taken is zero")
         const p = await $`netstat -an -p tcp 2>/dev/null | grep ${port} | wc -l`.nothrow().quiet()
-        // console.log(p.stdout.trim(), "this is my stdout")
         porttaken= p.stdout.trim()
     }
 }
@@ -383,7 +362,7 @@ function setuptmux(path) {
         tmuxapp=tmuxid;
     }
    
-    //is it fine if this is blocking (the save is not synchroness in misc_tools.sh and why we use Save helper insted of doing it here)
+    //TODO: ABSTRACT THE TMUX SETUP.
     fs.writeFileSync(`${path}/tmuxid`,tmuxapp.toString()+"\n");
     fs.writeFileSync(`${appfolder}/tmuxid`,tmuxapp.toString()+"\n");
 
@@ -393,11 +372,9 @@ function setuptmux(path) {
 
 function getappid(mainf, localf, appid){
     if(appid === "app-n"){
-        // console.log(appid, "this is my app id")
-        //can be imporved by a try catch instead
+        //TODO: can be imporved by a try catch instead
         let result;
         if(fs.existsSync(`${mainf}/counter`)){
-            // console.log("it's a main f")
             let value = fs.readFileSync(`${mainf}/counter`);
             result = Number(value.toString().trim()) + 1;
         }
@@ -411,10 +388,9 @@ function getappid(mainf, localf, appid){
         fs.writeFileSync(`${localf}/appid`,`${appid}`)
     }
     jappid = fs.readFileSync(`${localf}/appid`)
-    // console.log("this is my jappid", jappid)
     fs.writeFileSync(`${appfolder}/appid`,`${jappid}`)
 }
-
+//MAYBE USED LATER
 async function killtmux(sesh){
     const result = await $`tmux ls | grep ${sesh} | cut -d ':' -f 1`;
     for (const q of result.stdout.trim().split('\n')) {
@@ -422,37 +398,34 @@ async function killtmux(sesh){
         await $`tmux kill-session -t ${q}`;
     }
 }
-// ASK about this function logic specially how it exists
+//MAYBE USED LATER
 function cleanuptmux() {
-
     process.exit(1);
-
 }
-//there should be better ways to do this(CHECK THIS STEP)
-function startredis(port) {
-    //should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
 
+function startredis(port) {
+
+    //should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
     $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow();
 
-
 }
-//there should be better ways to do this(CHECK THIS STEP)
+//TODO, abstract the wait away
 async function waitforredis(port){
     while (true) {
         console.log("this is the port we have", port)
         let p
+
         try{
-        // const p = await $`redis-cli -p ${port} -c PING`.stdio('ignore', 'pipe', 'ignore').quiet()
-        p = await $`redis-cli -p ${port} -c PING`
-        if (p.stdout.trim() === "PONG") {
-            break;
-          }
-        
+            p = await $`redis-cli -p ${port} -c PING`
+            if (p.stdout.trim() === "PONG") {
+                break;
+            }
+            
         }
+
         catch(error){
         }
 
-   
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
         }
@@ -463,21 +436,16 @@ async function waitforredis(port){
         console.log(`Redis running at port: ${port}`);
       }
 }
-//HOW TO CHECK IF RADIS IS ACTUALLY SET(WHAT IT IS EXACTLY USED FOR?)
 async function setupredis(port) {
+
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
-    //I feel like the syntacs is off//spacing Added MODIFICATION
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
-
-    
-
 }
 
 
 async function resolvedata(Name) {
     const [host, port] = Name.split(':');
-    // console.log(port, "redis port is this ")
     startredis(Number(port));
     await waitforredis(port);
     await setupredis(port);
@@ -489,9 +457,10 @@ async function resolvedata(Name) {
     
     //trim space left behind by hostname -I
     data = Name.split(/\s+/).join('');
-    // console.log(data)
 }
+
 async function unpack(pfile, folder){
+
     const file = pfile
     if(!old){
         let p;
@@ -526,9 +495,11 @@ async function getheight(folder) {
     
     const p = await $`cd ${folder} && grep MAX-HEIGHT MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`.nothrow().quiet()
     return p.stdout.trim()
+
 }
 
 async function getjdata(folder) {
+
     const p = await $`cd ${folder} && grep JDATA MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`.nothrow().quiet()
     return p.stdout.trim()
 }
@@ -548,6 +519,7 @@ function generatelonglat() {
 
 }
 
+//these should be options
 let app="app-n"
 //note: the key word has changed
 let Type="device"
@@ -566,26 +538,13 @@ let killbroker=0
 
 let [long, lat] = generatelonglat();
 
-//processing the args to 
-//bad bad bad
-let args = process.argv.filter((entry) => (entry != 'jamrun.mjs' && !entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun.mjs')))
-// this step can be abstracted away and improved to be more detailed
-if(args.length === 0 || args[0].toLowerCase() === "-h" ||  args[0].toLowerCase() === "--help"){
-    show_usage();
-    process.exit(1);
-}
-const file = `${args[0]}`;
-const fext = file.split(".").pop()
-args = args.filter((_,index) => (index !== 0 ));
+jamrunParsArg(process.argv)
 
-if(fext !== "jxe"){
-    if(!fext)
-        die(`${file} is not file name or missing extention`);
-    else
-        die(`Extension on ${file} is not .jxe`);
-}
+
+
 //////this is really bad fix it ASAP
 //arg processing is very poorly design for a js script
+
 while(true){
         //pooorly handled
         if(args.length === 0){
@@ -835,7 +794,7 @@ while(true){
 }
 
 
-
+//SET IN THE ARGCHECK FILE
 if(Type !== "device"){
     edge = undefined;
     if(num){
@@ -846,160 +805,140 @@ if(Type !== "device"){
     }
 
 }
-
-if(fs.existsSync(`./${file}`)){
-    /**
-     * replace by try catch
-     */
-    const jamfolder=`${HOME}/.jamruns`
-    if(!fs.existsSync(jamfolder,{ recursive: true })){
-        fs.mkdirSync(jamfolder)
-    }
-    /**
-     * replace by try catch
-     */
-    //FileManager for all the scripts
-    appfolder=`${jamfolder}/apps`;
-    /**
-     * replace by try catch
-     */
-    if(!fs.existsSync(appfolder,{ recursive: true })){
-        fs.mkdirSync(appfolder)
-    }
-    /**
-     * replace by try catch
-     */
-    const filenoext = path.basename(file, path.extname(file));
-    const folder=`${appfolder}/${filenoext}_${app}`
-    if(!fs.existsSync(folder,{ recursive: true })){
-
-        fs.mkdirSync(folder)
-    }
-    //Be careful about changing the file directory
-    const ifile = path.resolve(file);
-    // console.log(ifile)
-    //NOTE THIS CHANGE THE CWD BUT NOT PWD AND THIS NEEDS TO BE CONSIDERED THATS WHY FOLDER IS PASSED TO UNPACK
-    process.chdir(folder);
-    await unpack(ifile, folder)
-    const height = await getheight(folder);
-    const jdata = await getjdata(folder);
-    let dport;
-    if(fs.existsSync(`./jstart.js`)){
-        let group;
-        //soppused to overwrite?
-        fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
-        fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
-        let iport;
-        switch(Type){
+//TODO: HAVE A MAIN FUNCTION
+/**
+ * replace by try catch
+ */
+//FileManager for all the scripts
+const jamfolder=`${HOME}/.jamruns`
+if(!fs.existsSync(jamfolder,{ recursive: true })){
+    fs.mkdirSync(jamfolder)
+}
+appfolder=`${jamfolder}/apps`;
+if(!fs.existsSync(appfolder,{ recursive: true })){
+    fs.mkdirSync(appfolder)
+}
+const filenoext = path.basename(file, path.extname(file));
+const folder=`${appfolder}/${filenoext}_${app}`
+if(!fs.existsSync(folder,{ recursive: true })){
+    fs.mkdirSync(folder)
+}
+//Be careful about changing the file directory
+const ifile = path.resolve(file);
+process.chdir(folder);
+await unpack(ifile, folder)
+//height is never used
+const height = await getheight(folder);
+const jdata = await getjdata(folder);
+let dport;
+//SHOULD THIS ChECK THE UNPACKED PART?!
+if(fs.existsSync(`./jstart.js`)){
+    let group;
+    //soppused to overwrite?
+    fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
+    fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
+    let iport;
+    switch(Type){
+        
+        case "cloud":
+            iport=9883
+            while(true){
+                await portavailable(folder ,iport)
+                if(porttaken !== 1){
+                    break;
+                }
+                iport++;
+            }
+            if(jdata){
+                dport=iport + 20000;
+                await resolvedata(`127.0.0.1:${dport}`)
+            }
+            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                fs.mkdirSync(`${folder}/${iport}`)
+            }
+            //TODO: CODE DUPLICATE, ABSTRACT AWAY
+            fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
             
-            case "cloud":
-                iport=9883
-                while(true){
-                    await portavailable(folder ,iport)
-                    if(porttaken !== 1){
-                        break;
-                    }
-                    iport++;
+            getappid(jamfolder, `${folder}/${iport}` ,app)
+            await dojamout(iport, folder)
+        
+        case "fog":
+            iport=5883
+            while(true){
+                await portavailable(folder ,iport)
+                if(porttaken !== 1){
+                    break;
                 }
-                if(jdata){
-                    // console.log("data is true")
-                    dport=iport + 20000;
-                    await resolvedata(`127.0.0.1:${dport}`)
-                }
-                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                    fs.mkdirSync(`${folder}/${iport}`)
-                }
-                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-                
-                getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout(iport, folder)
+                iport++;
+            }
+            if(jdata){
+                dport=iport + 20000;
+                await resolvedata(`127.0.0.1:${dport}`)
+            }
+            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                fs.mkdirSync(`${folder}/${iport}`)
+            }
+            //TODO: CODE DUPLICATE, ABSTRACT AWAY
+            fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
             
-            case "fog":
-                iport=5883
-                while(true){
-                    await portavailable(folder ,iport)
-                    if(porttaken !== 1){
-                        break;
-                    }
-                    iport++;
-                }
-                if(jdata){
-                    // console.log("data is true")
-                    dport=iport + 20000;
-                    await resolvedata(`127.0.0.1:${dport}`)
-                }
-                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                    fs.mkdirSync(`${folder}/${iport}`)
-                }
-                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-                
-                getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout(iport, folder)
+            getappid(jamfolder, `${folder}/${iport}` ,app)
+            await dojamout(iport, folder)
 
-            case "device":
-                //SHAHIN: EVEN WHEN IT IS RUNNING I'M FACING NO AN JUST GET ANOTHER PORTISSUES
-                iport=1883;
-                while(true){
-                    await portavailable(folder ,iport)
-                    if(porttaken !== 1){
-                        break;
-                    }
-                    iport++;
-                    // console.log(iport , "this is my port")
-                }
-                // console.log(porttaken, "this is my port takken")
+        case "device":
 
-                if(!local){
-                    //what is exactly happening here?
-                    group= iport-1882
-                    // console.log(group, "this is group")
+            iport=1883;
+            while(true){
+                await portavailable(folder ,iport)
+                if(porttaken !== 1){
+                    break;
                 }
-                else
-                    group = 0;
-                if(jdata){
-                    // console.log("data is true")
-                    dport=iport + 20000;
-                    await resolvedata(`127.0.0.1:${dport}`)
-                }
-                //teird
-                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                    fs.mkdirSync(`${folder}/${iport}`)
-                }
-                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-                
-                getappid(jamfolder, `${folder}/${iport}` ,app)
-                // console.log("data before jamout", data)
-                await dojamout_p1(iport,folder)
-                setuptmux(`${folder}/${iport}`)
-                await doaout(num,iport, group, dport,folder)
-                // const p = await $`redis-cli -p ${iport} -c PING`.stdio('ignore', 'pipe', 'ignore').quiet()
-                const p = await $`redis-cli -p ${dport} -c PING`
-                const p2 = await $`redis-cli -p ${dport} CONFIG GET protected-mode`.quiet();
-                console.log(p2.stdout.trim()) 
-                console.log(p.stdout)
-                // console.log("jsfile port is this : ", iport)
-                await dojamout_p2(Type, iport, folder, group)
+                iport++;
+            }
 
-        }
+            if(!local){
+                //what is exactly happening here?
+                group= iport-1882
+                // console.log(group, "this is group")
+            }
+            else
+                group = 0;
+            if(jdata){
+                dport=iport + 20000;
+                await resolvedata(`127.0.0.1:${dport}`)
+            }
+            //TODO: CODE DUPLICATE, ABSTRACT AWAY
+
+            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                fs.mkdirSync(`${folder}/${iport}`)
+            }
+            //TODO: CODE DUPLICATE, ABSTRACT AWAY
+
+            fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+            
+            getappid(jamfolder, `${folder}/${iport}` ,app)
+            await dojamout_p1(iport,folder)
+            setuptmux(`${folder}/${iport}`)
+            await doaout(num,iport, group, dport,folder)
+
+            await dojamout_p2(Type, iport, folder, group)
 
     }
-    else{
-        die(`File: ${file} is not a valid JAMScript executable`)
-    }
+
+}
+else{
+    die(`File: ${file} is not a valid JAMScript executable`)
+}
 
 
     
 
-}
-else{
-    die( `File: ${file} not found`)
-}
+

@@ -24,7 +24,7 @@
     },
     "dependencies": {
         "cbor-x": "1.5.4",
-        "command-line-args": ">= 3.0.5",
+        "command-line-args": "^5.2.1",
         "command-line-usage": "^6.1.0",
         "express": "^4.18.2",
         "ioredis": "^5.3.2",
