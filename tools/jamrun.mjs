@@ -4,6 +4,7 @@ import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 
 import { fileURLToPath } from 'url';
 import { dirname, basename, extname} from 'path';
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt} from './fileDirectory.mjs'
 import { homedir, type } from 'os';
 import { fs } from 'zx';
 const { spawn,spawnSync } = require('child_process');
@@ -24,17 +25,22 @@ const { spawn,spawnSync } = require('child_process');
  * 13) discuss what fields should be undefinecd and what fields should not be undefined
  * 14) error check for cArg ad jArg?
  * 15) a.out 
+ * 17) abstracting the wait
+ * 16) directly throw error insted of die function
+ * height is not used
  * 16) ---------------- message-to-j [
    0,  4,  6, 10, 12, 16,
   18, 22, 26, 28, 32, 34,
   38, 40, 44
 ] J arg does not clearup
+
  */
 //
 //global variables
 let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, iflow, oflow, tags, file;
 let porttaken=0;
 let jappid;
+
 
 //SETUP CLEANING
 process.on('SIGINT', () => {cleanup(), cleanuptmux()});
@@ -53,8 +59,6 @@ const filePath = fileURLToPath(import.meta.url);
 const IDIR = dirname(filePath);
 const REDISFUNCS = fs.realpathSync(`${IDIR}/../deps/lua/jredlib.lua`);
 const SHELLPID = process.pid;
-let appfolder;
-//SET IN THE ARGCHECK FILE
 
 
 //setup
@@ -149,9 +153,7 @@ function show_usage(){
 }
 
 
-//TOBE TESTED
 async function startmqtt(port, cFile){
-    //Check whether the MQTT server is running.. if not start it
     try{
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
     }
@@ -173,11 +175,9 @@ async function dojamout_p1(pnum ,floc) {
     
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
 
-    //TODO: JAMOUT FILE DIRECTORY ABSTRACTION TODO
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
-    //just writing string?WE CAN KEEP TRACK OF ACTUAL PROCESS ID
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
 }
 
@@ -243,9 +243,6 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
 }
 function dojamout_p2_bg(type, pnum, floc, group=null){
     
-    //TODO: parsArg for J FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
-    // const jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --${type}`
-    // let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${local_registry}`, `--${type}`];
     let argObject = {
         "--app":jappid,
         "--port":pnum,
@@ -272,6 +269,7 @@ function dojamout_p2_bg(type, pnum, floc, group=null){
 
     const p = spawn(command, args, options);
     childs.push(p);
+    //overwrite if it already exists
     p.stdout.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
     p.stderr.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
     p.on('error', (error) => {
@@ -384,7 +382,7 @@ async function portavailable(folder,port) {
     }
 }
 
-function setuptmux(path) {
+function setuptmux(path, appfolder) {
 
    
     //TODO: ABSTRACT THE TMUX SETUP.
@@ -393,7 +391,7 @@ function setuptmux(path) {
 
 }
 
-function getappid(mainf, localf, appid){
+function getappid(mainf, localf, appid,appfolder){
     if(appid === "app-n"){
         //TODO: can be imporved by a try catch instead
         let result;
@@ -481,17 +479,17 @@ async function resolvedata(Name) {
     data = Name.split(/\s+/).join('');
 }
 
-async function unpack(pfile, folder){
+async function unpack(file,folder){
 
-    const file = pfile
+    
     if(!old){
-        let p;
+
         if(!fs.existsSync("./MANIFEST.txt")){
             try{
-                p = await $`cd ${folder} && unzip -o ${file}`.quiet()
+                await $`cd ${folder} && unzip -o ${file}`.quiet()
             }
             catch(error){
-                die(`Problem reading file: ${file}\n${error}`)
+                throw new Error(`Problem reading file: ${file}\n${error}`)
             } 
                        
         }
@@ -506,7 +504,9 @@ async function unpack(pfile, folder){
                     p3 = await $`cd ${folder} && unzip -oq ${file}`.quiet()
                 }
                 catch(error){
-                    die(`Problem reading file: ${file}\n${error}`)
+
+                    throw new Error(`Problem reading file: ${file}\n${error}`)
+
                 } 
             }
         }
@@ -526,8 +526,26 @@ async function getjdata(folder) {
     return p.stdout.trim()
 }
 
+async function runNoneDevice(iport){
+    fileDirectoryMqtt(folder,iport)
+    getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
+    await dojamout(iport, folder)
+}
+
+async function runDevice(iport,group){
+    fileDirectoryMqtt(folder,iport)
+    getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
+    await dojamout_p1(iport,folder)
+    setuptmux(`${folder}/${iport}`, appfolder)
+    await doaout(num,iport, group, dport,folder)
+    await dojamout_p2(Type, iport, folder, group)
+}
+
 
 async function main(){
+    let iport;
+    let dport;
+    let group;
     try{    
         ({
             app,
@@ -562,144 +580,85 @@ async function main(){
             throw new Error(error.message)
         }
     }
-    console.log("SETTING VARIABLES ARE DONE")
-    //can be decoupled
-    
-    const jamfolder=`${HOME}/.jamruns`
-    if(!fs.existsSync(jamfolder,{ recursive: true })){
-        fs.mkdirSync(jamfolder)
-    }
-    //can be decoupled
+    const [jamfolder, appfolder, folder, filenoext] = fileDirectorySetUp(file,app)
 
-    appfolder=`${jamfolder}/apps`;
-    if(!fs.existsSync(appfolder,{ recursive: true })){
-        fs.mkdirSync(appfolder)
-    }
-    //can be decoupled
-
-    const filenoext = path.basename(file, path.extname(file));
-    const folder=`${appfolder}/${filenoext}_${app}`
-    if(!fs.existsSync(folder,{ recursive: true })){
-        fs.mkdirSync(folder)
-    }
-    //Be careful about changing the file directory
     const ifile = path.resolve(file);
     process.chdir(folder);
-    console.log("SETTING PATHS ARE DONE")
     await unpack(ifile, folder)
-    console.log("UNPACKED")
-    //height is never used
+    isValidExecutable()
     const height = await getheight(folder);
     const jdata = await getjdata(folder);
-    let dport;
-    //SHOULD THIS ChECK THE UNPACKED PART?!
-    if(fs.existsSync(`./jstart.js`)){
-        console.log("INTO THE MAIN PROCESS")
-        let group;
-        //soppused to overwrite?
-        fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
-        fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
-        let iport;
-        switch(Type){
-            
-            case "cloud":
-                iport=9883
-                while(true){
-                    await portavailable(folder ,iport)
-                    if(porttaken !== 1){
-                        break;
-                    }
-                    iport++;
+
+    switch(Type){
+        case "cloud":
+            iport=9883
+            while(true){
+                await portavailable(folder ,iport)
+                if(porttaken !== 1){
+                    break;
                 }
-                if(jdata){
-                    dport=iport + 20000;
-                    await resolvedata(`127.0.0.1:${dport}`)
+                iport++;
+            }
+            //what if jdata is wrong?
+            if(jdata){
+                dport=iport + 20000;
+                await resolvedata(`127.0.0.1:${dport}`)
+            }
+            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                fs.mkdirSync(`${folder}/${iport}`)
+            }
+            //TODO: CODE DUPLICATE, ABSTRACT AWAY
+            await runNoneDevice(iport)
+        
+        case "fog":
+            iport=5883
+            while(true){
+                await portavailable(folder ,iport)
+                if(porttaken !== 1){
+                    break;
                 }
-                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                    fs.mkdirSync(`${folder}/${iport}`)
+                iport++;
+            }
+            if(jdata){
+                dport=iport + 20000;
+                await resolvedata(`127.0.0.1:${dport}`)
+            }
+            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                fs.mkdirSync(`${folder}/${iport}`)
+            }
+            await runNoneDevice(iport)
+
+        case "device":
+            iport=1883;
+            while(true){
+                await portavailable(folder ,iport)
+                if(porttaken !== 1){
+                    break;
                 }
-                //TODO: CODE DUPLICATE, ABSTRACT AWAY
-                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-                
-                getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout(iport, folder)
-            
-            case "fog":
-                iport=5883
-                while(true){
-                    await portavailable(folder ,iport)
-                    if(porttaken !== 1){
-                        break;
-                    }
-                    iport++;
-                }
-                if(jdata){
-                    dport=iport + 20000;
-                    await resolvedata(`127.0.0.1:${dport}`)
-                }
-                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                    fs.mkdirSync(`${folder}/${iport}`)
-                }
-                //TODO: CODE DUPLICATE, ABSTRACT AWAY
-                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-                
-                getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout(iport, folder)
-    
-            case "device":
-    
-                iport=1883;
-                while(true){
-                    await portavailable(folder ,iport)
-                    if(porttaken !== 1){
-                        break;
-                    }
-                    iport++;
-                }
-    
-                if(!local){
-                    //what is exactly happening here?
-                    group= iport-1882
-                    // console.log(group, "this is group")
-                }
-                else
-                    group = 0;
-                if(jdata){
-                    dport=iport + 20000;
-                    await resolvedata(`127.0.0.1:${dport}`)
-                }
-                //TODO: CODE DUPLICATE, ABSTRACT AWAY
-    
-                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                    fs.mkdirSync(`${folder}/${iport}`)
-                }
-                //TODO: CODE DUPLICATE, ABSTRACT AWAY
-    
-                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-                
-                getappid(jamfolder, `${folder}/${iport}` ,app)
-                await dojamout_p1(iport,folder)
-                setuptmux(`${folder}/${iport}`)
-                
-                await doaout(num,iport, group, dport,folder)
-                console.log("CFILE EXECUTED")
-                await dojamout_p2(Type, iport, folder, group)
-    
-        }
-    
+                iport++;
+            }
+
+            if(!local){
+                group= iport-1882
+            }
+            else
+                group = 0;
+
+            if(jdata){
+
+                dport=iport + 20000;
+                await resolvedata(`127.0.0.1:${dport}`)
+            }
+
+            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                fs.mkdirSync(`${folder}/${iport}`)
+            }
+            await runDevice(iport,group)
+       
+
     }
-    else{
-        die(`File: ${file} is not a valid JAMScript executable`)
-    }
+    
+  
 
 }
 
@@ -707,15 +666,4 @@ async function main(){
 
 
 await main()
-
-//TODO: HAVE A MAIN FUNCTION
-/**
- * replace by try catch
- */
-//FileManager for all the scripts
-
-
-
-    
-
 
