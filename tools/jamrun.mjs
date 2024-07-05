@@ -1,16 +1,12 @@
 #!/usr/bin/env zx
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
-
-
 import { fileURLToPath } from 'url';
-import { dirname, basename, extname} from 'path';
-import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid} from './fileDirectory.mjs'
-import { homedir, type } from 'os';
-import { fs } from 'zx';
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
+
 /***
  * NOTES
- * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected
+ * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected(TO BE INVESTIGATED)
  * 2)SHOULDE FILE DIRECTORY BE A CLASS
  * 2)GLOBAL VARIABLE SITUATION
  * 2) ABSTRACT ALL THE WRITES AWAY
@@ -30,8 +26,11 @@ const { spawn,spawnSync } = require('child_process');
  * 17) abstracting the wait
  * 16) directly throw error insted of die function
  * 17) if device no tg
+ * 19) WHY DOES VALGRID NOT USED?
  * 17) file directory manager
- * height is not used
+ *  --valgrind in jamScript
+ * height is not used\
+ * Is it ok if you kill all the tmux servers?
  * 16) ---------------- message-to-j [
    0,  4,  6, 10, 12, 16,
   18, 22, 26, 28, 32, 34,
@@ -42,18 +41,18 @@ const { spawn,spawnSync } = require('child_process');
 //
 //global variables
 let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, iflow, oflow, tags, file;
-let porttaken=0;
+
 
 //SETUP CLEANING
-process.on('SIGINT', () => {cleanup(), cleanuptmux()});
-process.on('SIGTERM', () => cleanup());
+process.on('SIGINT', async () =>  await cleanup());
+process.on('SIGTERM', async () => await cleanup());
 
 //MOVE HOME TO CONST FILE
 const childs =[]
-const mqttPromiseProcesses= [];
+let mqttPromiseProcesses;
 //SET REDIS PATH UP
 const filePath = fileURLToPath(import.meta.url);
-const IDIR = dirname(filePath);
+const IDIR = path.dirname(filePath);
 const REDISFUNCS = fs.realpathSync(`${IDIR}/../deps/lua/jredlib.lua`);
 const SHELLPID = process.pid;
 
@@ -157,13 +156,13 @@ async function startmqtt(port, cFile){
     catch(error){
         if(!NOVERBOSE)
             console.log(`MQTT is not running at ${port}\nAttempting to start MQTT at ${port}`);
-        const mqttPromiseProcess = $`${MOSQUITTO} -c ${cFile}`.stdio('ignore', 'pipe', 'pipe').quiet().nothrow();
-        mqttPromiseProcesses.push(mqttPromiseProcess)
+        mqttPromiseProcesses = $`${MOSQUITTO} -c ${cFile}`.stdio('ignore', 'pipe', 'pipe').quiet().nothrow();
+        
         return;
     }
 }
 
-async function dojamout(iport, folder,jappid, group=null) {
+async function dojamout(iport, folder,jappid) {
     await dojamout_p1 (iport ,folder)
     await dojamout_p2 (iport ,folder, jappid)
 }
@@ -171,7 +170,6 @@ async function dojamout(iport, folder,jappid, group=null) {
 async function dojamout_p1(pnum ,floc) {
     
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
-
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
@@ -188,7 +186,10 @@ async function dojamout_p2(type, iport, folder, jappid, group=null){
         dojamout_p2_bg(type, iport, folder,jappid, group)
 }
 
-function cleanup(){
+async function cleanup(){
+    
+    await killtmux()
+
     if(temp_broker === 1){
         console.log(`Killing broker with PID: ${mqttPromiseProcesses}`)
         mqttPromiseProcesses.kill("SIGTERM");
@@ -201,12 +202,11 @@ function cleanup(){
     /**
      * ADD TMUX HERE IF IT CAN"T BE DONE WITHOUT TMUX
      **/
-    // cleanuptmux();
+
     process.exit(1)
 }
 
 async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
-
 
     let argObject = {
         "--app":jappid,
@@ -225,18 +225,15 @@ async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
 
     let jargs = getJargs(argObject)
 
+    const command = 'node';
+    const args = ['jstart.js', ...jargs];
+    const options = {
+        cwd: floc,
+        stdio: 'inherit'
+    };
+    spawnSync(command, args, options);
     
-    if(type === "cloud" || type === "fog" || type === "device"){
-
-        const command = 'node';
-        const args = ['jstart.js', ...jargs];
-        const options = {
-          cwd: floc,
-          stdio: 'inherit'
-        };
-        spawnSync(command, args, options);
-    }
-    cleanup()
+    await cleanup()
 }
 function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
     
@@ -266,7 +263,7 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
 
     const p = spawn(command, args, options);
     childs.push(p);
-    //overwrite if it already exists
+    //QUESTION: overwrite if it already exists 
     p.stdout.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
     p.stderr.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
     p.on('error', (error) => {
@@ -351,6 +348,7 @@ async function doaout(num,port,group,datap,myf,jappid){
 
 async function portavailable(folder,port) {
     let pid;
+    let porttaken;
     if(fs.existsSync(`./${folder}/${port}`)){
         if(fs.existsSync(`${folder}/${port}/processId`)){
             try{
@@ -381,6 +379,7 @@ async function portavailable(folder,port) {
         const p = await $`netstat -an -p tcp 2>/dev/null | grep ${port} | wc -l`.nothrow().quiet()
         porttaken= p.stdout.trim()
     }
+    return porttaken;
 }
 
 function setuptmux(path, appfolder) {
@@ -394,17 +393,10 @@ function setuptmux(path, appfolder) {
 
 
 //MAYBE USED LATER
-async function killtmux(sesh){
-    const result = await $`tmux ls | grep ${sesh} | cut -d ':' -f 1`;
-    for (const q of result.stdout.trim().split('\n')) {
-        console.log(q);
-        await $`tmux kill-session -t ${q}`;
-    }
+async function killtmux(){
+    await $`pkill tmux`.stdio('ignore', 'ignore', 'ignore').quiet().nothrow();
 }
-//MAYBE USED LATER
-function cleanuptmux() {
-    process.exit(1);
-}
+
 
 function startredis(port) {
 
@@ -477,10 +469,9 @@ async function unpack(file,folder){
             const p2 = await $`cd ${folder} && grep CREATE MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`;
             const ntime = p1.stdout.trim();
             const ontime = p2.stdout.trim();
-            let p3;
             if(ntime > ontime){
                 try{
-                    p3 = await $`cd ${folder} && unzip -oq ${file}`.quiet()
+                    await $`cd ${folder} && unzip -oq ${file}`.quiet()
                 }
                 catch(error){
 
@@ -519,7 +510,7 @@ async function runDevice(iport,dport,group){
     await dojamout_p1(iport,folder)
     setuptmux(`${folder}/${iport}`, appfolder)
     await doaout(num,iport, group, dport,folder,jappid)
-    await dojamout_p2(Type, iport, folder, group, jappid)
+    await dojamout_p2(Type, iport, folder,jappid,group )
 }
 
 
@@ -561,12 +552,14 @@ async function main(){
             throw new Error(error.message)
         }
     }
-    const [jamfolder, appfolder, folder, filenoext] = fileDirectorySetUp(file,app)
+    fileDirectorySetUp(file,app)
+    const folder = getFolder(file,app)
 
     const ifile = path.resolve(file);
     process.chdir(folder);
     await unpack(ifile, folder)
     isValidExecutable()
+    //Question: height is not used
     const height = await getheight(folder);
     const jdata = await getjdata(folder);
     let isDevice;
@@ -591,7 +584,7 @@ async function main(){
     }
 
     while(true){
-        await portavailable(folder ,iport)
+        const porttaken = await portavailable(folder ,iport)
         if(porttaken !== 1){
             break;
         }
@@ -605,14 +598,11 @@ async function main(){
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
-    console.log("is it device", isDevice)
     if(isDevice)
         await runDevice(iport,dport,group)
     else
         await runNoneDevice(iport)
 }
-
-
 
 
 await main()

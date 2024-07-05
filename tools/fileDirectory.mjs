@@ -1,4 +1,5 @@
 #!/usr/bin/env zx
+
 let HOME = os.homedir();
 
 export function fileDirectorySetUp(file,app){
@@ -27,6 +28,15 @@ export function getPaths(file,app){
     const folder=`${appfolder}/${filenoext}_${app}`
     
     return [jamfolder,appfolder,folder]
+}
+
+export function getFolder(file,app){
+    const jamfolder=`${HOME}/.jamruns`
+    const appfolder=`${jamfolder}/apps`;
+     const filenoext = path.basename(file, path.extname(file));
+    const folder=`${appfolder}/${filenoext}_${app}`
+    
+    return folder;
 }
 
 
