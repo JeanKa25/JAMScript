@@ -19,6 +19,15 @@ export function fileDirectorySetUp(file,app){
     fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
     return [jamfolder,appfolder,folder,filenoext ]
 }
+export function getPaths(file,app){
+    
+    const jamfolder=`${HOME}/.jamruns`
+    const appfolder=`${jamfolder}/apps`;
+     const filenoext = path.basename(file, path.extname(file));
+    const folder=`${appfolder}/${filenoext}_${app}`
+    
+    return [jamfolder,appfolder,folder]
+}
 
 export function isValidExecutable(){
     if(!fs.existsSync(`./jstart.js`))

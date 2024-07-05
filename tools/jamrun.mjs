@@ -4,13 +4,15 @@ import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 
 import { fileURLToPath } from 'url';
 import { dirname, basename, extname} from 'path';
-import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt} from './fileDirectory.mjs'
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths} from './fileDirectory.mjs'
 import { homedir, type } from 'os';
 import { fs } from 'zx';
 const { spawn,spawnSync } = require('child_process');
 /***
  * NOTES
  * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected
+ * 2)SHOULDE FILE DIRECTORY BE A CLASS
+ * 2)GLOBAL VARIABLE SITUATION
  * 2) ABSTRACT ALL THE WRITES AWAY
  * 3)  the SIGKILL is being trapped at all
  * 4) iFlow , oflow NOT BEING SET, I ADDED THEM. MAKE SURE IT'S NEEDED AND IT'S STRING
@@ -27,6 +29,8 @@ const { spawn,spawnSync } = require('child_process');
  * 15) a.out 
  * 17) abstracting the wait
  * 16) directly throw error insted of die function
+ * 17) if device no tg
+ * 17) file directory manager
  * height is not used
  * 16) ---------------- message-to-j [
    0,  4,  6, 10, 12, 16,
@@ -46,11 +50,6 @@ let jappid;
 process.on('SIGINT', () => {cleanup(), cleanuptmux()});
 process.on('SIGTERM', () => cleanup());
 
-//REPLACE DIE WITH THROWING DIRECT ERROR
-function die(error){
-    process.stderr.write(`${error}\n`);
-    process.exit(1);
-};
 //MOVE HOME TO CONST FILE
 const childs =[]
 const mqttPromiseProcesses= [];
@@ -312,7 +311,7 @@ async function doaout(num,port,group,datap,myf){
                 if (!log)
 
                     {
-                        console.log("this is my valgrind", valgrind)
+
                         if(valgrind)
                             await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
                         else
@@ -323,15 +322,19 @@ async function doaout(num,port,group,datap,myf){
                     if(Machine === "Linux"){
                         //TO BE FIXE
                         
-                        let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  script -a -c "${valgrind} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
+                        if(valgrind)
+                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
+                        else
+                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
+                        // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  script -a -c "${valgrind} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
 
                     }
                     
                     else{
                         //TO BE FIXE
                         //none linix machines does not have this?
-                        let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
-
+                        // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
+                        await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
                     }
                 }
             }
@@ -426,27 +429,22 @@ function cleanuptmux() {
 
 function startredis(port) {
 
-    //should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
+    //QUESTION: should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
     $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow();
 
 }
-//TODO, abstract the wait away
+
 async function waitforredis(port){
     while (true) {
         console.log("this is the port we have", port)
-        let p
-
         try{
-            p = await $`redis-cli -p ${port} -c PING`
+            const p = await $`redis-cli -p ${port} -c PING`
             if (p.stdout.trim() === "PONG") {
                 break;
             }
-            
         }
-
         catch(error){
         }
-
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
         }
@@ -457,11 +455,13 @@ async function waitforredis(port){
         console.log(`Redis running at port: ${port}`);
       }
 }
+
 async function setupredis(port) {
 
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
+
 }
 
 async function resolvedata(Name) {
@@ -527,12 +527,14 @@ async function getjdata(folder) {
 }
 
 async function runNoneDevice(iport){
+    const [jamfolder,appfolder,folder] = getPaths(file,app)
     fileDirectoryMqtt(folder,iport)
     getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
     await dojamout(iport, folder)
 }
 
-async function runDevice(iport,group){
+async function runDevice(iport,dport,group){
+    const [jamfolder,appfolder,folder] = getPaths(file,app)
     fileDirectoryMqtt(folder,iport)
     getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
     await dojamout_p1(iport,folder)
@@ -574,7 +576,7 @@ async function main(){
     catch(error){
         if(error.type === "UsageError"){
             show_usage()
-            process.kill("SIGTERM")
+            process.exit(1)
         }
         else{
             throw new Error(error.message)
@@ -588,78 +590,46 @@ async function main(){
     isValidExecutable()
     const height = await getheight(folder);
     const jdata = await getjdata(folder);
+    let isDevice;
 
     switch(Type){
         case "cloud":
             iport=9883
-            while(true){
-                await portavailable(folder ,iport)
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
-            }
-            //what if jdata is wrong?
-            if(jdata){
-                dport=iport + 20000;
-                await resolvedata(`127.0.0.1:${dport}`)
-            }
-            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                fs.mkdirSync(`${folder}/${iport}`)
-            }
-            //TODO: CODE DUPLICATE, ABSTRACT AWAY
-            await runNoneDevice(iport)
-        
+            isDevice = false;
+
         case "fog":
             iport=5883
-            while(true){
-                await portavailable(folder ,iport)
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
-            }
-            if(jdata){
-                dport=iport + 20000;
-                await resolvedata(`127.0.0.1:${dport}`)
-            }
-            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                fs.mkdirSync(`${folder}/${iport}`)
-            }
-            await runNoneDevice(iport)
+            isDevice = false
 
         case "device":
             iport=1883;
-            while(true){
-                await portavailable(folder ,iport)
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
-            }
-
+            isDevice = true;
             if(!local){
                 group= iport-1882
             }
             else
-                group = 0;
-
-            if(jdata){
-
-                dport=iport + 20000;
-                await resolvedata(`127.0.0.1:${dport}`)
-            }
-
-            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                fs.mkdirSync(`${folder}/${iport}`)
-            }
-            await runDevice(iport,group)
-       
-
+                group = 0; 
     }
-    
-  
 
+    while(true){
+        await portavailable(folder ,iport)
+        if(porttaken !== 1){
+            break;
+        }
+        iport++;
+    }
+    //QUESTION: what if jdata is wrong?
+    if(jdata){
+        dport=iport + 20000;
+        await resolvedata(`127.0.0.1:${dport}`)
+    }
+    if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+        fs.mkdirSync(`${folder}/${iport}`)
+    }
+    if(isDevice)
+        await runDevice(iport,dport,group)
+    else
+        await runNoneDevice(iport)
 }
 
 
