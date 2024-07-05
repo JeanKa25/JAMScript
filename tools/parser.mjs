@@ -2,6 +2,7 @@
 import commandLineArgs from 'command-line-args';
 import { fs } from 'zx';
 const path = require('path');
+const VALGRIND_OPTS = 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s';
 
 function generatelonglat() {
     const a = Math.floor(Math.random() * 180);
@@ -37,13 +38,9 @@ const jamrunOptionDefinitions = [
   {name : 'old', type: Boolean, defaultValue: false},
   {name : 'local', type: Boolean, defaultValue: false},
   {name : 'valgrind', type: Boolean, defaultValue: false},
-  {name : 'disable-stdout-redirect', type: Boolean, defaultValue: false},
+  {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
 ];
 
-const OptionToVarMap =new Map(
-    ["tmux","tmuxid"],
-    ["loc",["long","lat"]]
-)
 
 
 function retrieveType(device, fog, cloud){
@@ -52,9 +49,8 @@ function retrieveType(device, fog, cloud){
     }
 
     else if( ((fog?1:0) + (device?1:0) + (cloud?1:0)) > 1){
-        const error = new Error("Only one fog, device, cloud flag can be true")
-        error.type = 'MultiTypeFlag'
-        throw error;
+        throw Error("Only one of fog, device, cloud flag can be true")
+        
     }
 
     else{
@@ -66,6 +62,9 @@ function retrieveType(device, fog, cloud){
             return "cloud"
     }
 
+}
+function retrieveLongLat(loc){
+    return [long, lat] = loc.split(",");
 }
 
 function getJamrunArgs(args){
@@ -99,6 +98,43 @@ function checkJXEfile(arg){
     if(!fs.existsSync(absolutePath)){
         throw new Error(`File: ${file} not found`)
     }
+    return file;
+}
+function SetJamrunVar(options){
+    const Type = retrieveType(options.device , options.fog, options.cloud);
+    if(Type !== "device"){
+        options.num = undefined;
+        options.edge = undefined;
+     }
+    const NOVERBOSE = !options.verb
+    const valgrid = options.valgrid? VALGRIND_OPTS : false
+    const [long, lat] = retrieveLongLat(options.loc)
+        
+    const toAdd = {"valgrind" : valgrid,"long" : long,"lat" : lat, "NOVERBOSE":NOVERBOSE , "Type" : Type }
+    const skip = ["help","fog","cloud","device","loc", "verb"]
+    const AssignedVar ={}
+    for(let option of Object.keys(options)){
+        if(skip.includes(option)){
+            continue
+        }
+        AssignedVar[option]= options[option]
+        
+    }
+    for(let option of Object.keys(toAdd)){
+        AssignedVar[option]= toAdd[option]
+    }
+    console.log(Object.keys(AssignedVar))
+    if(!("iflow" in AssignedVar)){
+        AssignedVar["iflow"] = undefined;
+    }
+    if(!("oflow" in AssignedVar)){
+        AssignedVar["oflow"] = undefined;
+    }
+    if(!("tags" in AssignedVar)){
+        AssignedVar["tags"] = undefined;
+    }
+    return AssignedVar;
+    
 }
 
 //question one on remNote
@@ -106,7 +142,7 @@ function checkJXEfile(arg){
 export function jamrunParsArg(argv){
     //remove redundent arfs
     const arg = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun.mjs')))
-    checkJXEfile(arg)
+    const file = checkJXEfile(arg)
     let proccessedArgs = arg.filter((_,index) => (index !== 0 ));
     const options = getJamrunArgs(proccessedArgs);
     if(!options || options.help){
@@ -117,14 +153,45 @@ export function jamrunParsArg(argv){
     }
     for(let optionDefinition of jamrunOptionDefinitions ){
         if(options[optionDefinition.name] === null && optionDefinition.type != Boolean){
-            const error =  new Error(`--${optionDefinition.name} requires a non-empty option argument`);
-            error.type = 'OptionError';
-            throw error;
+            throw new Error(`--${optionDefinition.name} requires a non-empty option argument`);
+           
         }
     }
+    const varsObject = SetJamrunVar(options);
+    varsObject["file"] = file;
+    return varsObject;
+}
+//ASK wHAT VARIABLES ARE OPTIONAL
+//TO BE TESTED
+export function getCargs(argObject){
+    // console.log("this is my cObject arg\n", argObject)
+    let args = ""
+    for(let key of Object.keys(argObject)){
 
+
+        if(argObject[key] != undefined ){
+
+            args=args+` ${key} ${argObject[key]}`
+        }
+    }
+    return args;
+}
+export function getJargs(argObject){
+    const args = []
+    for(let key of Object.keys(argObject)){
+
+        if(argObject[key] != undefined){
+            if(key === "--type")
+                args.push(`--${argObject[key]}`)
+            else
+                args.push(`${key}=${argObject[key]}`)
+        }
+    }
+    console.log("this is my  jArgs\n",args )
+    return args;
     
 }
+// let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${local_registry}`, `--${type}`];
 
 
 

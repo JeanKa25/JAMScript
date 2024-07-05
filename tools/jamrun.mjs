@@ -1,5 +1,5 @@
 #!/usr/bin/env zx
-import {jamrunParsArg} from './parsArg.mjs'
+import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 
 
 import { fileURLToPath } from 'url';
@@ -19,11 +19,22 @@ const { spawn,spawnSync } = require('child_process');
  * 8) CLEAR FILES ONCLOSE(EX: LOG FILE)
  * 9)if [ -e jstart.js ]; then Search this up in the js file. this does not make sence to me. it should check if the jxe has the jStart or not
  * 10) why aren't we checking the content of the jxe file?
+ * 11) verify this error is true
+ * 12) we set edge equal undefined the check if it is defined or not. makes no sense (Type !== "device")(those checks are simply not working)
+ * 13) discuss what fields should be undefinecd and what fields should not be undefined
+ * 14) error check for cArg ad jArg?
+ * 15) a.out 
+ * 16) ---------------- message-to-j [
+   0,  4,  6, 10, 12, 16,
+  18, 22, 26, 28, 32, 34,
+  38, 40, 44
+] J arg does not clearup
  */
 //
-
-
-
+//global variables
+let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, iflow, oflow, tags, file;
+let porttaken=0;
+let jappid;
 
 //SETUP CLEANING
 process.on('SIGINT', () => {cleanup(), cleanuptmux()});
@@ -35,39 +46,15 @@ function die(error){
     process.exit(1);
 };
 //MOVE HOME TO CONST FILE
-let HOME = os.homedir();
-//MOVE IT TO THE MAIN PROCESS, RETURN CONST IN APP ID
-let jappid;
-//SET IN THE ARGCHECK FILE
-let VALGRIND;
-//SET IN THE ARGCHECK FILE
-let iflow;
-//SET IN THE ARGCHECK FILE
-let oflow;
-//TO KEEP TRACK OF BG PROCESSES
 const childs =[]
-//DO WE NEED THE MQTT PROCESSES
-//RETURN IT InStEAD
 const mqttPromiseProcesses= [];
 //SET REDIS PATH UP
 const filePath = fileURLToPath(import.meta.url);
 const IDIR = dirname(filePath);
 const REDISFUNCS = fs.realpathSync(`${IDIR}/../deps/lua/jredlib.lua`);
-
-//we run on node not shell(this is not shellPID but node PID)
 const SHELLPID = process.pid;
-
-//ADD TO THE CONSTATNT FILES
-const VALGRIND_OPTS = 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s';
-//SET IN THE ARGCHECK FILE
-let NOVERBOSE=1
-//THIS IS ALWAYS EQUAL TMAXID
-//SET IN THE ARGCHECK FILE
-let tmuxapp;
-//SET IN THE MAIN PROCESS
 let appfolder;
 //SET IN THE ARGCHECK FILE
-let DISABLE_STDOUT_REDIRECT;
 
 
 //setup
@@ -81,11 +68,11 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
             catch(error){
                 switch(entry){
                     case "tmux":
-                        die("tmux not installed. Quitting.")
+                        throw new Error("tmux not installed. Quitting.")
                     case "mosquitto_pub":
-                        die("mosquitto_pub (MQTT tools) not installed. Quitting.")
+                        throw new Error("mosquitto_pub (MQTT tools) not installed. Quitting.")
                     case "mosquitto":
-                        die("mosquitto (MQTT broker) not installed. Quitting.")
+                        throw new Error("mosquitto (MQTT broker) not installed. Quitting.")
                 }
             }
         }
@@ -205,7 +192,7 @@ async function dojamout_p2(type, iport, folder, group=null){
 }
 
 function cleanup(){
-    if(killbroker === 1){
+    if(temp_broker === 1){
         console.log(`Killing broker with PID: ${mqttPromiseProcesses}`)
         mqttPromiseProcesses.kill("SIGTERM");
     }
@@ -223,11 +210,23 @@ function cleanup(){
 
 async function dojamout_p2_fg(type, pnum, floc, group=null){
 
-    //TODO: parsArg for J FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
-    // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
-    // let jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data}  --edge=${edge} --long=${long} --lat=${lat} --localregistryhost=${localregistryhost} --${type}`
-    let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
 
+    let argObject = {
+        "--app":jappid,
+        "--port":pnum,
+        "--group":group,
+        "--data":data,
+        "--tags":tags,
+        "--iflow":iflow,
+        "--oflow":oflow,
+        "--edge":edge,
+        "--long":long,
+        "--lat":lat,
+        "--localregistryhost":local_registry,
+        "--type": type
+    }
+
+    let jargs = getJargs(argObject)
 
     
     if(type === "cloud" || type === "fog" || type === "device"){
@@ -246,7 +245,24 @@ function dojamout_p2_bg(type, pnum, floc, group=null){
     
     //TODO: parsArg for J FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
     // const jargs = `--app=${jappid} --port=${pnum} --group=${group} --data=${data} --tags=${tags} --iflow=${iflow} --oflow=${oflow} --edge=${edge} --long=${long} --lat=${lat} --${type}`
-    let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${localregistryhost}`, `--${type}`];
+    // let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${local_registry}`, `--${type}`];
+    let argObject = {
+        "--app":jappid,
+        "--port":pnum,
+        "--group":group,
+        "--data":data,
+        "--tags":tags,
+        "--iflow":iflow,
+        "--oflow":oflow,
+        "--edge":edge,
+        "--long":long,
+        "--lat":lat,
+        "--localregistryhost":local_registry,
+        "--type": type
+    }
+    let jargs = getJargs(argObject)
+
+    
     const command = 'node';
     const args = ['jstart.js', ...jargs];
     const options = {
@@ -274,41 +290,55 @@ function dojamout_p2_bg(type, pnum, floc, group=null){
 
 async function doaout(num,port,group,datap,myf){
     let counter=1
+    //TODO: make sure it is checking the folder
     if (fs.existsSync('a.out')) {
         await $`chmod +x a.out`
     }
     while(counter <= num){
+        //
         if(fs.existsSync('a.out')){
-            //TODO: parsArg for C FILE(FIX THE ARG TO AVOID MULTIPLE GLOBAL VARIABLES)
-            // let cargs = ` -a ${jappid} -p ${port} -n ${counter} -g ${group} -t ${tags} -o ${datap}`
-            let cargs = ` -a ${jappid} -p ${port} -n ${counter} -g ${group} -o ${datap}`
-            if(!DISABLE_STDOUT_REDIRECT){
-                if (!log)
-                    {
 
-                        await $`${TMUX} new-session -s ${tmuxapp}-${counter} -d`;
-                        //HOW DO WE DEAL WITH THE CASES WITHOUT VALGRID IN AN OK WAY?
-                        if(VALGRIND)
-                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmuxapp}-${counter} ${VALGRIND} ./a.out ${cargs} C-m`;
+            const argObject = 
+            {
+                "-a": jappid.toString(),
+                "-p": port,
+                "-n": counter,
+                "-g": group,
+                "-t": tags,
+                "-o": datap
+
+            }
+            let cargs = getCargs(argObject)
+            await $`${TMUX} new-session -s ${tmux}-${counter} -d`;
+            if(!disable_stdout_redirect){
+                if (!log)
+
+                    {
+                        console.log("this is my valgrind", valgrind)
+                        if(valgrind)
+                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
                         else
-                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmuxapp}-${counter} ./a.out ${cargs} C-m`;
+                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
                     }
             
                 else{
                     if(Machine === "Linux"){
                         //TO BE FIXE
-                        let p = await $`${TMUX} new-session -s ${tmuxapp}-${counter} -d  script -a -c "${VALGRIND} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
+                        
+                        let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  script -a -c "${valgrind} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
 
                     }
                     
                     else{
                         //TO BE FIXE
-                        let p = await $`${TMUX} new-session -s ${tmuxapp}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
+                        //none linix machines does not have this?
+                        let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
 
                     }
                 }
             }
             else{
+                //check if this works. if it does. Investigate what is going on with j file
                 let p = await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe")
 
             }
@@ -355,20 +385,13 @@ async function portavailable(folder,port) {
 }
 
 function setuptmux(path) {
-    if(!tmuxid){
-        tmuxapp=`tg-${Math.floor(Math.random() * 32768)}`
-    }
-    else{
-        tmuxapp=tmuxid;
-    }
+
    
     //TODO: ABSTRACT THE TMUX SETUP.
-    fs.writeFileSync(`${path}/tmuxid`,tmuxapp.toString()+"\n");
-    fs.writeFileSync(`${appfolder}/tmuxid`,tmuxapp.toString()+"\n");
+    fs.writeFileSync(`${path}/tmuxid`,tmux.toString()+"\n");
+    fs.writeFileSync(`${appfolder}/tmuxid`,tmux.toString()+"\n");
 
 }
-
-
 
 function getappid(mainf, localf, appid){
     if(appid === "app-n"){
@@ -443,7 +466,6 @@ async function setupredis(port) {
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
 }
 
-
 async function resolvedata(Name) {
     const [host, port] = Name.split(':');
     startredis(Number(port));
@@ -504,439 +526,194 @@ async function getjdata(folder) {
     return p.stdout.trim()
 }
 
-function getlonglat(loc) {
-    return [long, lat] = loc.split(",");
-}
 
-function generatelonglat() {
-    const a = Math.floor(Math.random() * 180);
-    const b = Math.floor(Math.random() * 10000);
-    const long=`${a}.${b}`
-    const c= Math.floor(Math.random() * 90);
-    const d = Math.floor(Math.random() * 10000);
-    const lat=`${c}.${d}`
-    return  [long,lat]
-
-}
-
-//these should be options
-let app="app-n"
-//note: the key word has changed
-let Type="device"
-let data = "127.0.0.1:6379"
-let num=1
-let tags;
-let bg;
-let old;
-let local;
-let porttaken=0;
-let tmuxid;
-let log;
-let edge=1
-let localregistryhost=0
-let killbroker=0
-
-let [long, lat] = generatelonglat();
-
-jamrunParsArg(process.argv)
-
-
-
-//////this is really bad fix it ASAP
-//arg processing is very poorly design for a js script
-
-while(true){
-        //pooorly handled
-        if(args.length === 0){
-            break;
-        }
-
-        if( "--help" === args[0].toLowerCase()|| "-h" === args[0].toLowerCase()){
-            show_usage();
-            process.exit(1);
-        }
-        else if("--app"=== args[0].toLowerCase()){
-            if(args.length > 1){
-                //can be imporove --app =
-                app = args[1];
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-                
-            }
-            else
-                die('ERROR: "--app" requires a non-empty option argument.')
-        }
-        
-
-        else if(args[0].toLowerCase() === "--app=")
-            //--app= 3 -> error
-            die( 'ERROR: "--args" requires a non-empty option argument.')
-        
-        else if(args[0].includes("--app=") || args[0].includes("--App=")) {
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            app = value;
-            args = args.filter((_,index) => (index !== 0));
-        }
-        else if(args[0].toLowerCase() === "--tags"){
-
-            if(args.length > 1){
-                tags = args[1];
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-            }
-            else
-                die('ERROR: "--tags" requires a non-empty option argument.')
-        }
-
-        else if(args[0].toLowerCase() === "--tags=")
-             die('ERROR: "--tags" requires a non-empty option argument.')
-
-        else if(args[0].includes("--Tags=") || args[0].includes("--tags=")){
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            tags = value;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase() === "--tmux"){
-
-            if(args.length > 1){
-                tmuxid = args[1];
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-            }
-            else
-                die('ERROR: "--tmux" requires a non-empty option argument.')
-        }
-
-        else if(args[0].toLowerCase() === "--tmux=")
-             die('ERROR: "--tmux" requires a non-empty option argument.')
-
-        else if(args[0].includes("--tmux=") || args[0].includes("--Tmux=")){
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            tmuxid = value;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-
-        else if(args[0].toLowerCase() === "--num"){
-
-            if(args.length > 1){
-                num = args[1];
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-            }
-            else
-                die('ERROR: "--num" requires a non-empty option argument.')
-        }
-
-        else if(args[0].toLowerCase() === "--num=")
-             die('ERROR: "--num" requires a non-empty option argument.')
-
-        else if(args[0].includes("--num=") || args[0].includes("--Num=")){
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            num = value;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-
-
-
-        else if(args[0].toLowerCase() === "--loc"){
-
-            if(args.length > 1){
-                //this shpuld not be a getter but a setter
-                [long, lat] = getlonglat(args[1])
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-            }
-            else
-                die('ERROR: "--loc" requires a non-empty option argument.')
-        }
-
-        else if(args[0].toLowerCase() === "--loc=")
-             die('ERROR: "--loc" requires a non-empty option argument.')
-
-        else if(args[0].includes("--Loc=") || args[0].includes("--loc=")){
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            //this shpuld not be a getter but a setter
-            [long, lat] = getlonglat(value)
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase()=== "--edge"){
-
-            if(args.length > 1){
-                edge = args[1];
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-            }
-            else
-                die('ERROR: "--edge" requires a non-empty option argument.')
-        }
-
-        else if(args[0].toLowerCase() === "--edge=")
-             die('ERROR: "--edge" requires a non-empty option argument.')
-
-        else if(args[0].includes("--edge=") || args[0].includes("--Edge=")){
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            edge = value;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-
-
-        else if(args[0].toLowerCase() === "--data="){
-
-            if(args.length > 1){
-                data = args[1];
-                args = args.filter((_,index) => (index !== 0 && index !== 1));
-            }
-            else
-                die('ERROR: "--data" requires a non-empty option argument.')
-        }
-
-        else if(args[0].toLowerCase() === "--data")
-             die('ERROR: "--data" requires a non-empty option argument.')
-
-        else if(args[0].includes("--data=") || args[0].includes("--Data=")){
-            const [_, ...rest] = args[0].split("=");
-            const value = rest.join('');
-            data = value;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-
-        else if(args[0].toLowerCase() === "--fog"){
-            //Do we mean == device
-            if( Type != "device"){
-                die( 'ERROR: "type" cannot be reassigned.')
-            }
-            else{
-                Type = "fog"
-                num = undefined;
-                args = args.filter((_,index) => (index !== 0));
-            }
-        }
-
-        else if(args[0].toLowerCase() === "--cloud"){
-            //Do we mean == device
-            if( Type != "device"){
-                die( 'ERROR: "type" cannot be reassigned.')
-            }
-            else{
-                Type = "cloud"
-                num = undefined;
-                args = args.filter((_,index) => (index !== 0));
-            }
-        }
-
-        else if(args[0].toLowerCase() === "--cloud"){
-            //Do we mean == device
-            if( Type != "device"){
-                die( 'ERROR: "type" cannot be reassigned.')
-            }
-            else{
-                Type = "cloud"
-                num = undefined;
-                args = args.filter((_,index) => (index !== 0));
-            }
-        }
-
-        else if(args[0].toLowerCase() === "--device"){
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase() === "--local_registry"){
-            localregistryhost=1;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase() === "--temp_broker"){
-            killbroker=1;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase() === "--bg"){
-            bg=1;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase() === "--verb"){
-            NOVERBOSE=undefined;
-            args = args.filter((_,index) => (index !== 0));
-        }
-
-        else if(args[0].toLowerCase() === "--log"){
-            log=1
-            args = args.filter((_,index) => (index !== 0));
-        }
-        else if(args[0].toLowerCase() === "--old"){
-            old=1
-            args = args.filter((_,index) => (index !== 0));
-        }
-        else if(args[0].toLowerCase() === "--local"){
-            local=1
-            args = args.filter((_,index) => (index !== 0));
-        }
-        else if(args[0].toLowerCase() === "--valgrind"){
-            VALGRIND="$VALGRIND_OPTS"
-            args = args.filter((_,index) => (index !== 0));
-        }
-        else if(args[0].toLowerCase() === "--disable-stdout-redirect"){
-            DISABLE_STDOUT_REDIRECT=1
-            args = args.filter((_,index) => (index !== 0));
+async function main(){
+    try{    
+        ({
+            app,
+            tmux,
+            num,
+            edge,
+            data,
+            local_registry,
+            temp_broker,
+            bg,
+            NOVERBOSE,
+            log,
+            old,
+            local,
+            valgrind,
+            disable_stdout_redirect,
+            long,
+            lat,
+            Type,
+            iflow,
+            oflow,
+            tags,
+            file
+        } = jamrunParsArg(process.argv))
+    }
+    catch(error){
+        if(error.type === "UsageError"){
+            show_usage()
+            process.kill("SIGTERM")
         }
         else{
-            //fix this to err instead of stdout
-            // console.log(`WARN: Unknown option (ignored):${ args[0]}`)
-            args = args.filter((_,index) => (index !== 0));
+            throw new Error(error.message)
         }
+    }
+    console.log("SETTING VARIABLES ARE DONE")
+    //can be decoupled
+    
+    const jamfolder=`${HOME}/.jamruns`
+    if(!fs.existsSync(jamfolder,{ recursive: true })){
+        fs.mkdirSync(jamfolder)
+    }
+    //can be decoupled
+
+    appfolder=`${jamfolder}/apps`;
+    if(!fs.existsSync(appfolder,{ recursive: true })){
+        fs.mkdirSync(appfolder)
+    }
+    //can be decoupled
+
+    const filenoext = path.basename(file, path.extname(file));
+    const folder=`${appfolder}/${filenoext}_${app}`
+    if(!fs.existsSync(folder,{ recursive: true })){
+        fs.mkdirSync(folder)
+    }
+    //Be careful about changing the file directory
+    const ifile = path.resolve(file);
+    process.chdir(folder);
+    console.log("SETTING PATHS ARE DONE")
+    await unpack(ifile, folder)
+    console.log("UNPACKED")
+    //height is never used
+    const height = await getheight(folder);
+    const jdata = await getjdata(folder);
+    let dport;
+    //SHOULD THIS ChECK THE UNPACKED PART?!
+    if(fs.existsSync(`./jstart.js`)){
+        console.log("INTO THE MAIN PROCESS")
+        let group;
+        //soppused to overwrite?
+        fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
+        fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
+        let iport;
+        switch(Type){
+            
+            case "cloud":
+                iport=9883
+                while(true){
+                    await portavailable(folder ,iport)
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                if(jdata){
+                    dport=iport + 20000;
+                    await resolvedata(`127.0.0.1:${dport}`)
+                }
+                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                    fs.mkdirSync(`${folder}/${iport}`)
+                }
+                //TODO: CODE DUPLICATE, ABSTRACT AWAY
+                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+                
+                getappid(jamfolder, `${folder}/${iport}` ,app)
+                await dojamout(iport, folder)
+            
+            case "fog":
+                iport=5883
+                while(true){
+                    await portavailable(folder ,iport)
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                if(jdata){
+                    dport=iport + 20000;
+                    await resolvedata(`127.0.0.1:${dport}`)
+                }
+                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                    fs.mkdirSync(`${folder}/${iport}`)
+                }
+                //TODO: CODE DUPLICATE, ABSTRACT AWAY
+                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+                
+                getappid(jamfolder, `${folder}/${iport}` ,app)
+                await dojamout(iport, folder)
+    
+            case "device":
+    
+                iport=1883;
+                while(true){
+                    await portavailable(folder ,iport)
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+    
+                if(!local){
+                    //what is exactly happening here?
+                    group= iport-1882
+                    // console.log(group, "this is group")
+                }
+                else
+                    group = 0;
+                if(jdata){
+                    dport=iport + 20000;
+                    await resolvedata(`127.0.0.1:${dport}`)
+                }
+                //TODO: CODE DUPLICATE, ABSTRACT AWAY
+    
+                if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
+                    fs.mkdirSync(`${folder}/${iport}`)
+                }
+                //TODO: CODE DUPLICATE, ABSTRACT AWAY
+    
+                fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
+                fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+                
+                getappid(jamfolder, `${folder}/${iport}` ,app)
+                await dojamout_p1(iport,folder)
+                setuptmux(`${folder}/${iport}`)
+                
+                await doaout(num,iport, group, dport,folder)
+                console.log("CFILE EXECUTED")
+                await dojamout_p2(Type, iport, folder, group)
+    
+        }
+    
+    }
+    else{
+        die(`File: ${file} is not a valid JAMScript executable`)
+    }
+
 }
 
 
-//SET IN THE ARGCHECK FILE
-if(Type !== "device"){
-    edge = undefined;
-    if(num){
-        die("number of devices can't be speciied for fog/cloud")
-    }
-    if(edge){
-        die( "number of edge connections can't be specified for fog/cloud")
-    }
 
-}
+
+await main()
+
 //TODO: HAVE A MAIN FUNCTION
 /**
  * replace by try catch
  */
 //FileManager for all the scripts
-const jamfolder=`${HOME}/.jamruns`
-if(!fs.existsSync(jamfolder,{ recursive: true })){
-    fs.mkdirSync(jamfolder)
-}
-appfolder=`${jamfolder}/apps`;
-if(!fs.existsSync(appfolder,{ recursive: true })){
-    fs.mkdirSync(appfolder)
-}
-const filenoext = path.basename(file, path.extname(file));
-const folder=`${appfolder}/${filenoext}_${app}`
-if(!fs.existsSync(folder,{ recursive: true })){
-    fs.mkdirSync(folder)
-}
-//Be careful about changing the file directory
-const ifile = path.resolve(file);
-process.chdir(folder);
-await unpack(ifile, folder)
-//height is never used
-const height = await getheight(folder);
-const jdata = await getjdata(folder);
-let dport;
-//SHOULD THIS ChECK THE UNPACKED PART?!
-if(fs.existsSync(`./jstart.js`)){
-    let group;
-    //soppused to overwrite?
-    fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
-    fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
-    let iport;
-    switch(Type){
-        
-        case "cloud":
-            iport=9883
-            while(true){
-                await portavailable(folder ,iport)
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
-            }
-            if(jdata){
-                dport=iport + 20000;
-                await resolvedata(`127.0.0.1:${dport}`)
-            }
-            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                fs.mkdirSync(`${folder}/${iport}`)
-            }
-            //TODO: CODE DUPLICATE, ABSTRACT AWAY
-            fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-            
-            getappid(jamfolder, `${folder}/${iport}` ,app)
-            await dojamout(iport, folder)
-        
-        case "fog":
-            iport=5883
-            while(true){
-                await portavailable(folder ,iport)
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
-            }
-            if(jdata){
-                dport=iport + 20000;
-                await resolvedata(`127.0.0.1:${dport}`)
-            }
-            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                fs.mkdirSync(`${folder}/${iport}`)
-            }
-            //TODO: CODE DUPLICATE, ABSTRACT AWAY
-            fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-            
-            getappid(jamfolder, `${folder}/${iport}` ,app)
-            await dojamout(iport, folder)
 
-        case "device":
-
-            iport=1883;
-            while(true){
-                await portavailable(folder ,iport)
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
-            }
-
-            if(!local){
-                //what is exactly happening here?
-                group= iport-1882
-                // console.log(group, "this is group")
-            }
-            else
-                group = 0;
-            if(jdata){
-                dport=iport + 20000;
-                await resolvedata(`127.0.0.1:${dport}`)
-            }
-            //TODO: CODE DUPLICATE, ABSTRACT AWAY
-
-            if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
-                fs.mkdirSync(`${folder}/${iport}`)
-            }
-            //TODO: CODE DUPLICATE, ABSTRACT AWAY
-
-            fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
-            fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
-            
-            getappid(jamfolder, `${folder}/${iport}` ,app)
-            await dojamout_p1(iport,folder)
-            setuptmux(`${folder}/${iport}`)
-            await doaout(num,iport, group, dport,folder)
-
-            await dojamout_p2(Type, iport, folder, group)
-
-    }
-
-}
-else{
-    die(`File: ${file} is not a valid JAMScript executable`)
-}
 
 
     
