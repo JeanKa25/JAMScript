@@ -4,7 +4,7 @@ import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 
 import { fileURLToPath } from 'url';
 import { dirname, basename, extname} from 'path';
-import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths} from './fileDirectory.mjs'
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid} from './fileDirectory.mjs'
 import { homedir, type } from 'os';
 import { fs } from 'zx';
 const { spawn,spawnSync } = require('child_process');
@@ -43,8 +43,6 @@ const { spawn,spawnSync } = require('child_process');
 //global variables
 let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, iflow, oflow, tags, file;
 let porttaken=0;
-let jappid;
-
 
 //SETUP CLEANING
 process.on('SIGINT', () => {cleanup(), cleanuptmux()});
@@ -165,9 +163,9 @@ async function startmqtt(port, cFile){
     }
 }
 
-async function dojamout(iport, folder, group=null) {
+async function dojamout(iport, folder,jappid, group=null) {
     await dojamout_p1 (iport ,folder)
-    await dojamout_p2 (iport ,folder)
+    await dojamout_p2 (iport ,folder, jappid)
 }
 
 async function dojamout_p1(pnum ,floc) {
@@ -181,13 +179,13 @@ async function dojamout_p1(pnum ,floc) {
 }
 
 
-async function dojamout_p2(type, iport, folder, group=null){
+async function dojamout_p2(type, iport, folder, jappid, group=null){
     if(!bg)
 
-        await dojamout_p2_fg(type, iport, folder, group)
+        await dojamout_p2_fg(type, iport, folder,jappid, group)
     else
 
-        dojamout_p2_bg(type, iport, folder, group)
+        dojamout_p2_bg(type, iport, folder,jappid, group)
 }
 
 function cleanup(){
@@ -207,7 +205,7 @@ function cleanup(){
     process.exit(1)
 }
 
-async function dojamout_p2_fg(type, pnum, floc, group=null){
+async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
 
 
     let argObject = {
@@ -240,7 +238,7 @@ async function dojamout_p2_fg(type, pnum, floc, group=null){
     }
     cleanup()
 }
-function dojamout_p2_bg(type, pnum, floc, group=null){
+function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
     
     let argObject = {
         "--app":jappid,
@@ -285,7 +283,7 @@ function dojamout_p2_bg(type, pnum, floc, group=null){
     }
 }
 
-async function doaout(num,port,group,datap,myf){
+async function doaout(num,port,group,datap,myf,jappid){
     let counter=1
     //TODO: make sure it is checking the folder
     if (fs.existsSync('a.out')) {
@@ -394,26 +392,7 @@ function setuptmux(path, appfolder) {
 
 }
 
-function getappid(mainf, localf, appid,appfolder){
-    if(appid === "app-n"){
-        //TODO: can be imporved by a try catch instead
-        let result;
-        if(fs.existsSync(`${mainf}/counter`)){
-            let value = fs.readFileSync(`${mainf}/counter`);
-            result = Number(value.toString().trim()) + 1;
-        }
-        else{
-            result = 1;
-        }
-        fs.writeFileSync(`${mainf}/counter`, `${result}\n`)
-        fs.writeFileSync(`${localf}/appid`, `app-${result}\n`)
-    }
-    else{
-        fs.writeFileSync(`${localf}/appid`,`${appid}`)
-    }
-    jappid = fs.readFileSync(`${localf}/appid`)
-    fs.writeFileSync(`${appfolder}/appid`,`${jappid}`)
-}
+
 //MAYBE USED LATER
 async function killtmux(sesh){
     const result = await $`tmux ls | grep ${sesh} | cut -d ':' -f 1`;
@@ -529,18 +508,18 @@ async function getjdata(folder) {
 async function runNoneDevice(iport){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
     fileDirectoryMqtt(folder,iport)
-    getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
-    await dojamout(iport, folder)
+    const jappid = getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
+    await dojamout(iport, folder, jappid)
 }
 
 async function runDevice(iport,dport,group){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
     fileDirectoryMqtt(folder,iport)
-    getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
+    const jappid = getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
     await dojamout_p1(iport,folder)
     setuptmux(`${folder}/${iport}`, appfolder)
-    await doaout(num,iport, group, dport,folder)
-    await dojamout_p2(Type, iport, folder, group)
+    await doaout(num,iport, group, dport,folder,jappid)
+    await dojamout_p2(Type, iport, folder, group, jappid)
 }
 
 
@@ -626,6 +605,7 @@ async function main(){
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
+    console.log("is it device", isDevice)
     if(isDevice)
         await runDevice(iport,dport,group)
     else

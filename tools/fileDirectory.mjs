@@ -29,6 +29,29 @@ export function getPaths(file,app){
     return [jamfolder,appfolder,folder]
 }
 
+
+export function getappid(mainf, localf, appid,appfolder){
+    if(appid === "app-n"){
+        //TODO: can be imporved by a try catch instead
+        let result;
+        if(fs.existsSync(`${mainf}/counter`)){
+            let value = fs.readFileSync(`${mainf}/counter`);
+            result = Number(value.toString().trim()) + 1;
+        }
+        else{
+            result = 1;
+        }
+        fs.writeFileSync(`${mainf}/counter`, `${result}\n`)
+        fs.writeFileSync(`${localf}/appid`, `app-${result}\n`)
+    }
+    else{
+        fs.writeFileSync(`${localf}/appid`,`${appid}`)
+    }
+    const jappid = fs.readFileSync(`${localf}/appid`)
+    fs.writeFileSync(`${appfolder}/appid`,`${jappid}`)
+    return jappid;
+}
+
 export function isValidExecutable(){
     if(!fs.existsSync(`./jstart.js`))
         throw new Error("jstart.js is missing")
