@@ -6,46 +6,33 @@ const { spawn,spawnSync } = require('child_process');
 
 /***
  * NOTES
+ * num Error(HAVE IN MIND)
+ * handle log seperation in close();
+ * new command:
+ 
+ * add a new command as an indication of the continuity of jamrun app and if it's false clean the redis
+    3) REDIS THROWS unexpected ERROR IN SOME CASES FOR SOME REASON
+    4) CHECK THE NUM ISSUE. WE DON"T SEE THAT CLEARLY in the jamrun
+    5) fully detach the proccesses 
+ 
  * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected(TO BE INVESTIGATED)
- * 2)SHOULDE FILE DIRECTORY BE A CLASS
- * 2)GLOBAL VARIABLE SITUATION
- * 2) ABSTRACT ALL THE WRITES AWAY
- * 3)  the SIGKILL is being trapped at all
- * 4) iFlow , oflow NOT BEING SET, I ADDED THEM. MAKE SURE IT'S NEEDED AND IT'S STRING
- * 5) TODO: MAKE SURE ALL THE DIRECTORIES WE USE EXIST
- * 6) TAKE CARE OF THE RELATIVE PATHS
- * 7) abstract waiting for mqtt and redis
- * 8) CLEAR FILES ONCLOSE(EX: LOG FILE)
- * 9)if [ -e jstart.js ]; then Search this up in the js file. this does not make sence to me. it should check if the jxe has the jStart or not
- * 10) why aren't we checking the content of the jxe file?
- * 11) verify this error is true
- * 12) we set edge equal undefined the check if it is defined or not. makes no sense (Type !== "device")(those checks are simply not working)
- * 13) discuss what fields should be undefinecd and what fields should not be undefined
- * 14) error check for cArg ad jArg?
- * 15) a.out 
- * 17) abstracting the wait
- * 16) directly throw error insted of die function
- * 17) if device no tg
- * 19) WHY DOES VALGRID NOT USED?
- * 17) file directory manager
- *  --valgrind in jamScript
- * height is not used\
- * Is it ok if you kill all the tmux servers?
- * 16) ---------------- message-to-j [
-   0,  4,  6, 10, 12, 16,
-  18, 22, 26, 28, 32, 34,
-  38, 40, 44
+
+ * 4) iFlow , oflow NOT BEING SET, I ADDED THEM. MAKE SURE IT'S NEEDED AND IT'S STRING(NEED TO BE REMOVED)
+
+ * height is not used (REMOVE)
+ *
+
 ] J arg does not clearup
 
  */
 //
 //global variables
-let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, iflow, oflow, tags, file;
+let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, tags, file;
 
 
 //SETUP CLEANING
-process.on('SIGINT', async () =>  await cleanup());
-process.on('SIGTERM', async () => await cleanup());
+// process.on('SIGINT', async () =>  await cleanup());
+// process.on('SIGTERM', async () => await cleanup());
 
 //MOVE HOME TO CONST FILE
 const childs =[]
@@ -150,8 +137,11 @@ function show_usage(){
 
 
 async function startmqtt(port, cFile){
+
+
     try{
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
+
     }
     catch(error){
         if(!NOVERBOSE)
@@ -168,8 +158,12 @@ async function dojamout(iport, folder,jappid) {
 }
 
 async function dojamout_p1(pnum ,floc) {
+
+
     
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
+
+
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
@@ -199,23 +193,16 @@ async function cleanup(){
             p.kill("SIGTERM")
         }
     }
-    /**
-     * ADD TMUX HERE IF IT CAN"T BE DONE WITHOUT TMUX
-     **/
-
     process.exit(1)
 }
 
 async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
-
     let argObject = {
         "--app":jappid,
         "--port":pnum,
         "--group":group,
         "--data":data,
         "--tags":tags,
-        "--iflow":iflow,
-        "--oflow":oflow,
         "--edge":edge,
         "--long":long,
         "--lat":lat,
@@ -235,16 +222,15 @@ async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
     
     await cleanup()
 }
+
 function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
-    
+    console.log("THE EXECUTION IS ON THE BG")
     let argObject = {
         "--app":jappid,
         "--port":pnum,
         "--group":group,
         "--data":data,
         "--tags":tags,
-        "--iflow":iflow,
-        "--oflow":oflow,
         "--edge":edge,
         "--long":long,
         "--lat":lat,
@@ -253,26 +239,27 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
     }
     let jargs = getJargs(argObject)
 
-    
+    console.log(floc)
+    const out = fs.openSync(`${floc}/log.j`, 'a');
+ 
+
     const command = 'node';
     const args = ['jstart.js', ...jargs];
     const options = {
       cwd: floc,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', out, out],
+      detached: true,
     };
 
-    const p = spawn(command, args, options);
+
+
+
+
+    const p =  spawn(command, args, options);
+    p.unref();
+
     childs.push(p);
-    //QUESTION: overwrite if it already exists 
-    p.stdout.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
-    p.stderr.pipe(fs.createWriteStream(`${floc}/log.j`), { flags: 'a' });
-    p.on('error', (error) => {
-        console.error(`Error: ${error.message}`);
-      });
-      
-    p.on('close', (code) => {
-        console.log(`Child process exited with code ${code}`);
-    });
+
     
 
     if(!NOVERBOSE){
@@ -400,17 +387,22 @@ async function killtmux(){
 
 function startredis(port) {
 
-    //QUESTION: should it throw an error if it does not work? now are the input/output/err is ignored.(DIVE DEEPER IN THIS)
-    $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow();
 
+    
+    $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow()
+ 
 }
 
 async function waitforredis(port){
     while (true) {
         console.log("this is the port we have", port)
         try{
+
             const p = await $`redis-cli -p ${port} -c PING`
+            console.log(p.stdout)
+
             if (p.stdout.trim() === "PONG") {
+                
                 break;
             }
         }
@@ -421,16 +413,22 @@ async function waitforredis(port){
         }
         await sleep(1000)
       }
-    
+      
       if (!NOVERBOSE) {
         console.log(`Redis running at port: ${port}`);
       }
+
 }
 
 async function setupredis(port) {
 
+    
+
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
+
+
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
+
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
 
 }
@@ -439,15 +437,20 @@ async function resolvedata(Name) {
     const [host, port] = Name.split(':');
     startredis(Number(port));
     await waitforredis(port);
+
     await setupredis(port);
+
+
     
     if(host === "docker"){
         const ipaddr= `hostname -I`
         Name = `${ipaddr}:${port}`
     }
-    
+
     //trim space left behind by hostname -I
     data = Name.split(/\s+/).join('');
+
+
 }
 
 async function unpack(file,folder){
@@ -483,13 +486,6 @@ async function unpack(file,folder){
     }
 }
 
-async function getheight(folder) {
-    
-    const p = await $`cd ${folder} && grep MAX-HEIGHT MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`.nothrow().quiet()
-    return p.stdout.trim()
-
-}
-
 async function getjdata(folder) {
 
     const p = await $`cd ${folder} && grep JDATA MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`.nothrow().quiet()
@@ -505,11 +501,20 @@ async function runNoneDevice(iport){
 
 async function runDevice(iport,dport,group){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
+
     fileDirectoryMqtt(folder,iport)
     const jappid = getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
+
+
     await dojamout_p1(iport,folder)
+
+
     setuptmux(`${folder}/${iport}`, appfolder)
+
+
     await doaout(num,iport, group, dport,folder,jappid)
+
+
     await dojamout_p2(Type, iport, folder,jappid,group )
 }
 
@@ -537,12 +542,12 @@ async function main(){
             long,
             lat,
             Type,
-            iflow,
-            oflow,
             tags,
             file
         } = jamrunParsArg(process.argv))
+        console.log(bg, "this is my backgroundß")
     }
+   
     catch(error){
         if(error.type === "UsageError"){
             show_usage()
@@ -559,8 +564,7 @@ async function main(){
     process.chdir(folder);
     await unpack(ifile, folder)
     isValidExecutable()
-    //Question: height is not used
-    const height = await getheight(folder);
+
     const jdata = await getjdata(folder);
     let isDevice;
 
@@ -590,18 +594,27 @@ async function main(){
         }
         iport++;
     }
-    //QUESTION: what if jdata is wrong?
     if(jdata){
         dport=iport + 20000;
         await resolvedata(`127.0.0.1:${dport}`)
+
+
+
     }
+    
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
     if(isDevice)
+        {
+           
         await runDevice(iport,dport,group)
+        process.exit(0)
+        }
     else
         await runNoneDevice(iport)
+
+
 }
 
 

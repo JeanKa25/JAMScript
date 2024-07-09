@@ -16,12 +16,11 @@ function generatelonglat() {
 }
 let [long, lat] = generatelonglat();
 
+
 const jamrunOptionDefinitions = [
   { name: 'help', alias: 'h', type: Boolean, defaultValue: false},
   {name : 'app', type: String , defaultValue: "app-n"},
   {name : 'tags', type: String , defaultValue: undefined},
-  {name : 'iflow', type: String , defaultValue: undefined},
-  {name : 'oflow', type: String , defaultValue: undefined},
   {name : 'tmux', type: String , defaultValue: `tg-${Math.floor(Math.random() * 32768)}`},
   {name : 'num', type: Number , defaultValue: 1},
   {name : 'loc', type: String , defaultValue: `${long},${lat}`},
@@ -124,12 +123,6 @@ function SetJamrunVar(options){
         AssignedVar[option]= toAdd[option]
     }
     console.log(Object.keys(AssignedVar))
-    if(!("iflow" in AssignedVar)){
-        AssignedVar["iflow"] = undefined;
-    }
-    if(!("oflow" in AssignedVar)){
-        AssignedVar["oflow"] = undefined;
-    }
     if(!("tags" in AssignedVar)){
         AssignedVar["tags"] = undefined;
     }
@@ -191,7 +184,6 @@ export function getJargs(argObject){
     return args;
     
 }
-// let jargs = [`--app=${jappid}`, `--port=${pnum}`, `--group=${group}`, `--data=${data}`, `--edge=${edge}`, `--long=${long}`, `--lat=${lat}`, `--localregistryhost=${local_registry}`, `--${type}`];
 
 
 

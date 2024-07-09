@@ -63,7 +63,7 @@ export function getappid(mainf, localf, appid,appfolder){
 }
 
 export function isValidExecutable(){
-    if(!fs.existsSync(`./jstart.js`))
+    if(!fs.existsSync(`jstart.js`))
         throw new Error("jstart.js is missing")
 
     if(!fs.existsSync(`jamout.js`))
@@ -71,8 +71,9 @@ export function isValidExecutable(){
 
     if(!fs.existsSync(`a.out`))
         throw new Error("a.out is missing")
-    if(!fs.existsSync(`./MANIFEST.txt`))
-        throw new Error("./MANIFEST.txt is missing")
+
+    if(!fs.existsSync(`MANIFEST.txt`))
+        throw new Error("MANIFEST.txt is missing")
 
 }
 
