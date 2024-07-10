@@ -13,13 +13,14 @@ const { spawn,spawnSync } = require('child_process');
  * add a new command as an indication of the continuity of jamrun app and if it's false clean the redis
     3) REDIS THROWS unexpected ERROR IN SOME CASES FOR SOME REASON
     4) CHECK THE NUM ISSUE. WE DON"T SEE THAT CLEARLY in the jamrun
-    5) fully detach the proccesses 
+    6)add arg to check if the app is 
+    5)add the tag
  
  * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected(TO BE INVESTIGATED)
 
- * 4) iFlow , oflow NOT BEING SET, I ADDED THEM. MAKE SURE IT'S NEEDED AND IT'S STRING(NEED TO BE REMOVED)
 
- * height is not used (REMOVE)
+
+
  *
 
 ] J arg does not clearup
@@ -31,8 +32,8 @@ let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log,
 
 
 //SETUP CLEANING
-// process.on('SIGINT', async () =>  await cleanup());
-// process.on('SIGTERM', async () => await cleanup());
+process.on('SIGINT', async () =>  await cleanup());
+process.on('SIGTERM', async () => await cleanup());
 
 //MOVE HOME TO CONST FILE
 const childs =[]
@@ -181,19 +182,24 @@ async function dojamout_p2(type, iport, folder, jappid, group=null){
 }
 
 async function cleanup(){
-    
-    await killtmux()
+    if(bg){
+        process.exit(0);
+    }
+    else{
+        await killtmux()
 
-    if(temp_broker === 1){
-        console.log(`Killing broker with PID: ${mqttPromiseProcesses}`)
-        mqttPromiseProcesses.kill("SIGTERM");
-    }
-    if(childs.length!=0){
-        for(let p of childs){
-            p.kill("SIGTERM")
+        if(temp_broker === 1){
+            console.log(`Killing broker with PID: ${mqttPromiseProcesses}`)
+            mqttPromiseProcesses.kill("SIGTERM");
         }
+        if(childs.length!=0){
+            for(let p of childs){
+                p.kill("SIGTERM")
+            }
+        }
+        process.exit(0)
     }
-    process.exit(1)
+
 }
 
 async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
@@ -265,6 +271,7 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
     if(!NOVERBOSE){
         console.log("Started the J node in background")
     }
+    process.exit(0)
 }
 
 async function doaout(num,port,group,datap,myf,jappid){
@@ -504,17 +511,9 @@ async function runDevice(iport,dport,group){
 
     fileDirectoryMqtt(folder,iport)
     const jappid = getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
-
-
     await dojamout_p1(iport,folder)
-
-
     setuptmux(`${folder}/${iport}`, appfolder)
-
-
     await doaout(num,iport, group, dport,folder,jappid)
-
-
     await dojamout_p2(Type, iport, folder,jappid,group )
 }
 
@@ -609,7 +608,7 @@ async function main(){
         {
            
         await runDevice(iport,dport,group)
-        process.exit(0)
+        
         }
     else
         await runNoneDevice(iport)
