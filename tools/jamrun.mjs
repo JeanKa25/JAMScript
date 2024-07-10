@@ -19,8 +19,16 @@ const { spawn,spawnSync } = require('child_process');
  * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected(TO BE INVESTIGATED)
 
 
-
-
+QUESTION:
+writing to dflow... [ 0, 4, 8, 10, 14 ]
+await $`redis-cli -p ${port} FLUSHALL`;the count the count is  17 message-to-c-local-node
+the count the count is  18 message-to-c-local-node
+---------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
+---------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
+in resume writing to dflow changes and restarts but 
+---------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
+---------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
+stays the same
  *
 
 ] J arg does not clearup
@@ -28,7 +36,7 @@ const { spawn,spawnSync } = require('child_process');
  */
 //
 //global variables
-let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, tags, file;
+let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, tags, file, resume;
 
 
 //SETUP CLEANING
@@ -42,6 +50,7 @@ let mqttPromiseProcesses;
 const filePath = fileURLToPath(import.meta.url);
 const IDIR = path.dirname(filePath);
 const REDISFUNCS = fs.realpathSync(`${IDIR}/../deps/lua/jredlib.lua`);
+console.log(REDISFUNCS)
 const SHELLPID = process.pid;
 
 
@@ -224,8 +233,11 @@ async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
         cwd: floc,
         stdio: 'inherit'
     };
+    if(resume){
+        console.log("############## RESUME ##############")
+    }
     spawnSync(command, args, options);
-    
+ 
     await cleanup()
 }
 
@@ -246,14 +258,16 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
     let jargs = getJargs(argObject)
 
     console.log(floc)
-    const out = fs.openSync(`${floc}/log.j`, 'a');
+    const logFile = fs.openSync(`${floc}/log.j`, 'a');
+    if(resume){
+        fs.writeFileSync(`${floc}/log.j`,"############## RESUME ##############")
+    }
  
-
     const command = 'node';
     const args = ['jstart.js', ...jargs];
     const options = {
       cwd: floc,
-      stdio: ['ignore', out, out],
+      stdio: ['ignore', logFile, logFile],
       detached: true,
     };
 
@@ -397,6 +411,8 @@ function startredis(port) {
 
     
     $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow()
+
+
  
 }
 
@@ -424,19 +440,20 @@ async function waitforredis(port){
       if (!NOVERBOSE) {
         console.log(`Redis running at port: ${port}`);
       }
+     
 
 }
 
 async function setupredis(port) {
 
     
-
+   
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
-
-
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
-
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
+    if(!resume){
+        await $`redis-cli -p ${port} FLUSHALL`;
+    }
 
 }
 
@@ -542,9 +559,11 @@ async function main(){
             lat,
             Type,
             tags,
-            file
+            file,
+            resume,
         } = jamrunParsArg(process.argv))
         console.log(bg, "this is my backgroundß")
+        console.log(resume, "this is my resume")
     }
    
     catch(error){

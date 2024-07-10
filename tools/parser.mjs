@@ -38,6 +38,7 @@ const jamrunOptionDefinitions = [
   {name : 'local', type: Boolean, defaultValue: false},
   {name : 'valgrind', type: Boolean, defaultValue: false},
   {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
+  {name : 'resume', type: Boolean, defaultValue: false},
 ];
 
 
