@@ -30,6 +30,7 @@ in resume writing to dflow changes and restarts but
 ---------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
 stays the same
  *
+Question: HOW IS THIS EXPECTED TO WOR? await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe") bg/fg/pipe/nonePipe? what is the logic, having hard time to comprehend
 
 ] J arg does not clearup
 
@@ -290,9 +291,9 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
 
 async function doaout(num,port,group,datap,myf,jappid){
     let counter=1
-    //TODO: make sure it is checking the folder
+    
     if (fs.existsSync('a.out')) {
-        await $`chmod +x a.out`
+        await $`cd ${myf} && chmod +x a.out`
     }
     while(counter <= num){
         //
@@ -309,16 +310,25 @@ async function doaout(num,port,group,datap,myf,jappid){
 
             }
             let cargs = getCargs(argObject)
-            await $`${TMUX} new-session -s ${tmux}-${counter} -d`;
+            console.log(process.cwd())
+
+            console.log(myf)
+            await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
+
+
             if(!disable_stdout_redirect){
                 if (!log)
 
                     {
 
                         if(valgrind)
-                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
+                            {
+                                await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
+                            }
                         else
-                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
+                            {
+                                await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
+                            }
                     }
             
                 else{
@@ -326,7 +336,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                         //TO BE FIXE
                         
                         if(valgrind)
-                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
+                            await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
                         else
                             await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
                         // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  script -a -c "${valgrind} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
@@ -343,7 +353,8 @@ async function doaout(num,port,group,datap,myf,jappid){
             }
             else{
                 //check if this works. if it does. Investigate what is going on with j file
-                let p = await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe")
+                console.log("got here")
+                await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe")
 
             }
     }
@@ -585,17 +596,22 @@ async function main(){
 
     const jdata = await getjdata(folder);
     let isDevice;
-
+    console.log("this is my type",Type)
     switch(Type){
         case "cloud":
+            console.log("got in cloud")
             iport=9883
             isDevice = false;
-
+            break;
         case "fog":
+            console.log("got in fog")
+
             iport=5883
             isDevice = false
-
+            break;
         case "device":
+            console.log("got in device")
+
             iport=1883;
             isDevice = true;
             if(!local){
@@ -604,7 +620,7 @@ async function main(){
             else
                 group = 0; 
     }
-
+    console.log(isDevice, ": if true it is a device")
     while(true){
         const porttaken = await portavailable(folder ,iport)
         if(porttaken !== 1){
@@ -616,16 +632,15 @@ async function main(){
         dport=iport + 20000;
         await resolvedata(`127.0.0.1:${dport}`)
 
-
-
     }
     
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
+    console.log("this is my port", iport)
     if(isDevice)
         {
-           
+        console.log("is here running device")
         await runDevice(iport,dport,group)
         
         }
