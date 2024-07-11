@@ -165,7 +165,10 @@ async function startmqtt(port, cFile){
 
 async function dojamout(iport, folder,jappid) {
     await dojamout_p1 (iport ,folder)
+    console.log("P1 is over")
     await dojamout_p2 (iport ,folder, jappid)
+    console.log("P2 is over")
+
 }
 
 async function dojamout_p1(pnum ,floc) {
@@ -182,13 +185,16 @@ async function dojamout_p1(pnum ,floc) {
 }
 
 
-async function dojamout_p2(type, iport, folder, jappid, group=null){
-    if(!bg)
-
-        await dojamout_p2_fg(type, iport, folder,jappid, group)
+async function dojamout_p2(iport, folder, jappid, group=null){
+    if(!bg){
+        console.log("running on fg")
+        await dojamout_p2_fg(iport, folder,jappid, group)
+    }
     else
-
-        dojamout_p2_bg(type, iport, folder,jappid, group)
+    {
+        console.log("running on bg")
+        dojamout_p2_bg(iport, folder,jappid, group)
+    }
 }
 
 async function cleanup(){
@@ -212,7 +218,7 @@ async function cleanup(){
 
 }
 
-async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
+async function dojamout_p2_fg(pnum, floc,jappid, group=null){
     let argObject = {
         "--app":jappid,
         "--port":pnum,
@@ -223,7 +229,7 @@ async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
         "--long":long,
         "--lat":lat,
         "--localregistryhost":local_registry,
-        "--type": type
+        "--type": Type
     }
 
     let jargs = getJargs(argObject)
@@ -237,8 +243,9 @@ async function dojamout_p2_fg(type, pnum, floc,jappid, group=null){
     if(resume){
         console.log("############## RESUME ##############")
     }
+
     spawnSync(command, args, options);
- 
+    console.log("gettinf to the cleanUp")
     await cleanup()
 }
 
@@ -322,13 +329,11 @@ async function doaout(num,port,group,datap,myf,jappid){
                     {
 
                         if(valgrind)
-                            {
                                 await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
-                            }
+                            
                         else
-                            {
                                 await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
-                            }
+                            
                     }
             
                 else{
@@ -338,7 +343,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                         if(valgrind)
                             await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
                         else
-                            await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
+                            await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
                         // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  script -a -c "${valgrind} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
 
                     }
@@ -347,7 +352,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                         //TO BE FIXE
                         //none linix machines does not have this?
                         // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
-                        await $`cd ${myf} && ${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
+                        await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
                     }
                 }
             }
@@ -421,7 +426,7 @@ function startredis(port) {
 
 
     
-    $`redis-server  --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow()
+    $`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow()
 
 
  
@@ -531,6 +536,7 @@ async function runNoneDevice(iport){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
     fileDirectoryMqtt(folder,iport)
     const jappid = getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
+    console.log("doing dojamout")
     await dojamout(iport, folder, jappid)
 }
 
@@ -603,12 +609,13 @@ async function main(){
             iport=9883
             isDevice = false;
             break;
+            
         case "fog":
             console.log("got in fog")
-
             iport=5883
             isDevice = false
             break;
+
         case "device":
             console.log("got in device")
 
@@ -645,8 +652,10 @@ async function main(){
         
         }
     else
-        await runNoneDevice(iport)
-
+        {
+            console.log("is here running noneDevice")
+            await runNoneDevice(iport)
+        }    
 
 }
 
