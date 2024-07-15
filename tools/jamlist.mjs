@@ -13,27 +13,10 @@
  */
 import { getJamListArgs } from "./parser.mjs";
 import {getAppFolderAndSubDir} from "./fileDirectory.mjs"
+import { cleanUp } from "./jamclean.mjs";
 
 
-let app;
-try{
-    app = getJamListArgs(process.argv)
-}
-catch(error){
-    if(error.type = "ShowUsage"){
-        console.log(
-            `
-    Usage: jamlist [--app=appl_name]
 
-    Lists details about all activated instances of JAMScript programs. Use the --app=X
-    option to limit the listing to programs that match the given name (i.e., X).
-            `
-            
-        )
-    process.exit(1);
-    }
-    throw error;
-}
 
 async function printNodeInfo(dirName, programName){
     const path = `${process.cwd()}/${dirName}`
@@ -44,7 +27,7 @@ async function printNodeInfo(dirName, programName){
     }
     else{
         mType = "-";
-        // fs.writeFileSync(`${path}/processId`,"old")
+
     }
     if(fs.existsSync(`${path}/appid`)){
         appid= fs.readFileSync(`${path}/appid`).toString().trim()
@@ -71,33 +54,52 @@ async function printNodeInfo(dirName, programName){
         parid = "-"
     }
     let cdevs = 0;
-    if(mType !== "--"){
-        if(mType == "device"){
-            
-            let cdevProcesses = (await fs.readdir(path)).filter(entry => entry.includes("cdevProcessId"));
-            for(let cdevProcess of cdevProcesses){
-                let pid = fs.readFileSync(`${path}/${cdevProcess}`).toString().trim();
-                const process = await $`ps -p ${pid} | grep a.out | wc -l | tr -d '[:space:]'`.nothrow()
-                const isOk = process.stdout.trim()
-                if(isOk){
-                    cdevs++
-                }   
-            }
-            const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${(cdevs.toString()).padEnd(15)} ${tmuxid.padEnd(15)}`;
-            console.log(headerString)
+    
+    if(mType == "device"){
+        
+        let cdevProcesses = (await fs.readdir(path)).filter(entry => entry.includes("cdevProcessId"));
+        for(let cdevProcess of cdevProcesses){
+            let pid = fs.readFileSync(`${path}/${cdevProcess}`).toString().trim();
+            const process = await $`ps -p ${pid} | grep a.out | wc -l | tr -d '[:space:]'`.nothrow()
+            const isOk = process.stdout.trim()
+            if(isOk){
+                cdevs++
+            }   
+        }
+        const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${(cdevs.toString()).padEnd(15)} ${tmuxid.padEnd(15)}`;
+        console.log(headerString)
 
-        }
-        else{
-            const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${("--").padEnd(15)} ${tmuxid.padEnd(15)}`;
-            console.log(headerString)
-        }
     }
+    else{
+        const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${("--").padEnd(15)} ${tmuxid.padEnd(15)}`;
+        console.log(headerString)
+    }
+    
 
 }
 
 async function main(){
     let subDirs;
     let appfolder;
+    let app;
+    try{
+        app = getJamListArgs(process.argv)
+    }
+    catch(error){
+        if(error.type = "ShowUsage"){
+            console.log(
+                `
+        Usage: jamlist [--app=appl_name]
+
+        Lists details about all activated instances of JAMScript programs. Use the --app=X
+        option to limit the listing to programs that match the given name (i.e., X).
+                `
+                
+            )
+        process.exit(1);
+        }
+        throw error;
+    }
     try{
     
         [subDirs, appfolder] =await getAppFolderAndSubDir();
@@ -105,6 +107,7 @@ async function main(){
     catch(error){
         console.log("No running instances of JAMScript.")
     }
+    await cleanUp()
     process.chdir(appfolder)
     const headerString = `   ${"ID".padEnd(15)} ${"NAME".padEnd(15)} ${"PROGRAM".padEnd(15)} ${"HOST".padEnd(15)} ${"PARENT".padEnd(15)} ${"D-STORE".padEnd(15)} ${"TYPE".padEnd(15)} ${"C-NODES".padEnd(15)} ${"TMUX-ID".padEnd(15)}`;
     console.log(headerString);

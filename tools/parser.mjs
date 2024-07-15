@@ -52,7 +52,10 @@ const jamkillOptionDefinition = [
     {name : 'app_id', type: String , defaultValue: undefined },
 
 ];
+const jamcleanOptionDefinition = [
+    {name : "help", alias : "h", type: Boolean, defaultValue : false },
 
+];
 
 
 function retrieveType(device, fog, cloud){
@@ -238,6 +241,26 @@ export function getKilltArgs(argv){
 
     
 }
+
+
+
+export function getcleanArgs(argv){
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamkill.mjs')))
+    let options
+    try{
+        options = commandLineArgs(jamcleanOptionDefinition, {argv: args});
+    }
+    catch(error){
+    }
+
+    if(options === undefined || options.help){
+        const error = new Error("SHOW USAGE")
+        error.type = "ShowUsage"
+        throw error;
+    }
+     
+}
+
 
 
 
