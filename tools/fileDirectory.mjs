@@ -20,7 +20,16 @@ export function fileDirectorySetUp(file,app){
     fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
     return [jamfolder,appfolder,folder,filenoext ]
 }
-export function getPaths(file,app){
+
+export function getJamFolder(){
+    return `${HOME}/.jamruns`
+}
+
+export function getAppFolder(){
+    return `${HOME}/.jamruns/apps`
+}
+
+export function getPaths(file=null,app=null){
     
     const jamfolder=`${HOME}/.jamruns`
     const appfolder=`${jamfolder}/apps`;
@@ -37,6 +46,21 @@ export function getFolder(file,app){
     const folder=`${appfolder}/${filenoext}_${app}`
     
     return folder;
+}
+
+export async function getAppFolderAndSubDir(){
+    const jamfolder=`${HOME}/.jamruns`
+    const appfolder=`${jamfolder}/apps`;
+    if(!fs.existsSync(appfolder)){
+        throw new Error("No running instances of JAMScript")
+    }
+    const subDirs = ((await fs.readdir(appfolder, { withFileTypes: true })).filter((entry) => entry.isDirectory()))
+    if(!subDirs || subDirs.lenth === 0 ){
+        throw new Error("No running instances of JAMScript")
+    }
+    const subDirsName = subDirs.map(entry => entry.name )
+    
+    return [subDirsName, appfolder]
 }
 
 

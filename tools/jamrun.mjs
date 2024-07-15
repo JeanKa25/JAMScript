@@ -2,6 +2,7 @@
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder} from './fileDirectory.mjs'
+import { inherits } from 'util';
 const { spawn,spawnSync } = require('child_process');
 
 /***
@@ -181,7 +182,7 @@ async function dojamout_p1(pnum ,floc) {
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
-    fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
+    fs.writeFileSync(`${floc}/${pnum}/{processId}`, "new"+"\n");
 }
 
 
@@ -249,7 +250,7 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
     await cleanup()
 }
 
-function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
+function dojamout_p2_bg(pnum, floc, jappid, group=null){
     console.log("THE EXECUTION IS ON THE BG")
     let argObject = {
         "--app":jappid,
@@ -261,7 +262,7 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
         "--long":long,
         "--lat":lat,
         "--localregistryhost":local_registry,
-        "--type": type
+        "--type": Type
     }
     let jargs = getJargs(argObject)
 
@@ -278,10 +279,6 @@ function dojamout_p2_bg(type, pnum, floc, jappid, group=null){
       stdio: ['ignore', logFile, logFile],
       detached: true,
     };
-
-
-
-
 
     const p =  spawn(command, args, options);
     p.unref();
@@ -303,7 +300,7 @@ async function doaout(num,port,group,datap,myf,jappid){
         await $`cd ${myf} && chmod +x a.out`
     }
     while(counter <= num){
-        //
+        
         if(fs.existsSync('a.out')){
 
             const argObject = 
@@ -317,9 +314,8 @@ async function doaout(num,port,group,datap,myf,jappid){
 
             }
             let cargs = getCargs(argObject)
-            console.log(process.cwd())
 
-            console.log(myf)
+            console.log(cargs, "this is my carg pre")
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
 
 
@@ -339,27 +335,34 @@ async function doaout(num,port,group,datap,myf,jappid){
                 else{
                     if(Machine === "Linux"){
                         //TO BE FIXE
-                        
                         if(valgrind)
                             await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
                         else
                             await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
-                        // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  script -a -c "${valgrind} ./a.out ${cargs}" -f log`.stdio("pipe","pipe","pipe")
-
                     }
                     
                     else{
                         //TO BE FIXE
-                        //none linix machines does not have this?
-                        // let p = await $`${TMUX} new-session -s ${tmux}-${counter} -d  "script -a -t 1 log ./a.out ${cargs}"`.stdio("pipe","pipe","pipe")
                         await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
                     }
                 }
             }
             else{
-                //check if this works. if it does. Investigate what is going on with j file
-                console.log("got here")
-                await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe")
+                //for some reson that I'm strugling to figure out this does not work(TO BE FIXE)
+                const command = './a.out';
+
+                const args = cargs.split('-').filter(entry => entry !== " ").map((entry => "-"+entry.trim()));
+                console.log(args)
+                console.log(myf)
+                const options = {
+                  cwd: myf,
+                  stdio: ['ignore', 'ignore', 'ignore'],
+                  detached: true,
+                };
+                const p1 = spawn(command,args,options);
+                p1.unref()
+                await sleep(200)
+
 
             }
     }
@@ -548,7 +551,7 @@ async function runDevice(iport,dport,group){
     await dojamout_p1(iport,folder)
     setuptmux(`${folder}/${iport}`, appfolder)
     await doaout(num,iport, group, dport,folder,jappid)
-    await dojamout_p2(Type, iport, folder,jappid,group )
+    await dojamout_p2(iport, folder,jappid,group )
 }
 
 

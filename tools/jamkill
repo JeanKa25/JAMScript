@@ -1,6 +1,7 @@
 #!/bin/bash
 
 IDIR="${BASH_SOURCE%/*}"
+echo $BASH_SOURCE
 if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
 source "$IDIR/inc/misc_tools.sh"
 
@@ -104,6 +105,10 @@ killjob() {
                         local appid=`cat $dir/appid`
 
                         if [ $appid == $jobid ]; then
+                            echo $dir 
+                            echo "this is my dir"
+                            echo $jexs 
+                            echo "this is my jexs"
                             killprocess $dir $jexs
                             if [ -e $dir/tmuxid ]; then
                                 killtmux `cat $dir/tmuxid`

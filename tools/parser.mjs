@@ -41,6 +41,18 @@ const jamrunOptionDefinitions = [
   {name : 'resume', type: Boolean, defaultValue: false},
 ];
 
+const jamlistOptionDefinition = [
+        {name : "help", alias : "h", type: Boolean, defaultValue : false },
+        {name : 'app',alias : "a", type: String , defaultValue: undefined },
+  ];
+
+const jamkillOptionDefinition = [
+    {name : "help", alias : "h", type: Boolean, defaultValue : false },
+    {name : 'all',alias : "a", type: Boolean , defaultValue: false },
+    {name : 'app_id', type: String , defaultValue: undefined },
+
+];
+
 
 
 function retrieveType(device, fog, cloud){
@@ -186,6 +198,46 @@ export function getJargs(argObject){
     
 }
 
+export function getJamListArgs(argv){
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlist.mjs')))
+    let options
+    try{
+        options = commandLineArgs(jamlistOptionDefinition, {argv: args});
+    }
+    catch(error){
+    }
+    if(options === undefined || options.help){
+        const error = new Error("SHOW USAGE")
+        error.type = "ShowUsage"
+        throw error;
+    }
+    return options.app
+
+    
+}
+
+
+export function getKilltArgs(argv){
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamkill.mjs')))
+    let options
+    try{
+        options = commandLineArgs(jamkillOptionDefinition, {argv: args});
+    }
+    catch(error){
+    }
+    if(args.length === 0){
+        return "last"
+    }
+    if(options === undefined || options.help || args.length>1){
+        const error = new Error("SHOW USAGE")
+        error.type = "ShowUsage"
+        throw error;
+    }
+    const arg = options.all? "all": options.app_id
+    return arg
+
+    
+}
 
 
 
