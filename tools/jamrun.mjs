@@ -16,6 +16,8 @@ const { spawn,spawnSync } = require('child_process');
     4) CHECK THE NUM ISSUE. WE DON"T SEE THAT CLEARLY in the jamrun
     6)add arg to check if the app is 
     5)add the tag
+    6)running shahin with 3 tmux then inxreas it to 4 and then decirese it to 2
+    7)tmux is not being cleaned up
  
  * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected(TO BE INVESTIGATED)
 
@@ -34,6 +36,8 @@ stays the same
 Question: HOW IS THIS EXPECTED TO WOR? await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe") bg/fg/pipe/nonePipe? what is the logic, having hard time to comprehend
 
 ] J arg does not clearup
+
+running the same bg task
 
  */
 //
@@ -587,6 +591,7 @@ async function main(){
         } = jamrunParsArg(process.argv))
 
     }
+    
    
     catch(error){
         if(error.type === "ShowUsage"){
@@ -594,13 +599,14 @@ async function main(){
             process.exit(1)
         }
         else{
-            console.log(error.message)
+            show_usage()
             process.exit(1)
         }
     }
+
     fileDirectorySetUp(file,app)
     const folder = getFolder(file,app)
-
+    console.log(num)
     const ifile = path.resolve(file);
     process.chdir(folder);
     await unpack(ifile, folder)

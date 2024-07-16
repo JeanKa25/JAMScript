@@ -107,7 +107,7 @@ async function main(){
     catch(error){
         console.log("No running instances of JAMScript.")
     }
-    // await cleanUp();
+    
     process.chdir(appfolder)
     const headerString = `   ${"ID".padEnd(15)} ${"NAME".padEnd(15)} ${"PROGRAM".padEnd(15)} ${"HOST".padEnd(15)} ${"PARENT".padEnd(15)} ${"D-STORE".padEnd(15)} ${"TYPE".padEnd(15)} ${"C-NODES".padEnd(15)} ${"TMUX-ID".padEnd(15)}`;
     console.log(headerString);
@@ -122,7 +122,9 @@ async function main(){
         for(let jex of jexs){
             let running;
             if(fs.existsSync(`${appfolder}/${subDir}/${jex}/processId`)){
+                
                 const pid = fs.readFileSync(`${appfolder}/${subDir}/${jex}/processId`).toString().trim();
+                console.log(`I got here. PROCESSID`, pid)
                 if(pid === "new")
                     running = "new";
                 else if(!pid){
