@@ -124,7 +124,6 @@ async function main(){
             if(fs.existsSync(`${appfolder}/${subDir}/${jex}/processId`)){
                 
                 const pid = fs.readFileSync(`${appfolder}/${subDir}/${jex}/processId`).toString().trim();
-                console.log(`I got here. PROCESSID`, pid)
                 if(pid === "new")
                     running = "new";
                 else if(!pid){

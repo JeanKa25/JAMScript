@@ -189,7 +189,7 @@ async function dojamout_p1(pnum ,floc) {
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
-    fs.writeFileSync(`${floc}/${pnum}/{processId}`, "new"+"\n");
+    fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
 }
 
 
@@ -383,8 +383,10 @@ async function doaout(num,port,group,datap,myf,jappid){
 async function portavailable(folder,port) {
     let pid;
     let porttaken;
-    if(fs.existsSync(`./${folder}/${port}`)){
+
+    if(fs.existsSync(`${folder}/${port}`)){
         if(fs.existsSync(`${folder}/${port}/processId`)){
+            console.log("process id available(portavailable)");
             try{
                 pid = fs.readFileSync(`${folder}/${port}/processId`)
             }
@@ -393,10 +395,13 @@ async function portavailable(folder,port) {
             }
 
             if(pid === "new"){
+                console.log("processId was new(portavailable)");
                 porttaken=1;
             }
             else if(pid){
-                porttaken= await $`ps -o pid= -p $pid | wc -l | tr -d '[:space:]'`
+                const p = await $`ps -o pid= -p ${pid} | wc -l | tr -d '[:space:]'`
+                porttaken = p.stdout.toString().trim()
+                console.log("port taken (portavailable)", porttaken)
             }
             else{
                 porttaken=0;
@@ -410,9 +415,11 @@ async function portavailable(folder,port) {
         porttaken=0;
     }
     if(porttaken === 0){
+        console.log("WE GOT HERE(portavailable)")
         const p = await $`netstat -an -p tcp 2>/dev/null | grep ${port} | wc -l`.nothrow().quiet()
         porttaken= p.stdout.trim()
     }
+    console.log("returned port taken(portavailable)", porttaken)
     return porttaken;
 }
 
@@ -639,7 +646,10 @@ async function main(){
     }
     console.log(isDevice, ": if true it is a device")
     while(true){
-        const porttaken = await portavailable(folder ,iport)
+        console.log("this is my iport from main: " , iport)
+        console.log("this is my folder from main: ", folder)
+        const porttaken = Number(await portavailable(folder ,iport))
+        console.log("porttaken from the main", porttaken)
         if(porttaken !== 1){
             break;
         }
