@@ -90,6 +90,7 @@ function getJamrunArgs(args){
     }
     catch(error){
     }
+
     return options;
 
 }
@@ -101,18 +102,24 @@ function checkJXEfile(arg){
         error.type = "ShowUsage"
         throw error;
     }
+    
     const file = `${arg[0]}`;
     const fext = file.split(".").pop()
+    
     if(fext !== "jxe"){
         if(!fext)
+          
             throw new Error(`${file} is not file name or missing extention`)
-        else
+        else 
+        { 
             throw new Error(`Extension on ${file} is not .jxe`)
+        }
     }
     const absolutePath = path.resolve(file);
     if(!fs.existsSync(absolutePath)){
         throw new Error(`File: ${file} not found`)
     }
+    
     return file;
 }
 function SetJamrunVar(options){
@@ -138,7 +145,7 @@ function SetJamrunVar(options){
     for(let option of Object.keys(toAdd)){
         AssignedVar[option]= toAdd[option]
     }
-    console.log(Object.keys(AssignedVar))
+
     if(!("tags" in AssignedVar)){
         AssignedVar["tags"] = undefined;
     }
@@ -149,8 +156,10 @@ function SetJamrunVar(options){
 //question one on remNote
 
 export function jamrunParsArg(argv){
-    //remove redundent arfs
+    
+    
     const arg = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun.mjs')))
+    
     const file = checkJXEfile(arg)
     let proccessedArgs = arg.filter((_,index) => (index !== 0 ));
     const options = getJamrunArgs(proccessedArgs);
@@ -173,7 +182,7 @@ export function jamrunParsArg(argv){
 //ASK wHAT VARIABLES ARE OPTIONAL
 //TO BE TESTED
 export function getCargs(argObject){
-    // console.log("this is my cObject arg\n", argObject)
+
     let args = ""
     for(let key of Object.keys(argObject)){
 
@@ -196,7 +205,7 @@ export function getJargs(argObject){
                 args.push(`${key}=${argObject[key]}`)
         }
     }
-    console.log("this is my  jArgs\n",args )
+
     return args;
     
 }
@@ -247,13 +256,13 @@ export function getKilltArgs(argv){
 export function getcleanArgs(argv){
     const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs') && !entry.includes('jamlist.mjs')))
     let options
-    console.log(args)
+
     try{
         options = commandLineArgs(jamcleanOptionDefinition, {argv: args});
     }
     catch(error){
     }
-    console.log(options)
+
 
     if(options === undefined || options.help){
         const error = new Error("SHOW USAGE")

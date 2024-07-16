@@ -123,6 +123,8 @@ function show_usage(){
     
     Use --local to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.
     
+    Use --resume to avoid reseting the reddis and resume the ongoing task
+
     Usage: jamrun file.jxe
                     [--app=appl_name]
                     [--fog|--cloud]
@@ -139,6 +141,7 @@ function show_usage(){
                     [--edge=num_edge_connections]
                     [--valgrind]
                     [--local]
+                    [--resume]
     
     The jamrun command creates a run state in the $HOME/.jamruns folder.
     `;
@@ -320,8 +323,8 @@ async function doaout(num,port,group,datap,myf,jappid){
 
 
             if(!disable_stdout_redirect){
-                if (!log)
 
+                if (!log)
                     {
 
                         if(valgrind)
@@ -329,7 +332,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                             
                         else
                                 await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
-                            
+                        
                     }
             
                 else{
@@ -582,17 +585,17 @@ async function main(){
             file,
             resume,
         } = jamrunParsArg(process.argv))
-        console.log(bg, "this is my backgroundß")
-        console.log(resume, "this is my resume")
+
     }
    
     catch(error){
-        if(error.type === "UsageError"){
+        if(error.type === "ShowUsage"){
             show_usage()
             process.exit(1)
         }
         else{
-            throw new Error(error.message)
+            console.log(error.message)
+            process.exit(1)
         }
     }
     fileDirectorySetUp(file,app)
@@ -602,10 +605,8 @@ async function main(){
     process.chdir(folder);
     await unpack(ifile, folder)
     isValidExecutable()
-
     const jdata = await getjdata(folder);
     let isDevice;
-    console.log("this is my type",Type)
     switch(Type){
         case "cloud":
             console.log("got in cloud")
