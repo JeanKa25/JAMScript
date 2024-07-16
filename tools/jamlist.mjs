@@ -107,7 +107,7 @@ async function main(){
     catch(error){
         console.log("No running instances of JAMScript.")
     }
-    await cleanUp()
+    await cleanUp();
     process.chdir(appfolder)
     const headerString = `   ${"ID".padEnd(15)} ${"NAME".padEnd(15)} ${"PROGRAM".padEnd(15)} ${"HOST".padEnd(15)} ${"PARENT".padEnd(15)} ${"D-STORE".padEnd(15)} ${"TYPE".padEnd(15)} ${"C-NODES".padEnd(15)} ${"TMUX-ID".padEnd(15)}`;
     console.log(headerString);

@@ -1,5 +1,5 @@
 #!/usr/bin/env zx
-import getcleanArgs from "./parser.mjs"
+import {getcleanArgs} from "./parser.mjs"
 import { getJamFolder } from "./fileDirectory.mjs";
 
 
@@ -28,6 +28,12 @@ async function getJobsSubDirMap(){
     }
     return subDirMap;
 }
+async function getPortSubDir(){
+    const ports = (((await fs.readdir(process.cwd(),{ withFileTypes: true })).filter( entry => entry.isDirectory())).map(entry => entry.name))
+    if(ports.length !== 0){
+        return ports
+    }
+}
 
 export async function cleanUp(){
     try{
@@ -51,17 +57,23 @@ export async function cleanUp(){
     if(!fs.existsSync(jamfolder)){
         process.exit(0)
     }
-    process.chdir(jamfolder);
+    process.chdir(`${jamfolder}/apps`);
     const appsMap = await getJobsSubDirMap();
-
     for(let app of appsMap.keys()){
-        process.chdir(`./${appsMap.get(app)}`);
+       
+        process.chdir(`${appsMap.get(app)}`);
+        console.log(process.cwd(), "this is my app dir")
         const ports  = await getPortSubDir();
+        console.log(process.cwd(), "this is my portDir dir")
         if(ports){
+            console.log(process.cwd(), "this is my portDir dir")
             for(let port of ports){
+                console.log(process.cwd(), "this is my portDir dir")
                 let isRunning
-                process.chdir(`./${port}`);
-                const toCheck = (fs.existsSync("./processId")) ? fs.fs.readFileSync("./processId") : fs.fs.readFileSync("./shellpid")
+                console.log(port, "this is my port")
+                console.log(process.cwd(), "this is my portDir dir")
+                process.chdir(`${port}`);
+                const toCheck = (fs.existsSync("processId")) ? fs.readFileSync("processId") : fs.readFileSync("shellpid")
                 try{
                     const p = await $`ps -p ${toCheck} | grep node | wc -l | tr -d '[:space:]'` 
                     isRunning = true
