@@ -2,47 +2,34 @@
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder} from './fileDirectory.mjs'
-import { inherits } from 'util';
 const { spawn,spawnSync } = require('child_process');
 
 /***
+ * QUESTION:
+ * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it?
  * NOTES
- * num Error(HAVE IN MIND)
- * handle log seperation in close();
- * new command:
+    TOCHANGE: use spawn instead of $ in mosquitto.
+              categtorize the log files.
+              REMOVE THE DISABLE-RE_DERICET(DONE)
+              when old does not exist breaks
+              remove portDir on kill.
+              remove only the tmux you need to remove
+              mosquitto duplicate fix(done)
+
+
  
- * add a new command as an indication of the continuity of jamrun app and if it's false clean the redis
-    3) REDIS THROWS unexpected ERROR IN SOME CASES FOR SOME REASON
-    4) CHECK THE NUM ISSUE. WE DON"T SEE THAT CLEARLY in the jamrun
-    6)add arg to check if the app is 
-    5)add the tag
-    6)running shahin with 3 tmux then inxreas it to 4 and then decirese it to 2
-    7)tmux is not being cleaned up
- 
- * 1) PORT IMPLEMENTATIONS SEEMS NOT TO BE WORKING -> PORT ID IS NOT BNEONG incremented as expected(TO BE INVESTIGATED)
+   
 
 
-QUESTION:
-writing to dflow... [ 0, 4, 8, 10, 14 ]
-await $`redis-cli -p ${port} FLUSHALL`;the count the count is  17 message-to-c-local-node
-the count the count is  18 message-to-c-local-node
----------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
----------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
-in resume writing to dflow changes and restarts but 
----------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
----------------- message-to-j [ 0, 4, 8, 10, 14, 16 ]
-stays the same
- *
-Question: HOW IS THIS EXPECTED TO WOR? await $`./a.out ${cargs}`.stdio("pipe","pipe","pipe") bg/fg/pipe/nonePipe? what is the logic, having hard time to comprehend
+    7
+    8)old can introduce errors
 
-] J arg does not clearup
 
-running the same bg task
 
  */
 //
 //global variables
-let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, disable_stdout_redirect, long, lat, Type, tags, file, resume;
+let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume;
 
 
 //SETUP CLEANING
@@ -51,7 +38,7 @@ process.on('SIGTERM', async () => await cleanup());
 
 //MOVE HOME TO CONST FILE
 const childs =[]
-let mqttPromiseProcesses;
+let mqttProcesse;
 //SET REDIS PATH UP
 const filePath = fileURLToPath(import.meta.url);
 const IDIR = path.dirname(filePath);
@@ -61,6 +48,7 @@ const SHELLPID = process.pid;
 
 
 //setup
+//tested.working
 const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
     ["mosquitto","mosquitto_pub", "tmux"].map(
         async (entry)=> {
@@ -82,7 +70,7 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
     )
 )
 
-
+//tested.working
 function show_usage(){
     const usageMessage = 
     `
@@ -137,8 +125,6 @@ function show_usage(){
                     [--tags=quoted_list_of_tags]
                     [--bg]
                     [--old]
-                    [--iflow=flow_name]
-                    [--oflow=flow_name]
                     [--log]
                     [--verb]
                     [--loc=long,lat]
@@ -154,18 +140,30 @@ function show_usage(){
     
 }
 
-
+//teste.working beside a lingering bash(due to zx nature)
 async function startmqtt(port, cFile){
 
-
+    console.log("MQTT STARTING")
     try{
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
 
     }
     catch(error){
-        if(!NOVERBOSE)
+        
+        if(!NOVERBOSE){
             console.log(`MQTT is not running at ${port}\nAttempting to start MQTT at ${port}`);
-        mqttPromiseProcesses = $`${MOSQUITTO} -c ${cFile}`.stdio('ignore', 'pipe', 'pipe').quiet().nothrow();
+        }
+        console.log("MQTTT THIS IS MY PROCVESS")    
+        const command = MOSQUITTO;
+        const args = ['-c', cFile];
+        const options = {
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: true,
+        };
+        mqttProcesse =  spawn(command, args, options);
+        console.log(mqttProcesse, "this is what spawn returned to me")
+        mqttProcesse.unref();
+            
         
         return;
     }
@@ -211,11 +209,12 @@ async function cleanup(){
     }
     else{
         await killtmux()
-
-        if(temp_broker === 1){
-            console.log(`Killing broker with PID: ${mqttPromiseProcesses}`)
-            mqttPromiseProcesses.kill("SIGTERM");
-        }
+        
+        // if(!temp_broker){
+        //     console.log(`Killing broker with PID: ${mqttProcesse}`)
+        //     console.log(mqttProcesse)
+        //     mqttProcesse.kill();
+        // }
         if(childs.length!=0){
             for(let p of childs){
                 p.kill("SIGTERM")
@@ -324,84 +323,64 @@ async function doaout(num,port,group,datap,myf,jappid){
 
             console.log(cargs, "this is my carg pre")
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
+            if (!log)
+                {
 
-
-            if(!disable_stdout_redirect){
-
-                if (!log)
-                    {
-
-                        if(valgrind)
-                                await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
-                            
-                        else
-                                await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
+                    if(valgrind)
+                            await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
                         
-                    }
-            
-                else{
-                    if(Machine === "Linux"){
-                        //TO BE FIXE
-                        if(valgrind)
-                            await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
-                        else
-                            await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
-                    }
+                    else
+                            await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} C-m`;
                     
-                    else{
-                        //TO BE FIXE
+                }
+        
+            else{
+                if(Machine === "Linux"){
+                    //TO BE FIXE
+                    if(valgrind)
+                        await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
+                    else
                         await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
-                    }
+                }
+                
+                else{
+                    //TO BE FIXE
+                    await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
+                }
                 }
             }
-            else{
-                //for some reson that I'm strugling to figure out this does not work(TO BE FIXE)
-                const command = './a.out';
+            counter++;
 
-                const args = cargs.split('-').filter(entry => entry !== " ").map((entry => "-"+entry.trim()));
-                console.log(args)
-                console.log(myf)
-                const options = {
-                  cwd: myf,
-                  stdio: ['ignore', 'ignore', 'ignore'],
-                  detached: true,
-                };
-                const p1 = spawn(command,args,options);
-                p1.unref()
-                await sleep(200)
-
-
-            }
     }
-    counter++;
+
     if(!NOVERBOSE)
     console.log("Started a C node")
     }
-}
 
 
+//tested. working
 async function portavailable(folder,port) {
     let pid;
     let porttaken;
 
     if(fs.existsSync(`${folder}/${port}`)){
         if(fs.existsSync(`${folder}/${port}/processId`)){
-            console.log("process id available(portavailable)");
+    
             try{
-                pid = fs.readFileSync(`${folder}/${port}/processId`)
+                pid = Number(fs.readFileSync(`${folder}/${port}/processId`).toString().trim())
             }
             catch(error){
                 pid = null;
             }
 
             if(pid === "new"){
-                console.log("processId was new(portavailable)");
+               
                 porttaken=1;
             }
             else if(pid){
-                const p = await $`ps -o pid= -p ${pid} | wc -l | tr -d '[:space:]'`
-                porttaken = p.stdout.toString().trim()
-                console.log("port taken (portavailable)", porttaken)
+
+                const p = await $`ps -o pid= -p ${pid} | wc -l | tr -d '[:space:]'`.nothrow()
+                porttaken = Number(p.stdout.toString().trim())
             }
             else{
                 porttaken=0;
@@ -415,26 +394,32 @@ async function portavailable(folder,port) {
         porttaken=0;
     }
     if(porttaken === 0){
-        console.log("WE GOT HERE(portavailable)")
         const p = await $`netstat -an -p tcp 2>/dev/null | grep ${port} | wc -l`.nothrow().quiet()
-        porttaken= p.stdout.trim()
+        porttaken= Number(p.stdout.trim())
     }
-    console.log("returned port taken(portavailable)", porttaken)
+    
     return porttaken;
 }
 
+//tested and working
 function setuptmux(path, appfolder) {
 
-   
-    //TODO: ABSTRACT THE TMUX SETUP.
     fs.writeFileSync(`${path}/tmuxid`,tmux.toString()+"\n");
     fs.writeFileSync(`${appfolder}/tmuxid`,tmux.toString()+"\n");
 
 }
 
 
-//MAYBE USED LATER
+
+
+
+
 async function killtmux(){
+    const [jamfolder,appfolder,folder] = getPaths(file,app)
+    console.log("current address:", process.cwd())
+    console.log("FOLDEr:", folder)
+
+
     await $`pkill tmux`.stdio('ignore', 'ignore', 'ignore').quiet().nothrow();
 }
 
@@ -514,7 +499,6 @@ async function unpack(file,folder){
 
     
     if(!old){
-
         if(!fs.existsSync("./MANIFEST.txt")){
             try{
                 await $`cd ${folder} && unzip -o ${file}`.quiet()
@@ -540,6 +524,9 @@ async function unpack(file,folder){
                 } 
             }
         }
+    }
+    else{
+        isValidExecutable()
     }
 }
 
@@ -588,7 +575,6 @@ async function main(){
             old,
             local,
             valgrind,
-            disable_stdout_redirect,
             long,
             lat,
             Type,
@@ -681,4 +667,5 @@ async function main(){
 
 
 await main()
+// await killtmux()
 

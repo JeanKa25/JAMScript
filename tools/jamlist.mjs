@@ -6,7 +6,16 @@
  * 4)if device is _ then it is not running (true or false)
  * 5)can we have a jNode without a CNode?
  * 6)discuss strategies for jamlist
+ * 8)what to delete in the cleanUp process
  * 7) what is the cleanUp exactly?
+ * 
+ * 
+ * 8)make it monitor constantly. find a way to watch the file system. inotifyewait. keep it running. rp
+ * 
+ * 
+ * 
+ * ---------
+ * remove cdevProcessId on jamlist if it is running 
  * 
  * 
  * 
@@ -130,7 +139,7 @@ async function main(){
                     running = "none"
                 }
                 else{
-                    
+                    //can use try catch istead
                     const p = await $`ps -p ${pid} | grep node | wc -l | tr -d '[:space:]'`.nothrow()
                     const present = p.stdout.trim()
                     if (present == "1")
