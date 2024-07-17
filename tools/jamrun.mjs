@@ -8,7 +8,7 @@ const { spawn,spawnSync } = require('child_process');
  * QUESTION:
  * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it?
  * NOTES
-    TOCHANGE: use spawn instead of $ in mosquitto.
+    TOCHANGE: 
               categtorize the log files.
               REMOVE THE DISABLE-RE_DERICET(DONE)
               when old does not exist breaks
@@ -30,11 +30,16 @@ const { spawn,spawnSync } = require('child_process');
 //
 //global variables
 let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume;
-
+const tmuxIds = [];
 
 //SETUP CLEANING
-process.on('SIGINT', async () =>  await cleanup());
-process.on('SIGTERM', async () => await cleanup());
+process.on('SIGINT', async () => 
+    {
+     await killtmux()
+     await cleanup()
+    });
+process.on('SIGTERM', async () =>  await cleanup());
+
 
 //MOVE HOME TO CONST FILE
 const childs =[]
@@ -140,7 +145,7 @@ function show_usage(){
     
 }
 
-//teste.working beside a lingering bash(due to zx nature)
+//teste.working.
 async function startmqtt(port, cFile){
 
     console.log("MQTT STARTING")
@@ -157,7 +162,7 @@ async function startmqtt(port, cFile){
         const command = MOSQUITTO;
         const args = ['-c', cFile];
         const options = {
-            stdio: ['ignore', 'pipe', 'pipe'],
+            stdio: ['ignore', 'ignore', 'ignore'],
             detached: true,
         };
         mqttProcesse =  spawn(command, args, options);
@@ -204,17 +209,11 @@ async function dojamout_p2(iport, folder, jappid, group=null){
 }
 
 async function cleanup(){
+    console.log("CLEANING")
     if(bg){
         process.exit(0);
     }
     else{
-        await killtmux()
-        
-        // if(!temp_broker){
-        //     console.log(`Killing broker with PID: ${mqttProcesse}`)
-        //     console.log(mqttProcesse)
-        //     mqttProcesse.kill();
-        // }
         if(childs.length!=0){
             for(let p of childs){
                 p.kill("SIGTERM")
@@ -251,9 +250,11 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
         console.log("############## RESUME ##############")
     }
 
-    spawnSync(command, args, options);
-    console.log("gettinf to the cleanUp")
-    await cleanup()
+    // spawnSync(command, args, options);
+    const child = spawn(command, args, options);
+    child.on('exit', () => {
+        process.exit(1);
+    });
 }
 
 function dojamout_p2_bg(pnum, floc, jappid, group=null){
@@ -349,6 +350,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                 }
                 }
             }
+            tmuxIds.push(`${tmux}-${counter}`)
             counter++;
 
     }
@@ -415,12 +417,10 @@ function setuptmux(path, appfolder) {
 
 
 async function killtmux(){
-    const [jamfolder,appfolder,folder] = getPaths(file,app)
-    console.log("current address:", process.cwd())
-    console.log("FOLDEr:", folder)
-
-
-    await $`pkill tmux`.stdio('ignore', 'ignore', 'ignore').quiet().nothrow();
+    for(let id of tmuxIds){
+        console.log(id)
+        spawnSync(TMUX, ['kill-session', '-t', id]);
+    }
 }
 
 
@@ -668,4 +668,4 @@ async function main(){
 
 await main()
 // await killtmux()
-
+// sleep(1000)
