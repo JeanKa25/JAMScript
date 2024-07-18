@@ -1,28 +1,29 @@
 #!/usr/bin/env zx
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
-import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder} from './fileDirectory.mjs'
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 
 /***
  * QUESTION:
  * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it?
+ * 2----> logging system needs improvement
+ * 3----> same name can't connect to reddis(two instances of shahin12 running as device is going to be problamatic)
+ * 4----> temp broker to remove broker
+ * 5---->.jamruns/ports/port# : ls ->>>apps using port number
+ * 6---->keep track of num of workers
+ * 7---->log directory
+ * 8---> don't like the idea of using other mqtt servers, what if the one that started them closes them?''''''''''''''av    
+ * 9 ---> what if another reddis is already using?
+ * 
+ * 
  * NOTES
     TOCHANGE: 
               categtorize the log files.
-              REMOVE THE DISABLE-RE_DERICET(DONE)
-              when old does not exist breaks
               remove portDir on kill.
-              remove only the tmux you need to remove
-              mosquitto duplicate fix(done)
-
 
  
    
-
-
-    7
-    8)old can introduce errors
 
 
 
@@ -31,24 +32,19 @@ const { spawn,spawnSync } = require('child_process');
 //global variables
 let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume;
 const tmuxIds = [];
+let removablePort;
 
 //SETUP CLEANING
-process.on('SIGINT', async () => 
-    {
-     await killtmux()
-     await cleanup()
-    });
+process.on('SIGINT', async () => {await cleanup()});
 process.on('SIGTERM', async () =>  await cleanup());
 
 
 //MOVE HOME TO CONST FILE
-const childs =[]
 let mqttProcesse;
 //SET REDIS PATH UP
 const filePath = fileURLToPath(import.meta.url);
 const IDIR = path.dirname(filePath);
 const REDISFUNCS = fs.realpathSync(`${IDIR}/../deps/lua/jredlib.lua`);
-console.log(REDISFUNCS)
 const SHELLPID = process.pid;
 
 
@@ -141,15 +137,14 @@ function show_usage(){
     The jamrun command creates a run state in the $HOME/.jamruns folder.
     `;
 
-    console.log(usageMessage);
+    // console.log(usageMessage);
     
 }
 
 //teste.working.
 async function startmqtt(port, cFile){
 
-    console.log("MQTT STARTING")
-    try{
+    try{ 
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
 
     }
@@ -158,7 +153,6 @@ async function startmqtt(port, cFile){
         if(!NOVERBOSE){
             console.log(`MQTT is not running at ${port}\nAttempting to start MQTT at ${port}`);
         }
-        console.log("MQTTT THIS IS MY PROCVESS")    
         const command = MOSQUITTO;
         const args = ['-c', cFile];
         const options = {
@@ -166,7 +160,6 @@ async function startmqtt(port, cFile){
             detached: true,
         };
         mqttProcesse =  spawn(command, args, options);
-        console.log(mqttProcesse, "this is what spawn returned to me")
         mqttProcesse.unref();
             
         
@@ -176,19 +169,18 @@ async function startmqtt(port, cFile){
 
 async function dojamout(iport, folder,jappid) {
     await dojamout_p1 (iport ,folder)
-    console.log("P1 is over")
+
     await dojamout_p2 (iport ,folder, jappid)
-    console.log("P2 is over")
+    
 
 }
 
+//tested.working
 async function dojamout_p1(pnum ,floc) {
 
 
     
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
-
-
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
@@ -198,33 +190,42 @@ async function dojamout_p1(pnum ,floc) {
 
 async function dojamout_p2(iport, folder, jappid, group=null){
     if(!bg){
-        console.log("running on fg")
         await dojamout_p2_fg(iport, folder,jappid, group)
     }
     else
     {
-        console.log("running on bg")
         dojamout_p2_bg(iport, folder,jappid, group)
     }
 }
 
+//tested.working
 async function cleanup(){
-    console.log("CLEANING")
+
     if(bg){
         process.exit(0);
     }
     else{
-        if(childs.length!=0){
-            for(let p of childs){
-                p.kill("SIGTERM")
+        if(fs.existsSync(`${removablePort}`)){
+            try {
+                // console.log("removing")
+                await fs.rm(`${removablePort}`, { recursive: true, force: true })
+                // console.log("removedz")
+
+                
+            } catch (error) {
+                console.log(error)
             }
         }
-        process.exit(0)
+        
+        await killtmux();
+        process.exit(0);
     }
 
 }
 
+//tested, working
 async function dojamout_p2_fg(pnum, floc,jappid, group=null){
+    
     let argObject = {
         "--app":jappid,
         "--port":pnum,
@@ -239,7 +240,7 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
     }
 
     let jargs = getJargs(argObject)
-
+    console.log("this is my jarg", jargs)
     const command = 'node';
     const args = ['jstart.js', ...jargs];
     const options = {
@@ -250,15 +251,15 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
         console.log("############## RESUME ##############")
     }
 
-    // spawnSync(command, args, options);
     const child = spawn(command, args, options);
     child.on('exit', () => {
         process.exit(1);
     });
 }
 
+
 function dojamout_p2_bg(pnum, floc, jappid, group=null){
-    console.log("THE EXECUTION IS ON THE BG")
+    // console.log("THE EXECUTION IS ON THE BG")
     let argObject = {
         "--app":jappid,
         "--port":pnum,
@@ -273,7 +274,7 @@ function dojamout_p2_bg(pnum, floc, jappid, group=null){
     }
     let jargs = getJargs(argObject)
 
-    console.log(floc)
+    // console.log(floc)
     const logFile = fs.openSync(`${floc}/log.j`, 'a');
     if(resume){
         fs.writeFileSync(`${floc}/log.j`,"############## RESUME ##############")
@@ -290,16 +291,12 @@ function dojamout_p2_bg(pnum, floc, jappid, group=null){
     const p =  spawn(command, args, options);
     p.unref();
 
-    childs.push(p);
-
-    
-
     if(!NOVERBOSE){
         console.log("Started the J node in background")
     }
     process.exit(0)
 }
-
+//linux test left, rest working
 async function doaout(num,port,group,datap,myf,jappid){
     let counter=1
     
@@ -317,15 +314,13 @@ async function doaout(num,port,group,datap,myf,jappid){
                 "-n": counter,
                 "-g": group,
                 "-t": tags,
-                "-o": datap
-
+                "-o": datap,
             }
             let cargs = getCargs(argObject)
-
-            console.log(cargs, "this is my carg pre")
+            // console.log("THIS IS MY CARGS",cargs)
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
-            if (!log)
-                {
+            // console.log("this is my log", log)
+            if (!log){
 
                     if(valgrind)
                             await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} C-m`;
@@ -336,18 +331,13 @@ async function doaout(num,port,group,datap,myf,jappid){
                 }
         
             else{
-                if(Machine === "Linux"){
-                    //TO BE FIXE
+       
+                    //check if it works on linux or nor
                     if(valgrind)
                         await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
                     else
-                        await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
-                }
-                
-                else{
-                    //TO BE FIXE
-                    await $`${TMUX} send-keys -t ${tmux}-${counter} ./a.out ${cargs} -f log C-m`;
-                }
+                        await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 log ./a.out" ${cargs} C-m`;
+    
                 }
             }
             tmuxIds.push(`${tmux}-${counter}`)
@@ -356,7 +346,7 @@ async function doaout(num,port,group,datap,myf,jappid){
     }
 
     if(!NOVERBOSE)
-    console.log("Started a C node")
+        console.log("Started a C node")
     }
 
 
@@ -415,32 +405,37 @@ function setuptmux(path, appfolder) {
 
 
 
-
+//tested.works
 async function killtmux(){
     for(let id of tmuxIds){
-        console.log(id)
+        // console.log(id)
         spawnSync(TMUX, ['kill-session', '-t', id]);
     }
 }
 
-
-function startredis(port) {
-
-
-    
-    $`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').quiet().nothrow()
-
-
+//patially tested, hopefullt works
+async function startredis(port) {
+    // console.log("this is my port in Start redis:", port);
+    try{
+        // console.log(process.cwd())
+        const p =$`redis-server --port ${port}`.stdio('inherit', 'inherit', 'inherit')
+        // console.log("terminated")
+    }
+    catch(error){
+        console.log(error)
+    }
  
 }
 
+//tested, works
 async function waitforredis(port){
     while (true) {
-        console.log("this is the port we have", port)
+        // console.log("this is the port we have in waitforredis", port)
         try{
 
             const p = await $`redis-cli -p ${port} -c PING`
-            console.log(p.stdout)
+            // console.log("stdout for waitForRedis")
+            // console.log(p.stdout)
 
             if (p.stdout.trim() === "PONG") {
                 
@@ -448,6 +443,8 @@ async function waitforredis(port){
             }
         }
         catch(error){
+            // console.log("Ponging reddis error")
+            console.log(error)
         }
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
@@ -459,13 +456,12 @@ async function waitforredis(port){
         console.log(`Redis running at port: ${port}`);
       }
      
-
 }
 
+//tested, works
 async function setupredis(port) {
 
     
-   
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
@@ -475,29 +471,25 @@ async function setupredis(port) {
 
 }
 
+//tested, works
 async function resolvedata(Name) {
     const [host, port] = Name.split(':');
-    startredis(Number(port));
+    // console.log(port)
+    // console.log(host)
+    await startredis(Number(port));
     await waitforredis(port);
 
     await setupredis(port);
 
-
-    
-    if(host === "docker"){
-        const ipaddr= `hostname -I`
-        Name = `${ipaddr}:${port}`
-    }
-
     //trim space left behind by hostname -I
     data = Name.split(/\s+/).join('');
+    // console.log("THIS IS MY DATA INRESOLVE DATA" , data)
 
 
 }
-
+//tested working
 async function unpack(file,folder){
-
-    
+    // console.log("got to unpack")
     if(!old){
         if(!fs.existsSync("./MANIFEST.txt")){
             try{
@@ -509,44 +501,68 @@ async function unpack(file,folder){
                        
         }
         else{
-            const p1  = await $`cd ${folder} && zipgrep CREATE ${file} | awk 'NR==1{split($0,a, " "); print a[3]}'`;
-            const p2 = await $`cd ${folder} && grep CREATE MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`;
-            const ntime = p1.stdout.trim();
-            const ontime = p2.stdout.trim();
-            if(ntime > ontime){
-                try{
-                    await $`cd ${folder} && unzip -oq ${file}`.quiet()
-                }
-                catch(error){
-
-                    throw new Error(`Problem reading file: ${file}\n${error}`)
-
-                } 
+            let forceRedo = false;
+            try{
+                isValidExecutable()
             }
+            catch(error){
+                forceRedo = true;
+            }
+            // console.log("this is my forced red0 var", forceRedo)
+            if(!forceRedo){
+                const p1  = await $`cd ${folder} && zipgrep CREATE ${file} | awk 'NR==1{split($0,a, " "); print a[3]}'`;
+                const p2 = await $`cd ${folder} && grep CREATE MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`;
+                const ntime = Number(p1.stdout.toString().trim());
+                const ontime = Number(p2.stdout.toString().trim());
+                if(ntime > ontime){
+                    try{
+                        await $`cd ${folder} && unzip -oq ${file}`.quiet()
+                    }
+                    catch(error){
+
+                        throw new Error(`Problem reading file: ${file}\n${error}`)
+
+                    } 
+                }
+            }
+            else{
+                if(!NOVERBOSE)
+                    console.log("The corrupted unziped files. files will be unziped again based on the existing MANIFEST.txt")
+                await cleanExecutables()
+                await $`cd ${folder} && unzip -oq ${file}`.quiet()
+
+
+            }
+
+
+            
+
         }
     }
     else{
+        if(!NOVERBOSE){
+            console.log("WARNING: Unziped files might be outdated")
+        }
         isValidExecutable()
     }
 }
-
+//tested.working
 async function getjdata(folder) {
 
     const p = await $`cd ${folder} && grep JDATA MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`.nothrow().quiet()
     return p.stdout.trim()
+
 }
 
 async function runNoneDevice(iport){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
     fileDirectoryMqtt(folder,iport)
     const jappid = getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
-    console.log("doing dojamout")
     await dojamout(iport, folder, jappid)
 }
 
 async function runDevice(iport,dport,group){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
-
     fileDirectoryMqtt(folder,iport)
     const jappid = getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
     await dojamout_p1(iport,folder)
@@ -599,7 +615,7 @@ async function main(){
 
     fileDirectorySetUp(file,app)
     const folder = getFolder(file,app)
-    console.log(num)
+    // console.log(num)
     const ifile = path.resolve(file);
     process.chdir(folder);
     await unpack(ifile, folder)
@@ -608,41 +624,42 @@ async function main(){
     let isDevice;
     switch(Type){
         case "cloud":
-            console.log("got in cloud")
             iport=9883
             isDevice = false;
             break;
             
         case "fog":
-            console.log("got in fog")
             iport=5883
             isDevice = false
             break;
 
         case "device":
-            console.log("got in device")
 
             iport=1883;
             isDevice = true;
+            console.log("IS LOCAL", local)
             if(!local){
                 group= iport-1882
             }
             else
                 group = 0; 
     }
-    console.log(isDevice, ": if true it is a device")
+    // console.log("this Is my group:" , group)
+
     while(true){
-        console.log("this is my iport from main: " , iport)
-        console.log("this is my folder from main: ", folder)
+
         const porttaken = Number(await portavailable(folder ,iport))
-        console.log("porttaken from the main", porttaken)
+   
         if(porttaken !== 1){
             break;
         }
         iport++;
     }
+    removablePort = iport;
+
     if(jdata){
         dport=iport + 20000;
+        // console.log(dport)
         await resolvedata(`127.0.0.1:${dport}`)
 
     }
@@ -650,16 +667,13 @@ async function main(){
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
-    console.log("this is my port", iport)
     if(isDevice)
         {
-        console.log("is here running device")
         await runDevice(iport,dport,group)
         
         }
     else
         {
-            console.log("is here running noneDevice")
             await runNoneDevice(iport)
         }    
 
@@ -667,5 +681,4 @@ async function main(){
 
 
 await main()
-// await killtmux()
-// sleep(1000)
+
