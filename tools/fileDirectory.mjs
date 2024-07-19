@@ -7,6 +7,9 @@ export function fileDirectorySetUp(file,app){
     if(!fs.existsSync(jamfolder,{ recursive: true })){
         fs.mkdirSync(jamfolder)
     }
+    if(!fs.existsSync(`${jamfolder}/ports`,{ recursive: true })){
+        fs.mkdirSync(`${jamfolder}/ports`)
+    }
     const appfolder=`${jamfolder}/apps`;
     if(!fs.existsSync(appfolder,{ recursive: true })){
         fs.mkdirSync(appfolder)
@@ -16,6 +19,7 @@ export function fileDirectorySetUp(file,app){
     if(!fs.existsSync(folder,{ recursive: true })){
         fs.mkdirSync(folder)
     }
+    
     fs.writeFileSync(`${appfolder}/program`, `${filenoext}\n`)
     fs.writeFileSync(`${appfolder}/app`, `${app}\n`)
     return [jamfolder,appfolder,folder,filenoext ]
@@ -101,10 +105,30 @@ export function isValidExecutable(){
 
 }
 
-export function fileDirectoryMqtt(folder, iport){
+export async function cleanExecutables(){
+    if(fs.existsSync(`jstart.js`))
+        await fs.unlink("jstart.js")
+
+    if(fs.existsSync(`jamout.js`))
+        await fs.unlink("jamout.js")
+
+    if(fs.existsSync(`a.out`))
+        await fs.unlink("a.out")
+
+
+}
+
+export function fileDirectoryMqtt(folder, iport,jamfolder,app){
     fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+    if(fs.existsSync(`${jamfolder}/ports/${iport}`)){
+        fs.appendFileSync(`${jamfolder}/ports/${iport}`, `${app}\n`)
+    }
+    else{
+        fs.writeFileSync(`${jamfolder}/ports/${iport}`, `${app}\n`)
+    }
+    
    
 }

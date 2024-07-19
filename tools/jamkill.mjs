@@ -4,12 +4,12 @@ import {getKilltArgs} from "./parser.mjs"
 
 /*
  * 1)shouldn't kill last kill the last running job in the packground instead of the last job itself?
-    2) we kill based on app name but not the program name for some reason(ex. jt2,jt3 with appname shahin will both be killed and no way to seperate them apart from each others)
+    2) we kill based on app name but not the program name for some reason(ex. jt2,jt3 with appname shahin will both be killed and no way to seperate them apart from each others)(we can use the pattern)
     3)discuss the new kill app appriach
     4)what id the app is not found?
     5)what if you run jamKill with no args back to back?
     6)what is app_id exactly?
-    7)app and appId concept is mixed up in my head I don't think it is what it should  be
+    7)app and appId concept is mixed up in my head I don't think it is what it should  be()
     8) how does the default name works?
  */
 

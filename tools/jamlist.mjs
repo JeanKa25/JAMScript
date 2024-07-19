@@ -64,17 +64,15 @@ async function printNodeInfo(dirName, programName){
     }
     let cdevs = 0;
     
-    if(mType == "device"){
+    if(mType === "device"){
         
-        let cdevProcesses = (await fs.readdir(path)).filter(entry => entry.includes("cdevProcessId"));
-        for(let cdevProcess of cdevProcesses){
-            let pid = fs.readFileSync(`${path}/${cdevProcess}`).toString().trim();
-            const process = await $`ps -p ${pid} | grep a.out | wc -l | tr -d '[:space:]'`.nothrow()
-            const isOk = process.stdout.trim()
-            if(isOk){
-                cdevs++
-            }   
+        if(fs.existsSync(`${path}/numCnodes`)){
+            cdevs= fs.readFileSync(`${path}/numCnodes`).toString().trim()
         }
+        else{
+            cdevs = "-"
+        }
+        
         const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${(cdevs.toString()).padEnd(15)} ${tmuxid.padEnd(15)}`;
         console.log(headerString)
 

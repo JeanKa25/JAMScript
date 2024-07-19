@@ -6,17 +6,15 @@ const { spawn,spawnSync } = require('child_process');
 
 /***
  * QUESTION:
- * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it?
- * 2----> logging system needs improvement
+ * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it? (don't use others mqtt)
+ * 2----> logging system needs improvementm
  * 3----> same name can't connect to reddis(two instances of shahin12 running as device is going to be problamatic)
- * 4----> temp broker to remove broker
  * 5---->.jamruns/ports/port# : ls ->>>apps using port number
  * 6---->keep track of num of workers
  * 7---->log directory
  * 8---> don't like the idea of using other mqtt servers, what if the one that started them closes them?''''''''''''''av    
- * 9 ---> what if another reddis is already using?
  * 
- * 
+ * DONOT FORGET TO: discuss about the temp broker topic. with the new ports dir we don't necessarily need the temp_broker no more cuz that would not make the decison of when to remove and when not to.
  * NOTES
     TOCHANGE: 
               categtorize the log files.
@@ -36,7 +34,7 @@ let removablePort;
 
 //SETUP CLEANING
 process.on('SIGINT', async () => {await cleanup()});
-process.on('SIGTERM', async () =>  await cleanup());
+process.on('SIGTERM', async () =>  {await cleanup()});
 
 
 //MOVE HOME TO CONST FILE
@@ -185,6 +183,9 @@ async function dojamout_p1(pnum ,floc) {
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
+    if(Type === "device"){
+        fs.writeFileSync(`${floc}/${pnum}/numCnodes`, `${num}`); 
+    }
 }
 
 
@@ -200,26 +201,29 @@ async function dojamout_p2(iport, folder, jappid, group=null){
 
 //tested.working
 async function cleanup(){
+    if(removablePort){
+       console.log("remove mqtt if you can")
+       const [jamfolder,appfolder,folder] = getPaths(file,app)
+       const appNames = fs.readFileSync(`${jamfolder}/ports/${removablePort}`).toString().trim().split("\n")
+       console.log(appNames)
+       if(appNames.length === 1 && appNames[0] === app){
+            mqttProcesse.kill();
+       }
 
-    if(bg){
-        process.exit(0);
     }
-    else{
-        if(fs.existsSync(`${removablePort}`)){
-            try {
-                // console.log("removing")
-                await fs.rm(`${removablePort}`, { recursive: true, force: true })
-                // console.log("removedz")
 
-                
-            } catch (error) {
-                console.log(error)
-            }
+    if(fs.existsSync(`${removablePort}`)){
+        try {
+            console.log("removing")
+            await fs.rm(`${removablePort}`, { recursive: true, force: true })
+            console.log("removedz")
+        } catch (error) {
+            console.log(error)
         }
-        
-        await killtmux();
-        process.exit(0);
     }
+    
+    await killtmux();
+    process.exit(0);
 
 }
 
@@ -388,6 +392,7 @@ async function portavailable(folder,port) {
     if(porttaken === 0){
         const p = await $`netstat -an -p tcp 2>/dev/null | grep ${port} | wc -l`.nothrow().quiet()
         porttaken= Number(p.stdout.trim())
+        console.log("this is my port taken:", porttaken)
     }
     
     return porttaken;
@@ -408,7 +413,7 @@ function setuptmux(path, appfolder) {
 //tested.works
 async function killtmux(){
     for(let id of tmuxIds){
-        // console.log(id)
+        console.log(id)
         spawnSync(TMUX, ['kill-session', '-t', id]);
     }
 }
@@ -418,7 +423,7 @@ async function startredis(port) {
     // console.log("this is my port in Start redis:", port);
     try{
         // console.log(process.cwd())
-        const p =$`redis-server --port ${port}`.stdio('inherit', 'inherit', 'inherit')
+        const p =$`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').nothrow().quiet();
         // console.log("terminated")
     }
     catch(error){
@@ -474,8 +479,7 @@ async function setupredis(port) {
 //tested, works
 async function resolvedata(Name) {
     const [host, port] = Name.split(':');
-    // console.log(port)
-    // console.log(host)
+
     await startredis(Number(port));
     await waitforredis(port);
 
@@ -556,14 +560,14 @@ async function getjdata(folder) {
 
 async function runNoneDevice(iport){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
-    fileDirectoryMqtt(folder,iport)
+    fileDirectoryMqtt(folder,iport,jamfolder,app)
     const jappid = getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
     await dojamout(iport, folder, jappid)
 }
 
 async function runDevice(iport,dport,group){
     const [jamfolder,appfolder,folder] = getPaths(file,app)
-    fileDirectoryMqtt(folder,iport)
+    fileDirectoryMqtt(folder,iport,jamfolder,app)
     const jappid = getappid(jamfolder, `${folder}/${iport}` ,app,appfolder)
     await dojamout_p1(iport,folder)
     setuptmux(`${folder}/${iport}`, appfolder)
@@ -626,40 +630,51 @@ async function main(){
         case "cloud":
             iport=9883
             isDevice = false;
+            while(true){
+                const porttaken = Number(await portavailable(folder ,iport))
+                if(porttaken !== 1){
+                    break;
+                }
+                iport++;
+            }
+            removablePort = iport;
             break;
             
         case "fog":
             iport=5883
             isDevice = false
+            while(true){
+                const porttaken = Number(await portavailable(folder ,iport))
+                if(porttaken !== 1){
+                    break;
+                }
+                iport++;
+            }
+            removablePort = iport;
             break;
 
         case "device":
-
             iport=1883;
             isDevice = true;
-            console.log("IS LOCAL", local)
+            while(true){
+                const porttaken = Number(await portavailable(folder ,iport))
+                if(porttaken !== 1){
+                    break;
+                }
+                iport++;
+            }
+            removablePort = iport;
             if(!local){
                 group= iport-1882
             }
             else
                 group = 0; 
     }
-    // console.log("this Is my group:" , group)
 
-    while(true){
 
-        const porttaken = Number(await portavailable(folder ,iport))
-   
-        if(porttaken !== 1){
-            break;
-        }
-        iport++;
-    }
-    removablePort = iport;
 
     if(jdata){
         dport=iport + 20000;
-        // console.log(dport)
         await resolvedata(`127.0.0.1:${dport}`)
 
     }
@@ -668,14 +683,11 @@ async function main(){
         fs.mkdirSync(`${folder}/${iport}`)
     }
     if(isDevice)
-        {
         await runDevice(iport,dport,group)
         
-        }
     else
-        {
-            await runNoneDevice(iport)
-        }    
+        await runNoneDevice(iport)
+            
 
 }
 
