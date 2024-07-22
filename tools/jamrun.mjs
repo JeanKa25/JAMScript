@@ -1,7 +1,8 @@
 #!/usr/bin/env zx
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
-import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables} from './fileDirectory.mjs'
+import { cleanByPortNumber } from './cleanUp.mjs';
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 
 /***
@@ -13,7 +14,9 @@ const { spawn,spawnSync } = require('child_process');
  * 6---->keep track of num of workers
  * 7---->log directory
  * 8---> don't like the idea of using other mqtt servers, what if the one that started them closes them?''''''''''''''av    
- * 
+ * 9 ----> app             appid          program         tmuxid we do not need
+ * 10 ---> do not use mqtt of another file
+ * 11 ---> kill reddiss on cleaning
  * DONOT FORGET TO: discuss about the temp broker topic. with the new ports dir we don't necessarily need the temp_broker no more cuz that would not make the decison of when to remove and when not to.
  * NOTES
     TOCHANGE: 
@@ -28,13 +31,13 @@ const { spawn,spawnSync } = require('child_process');
  */
 //
 //global variables
-let app, tmux, num, edge, data, local_registry, temp_broker, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume;
+let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume;
 const tmuxIds = [];
-let removablePort;
+let removablePort
 
 //SETUP CLEANING
-process.on('SIGINT', async () => {await cleanup()});
-process.on('SIGTERM', async () =>  {await cleanup()});
+process.on('SIGINT', () => {cleanByPortNumber(file,app,removablePort,NOVERBOSE); process.exit();});
+process.on('SIGTERM', () =>  {cleanByPortNumber(file,app,removablePort,NOVERBOSE);  process.exit();});
 
 
 //MOVE HOME TO CONST FILE
@@ -160,24 +163,18 @@ async function startmqtt(port, cFile){
         mqttProcesse =  spawn(command, args, options);
         mqttProcesse.unref();
             
-        
         return;
     }
 }
 
 async function dojamout(iport, folder,jappid) {
     await dojamout_p1 (iport ,folder)
-
     await dojamout_p2 (iport ,folder, jappid)
     
-
 }
 
 //tested.working
 async function dojamout_p1(pnum ,floc) {
-
-
-    
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
     fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
@@ -197,34 +194,6 @@ async function dojamout_p2(iport, folder, jappid, group=null){
     {
         dojamout_p2_bg(iport, folder,jappid, group)
     }
-}
-
-//tested.working
-async function cleanup(){
-    if(removablePort){
-       console.log("remove mqtt if you can")
-       const [jamfolder,appfolder,folder] = getPaths(file,app)
-       const appNames = fs.readFileSync(`${jamfolder}/ports/${removablePort}`).toString().trim().split("\n")
-       console.log(appNames)
-       if(appNames.length === 1 && appNames[0] === app){
-            mqttProcesse.kill();
-       }
-
-    }
-
-    if(fs.existsSync(`${removablePort}`)){
-        try {
-            console.log("removing")
-            await fs.rm(`${removablePort}`, { recursive: true, force: true })
-            console.log("removedz")
-        } catch (error) {
-            console.log(error)
-        }
-    }
-    
-    await killtmux();
-    process.exit(0);
-
 }
 
 //tested, working
@@ -278,10 +247,9 @@ function dojamout_p2_bg(pnum, floc, jappid, group=null){
     }
     let jargs = getJargs(argObject)
 
-    // console.log(floc)
-    const logFile = fs.openSync(`${floc}/log.j`, 'a');
+    const logFile = fs.openSync(`${floc}/${pnum}/log.j`, 'a');
     if(resume){
-        fs.writeFileSync(`${floc}/log.j`,"############## RESUME ##############")
+        fs.writeFileSync(`${floc}/${pnum}/log.j`,"############## RESUME ##############")
     }
  
     const command = 'node';
@@ -300,10 +268,10 @@ function dojamout_p2_bg(pnum, floc, jappid, group=null){
     }
     process.exit(0)
 }
+
 //linux test left, rest working
 async function doaout(num,port,group,datap,myf,jappid){
     let counter=1
-    
     if (fs.existsSync('a.out')) {
         await $`cd ${myf} && chmod +x a.out`
     }
@@ -340,7 +308,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                     if(valgrind)
                         await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
                     else
-                        await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 log ./a.out" ${cargs} C-m`;
+                        await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 ${myf}/${port}/log.${counter} ./a.out" ${cargs} C-m`;
     
                 }
             }
@@ -358,8 +326,9 @@ async function doaout(num,port,group,datap,myf,jappid){
 async function portavailable(folder,port) {
     let pid;
     let porttaken;
-
+    const jamFolder = getJamFolder()
     if(fs.existsSync(`${folder}/${port}`)){
+
         if(fs.existsSync(`${folder}/${port}/processId`)){
     
             try{
@@ -386,37 +355,30 @@ async function portavailable(folder,port) {
             porttaken=0;
         }
     }
+
     else{
         porttaken=0;
     }
+
     if(porttaken === 0){
-        const p = await $`netstat -an -p tcp 2>/dev/null | grep ${port} | wc -l`.nothrow().quiet()
-        porttaken= Number(p.stdout.trim())
-        console.log("this is my port taken:", porttaken)
+        if(!fs.existsSync(`${jamFolder}/ports`)){
+            console.log(port)
+            const p = await $`netstat -lan -p tcp -f inet | grep ${port} | wc -l`.nothrow().quiet()
+            console.log((p.stdout.trim()))
+            porttaken = Number(p.stdout.trim()) === 0 ? 0 : 1;
+        }
     }
-    
+    console.log(porttaken)
     return porttaken;
 }
 
 //tested and working
 function setuptmux(path, appfolder) {
-
     fs.writeFileSync(`${path}/tmuxid`,tmux.toString()+"\n");
     fs.writeFileSync(`${appfolder}/tmuxid`,tmux.toString()+"\n");
 
 }
 
-
-
-
-
-//tested.works
-async function killtmux(){
-    for(let id of tmuxIds){
-        console.log(id)
-        spawnSync(TMUX, ['kill-session', '-t', id]);
-    }
-}
 
 //patially tested, hopefullt works
 async function startredis(port) {
@@ -577,10 +539,12 @@ async function runDevice(iport,dport,group){
 
 
 async function main(){
+    console.log("HI")
     let iport;
     let dport;
     let group;
     try{    
+      
         ({
             app,
             tmux,
@@ -588,7 +552,6 @@ async function main(){
             edge,
             data,
             local_registry,
-            temp_broker,
             bg,
             NOVERBOSE,
             log,
@@ -602,7 +565,7 @@ async function main(){
             file,
             resume,
         } = jamrunParsArg(process.argv))
-
+        console.log("HO")
     }
     
    
@@ -613,9 +576,11 @@ async function main(){
         }
         else{
             show_usage()
+            console.log(error)
             process.exit(1)
         }
     }
+    
 
     fileDirectorySetUp(file,app)
     const folder = getFolder(file,app)

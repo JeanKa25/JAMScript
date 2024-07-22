@@ -157,10 +157,12 @@ function SetJamrunVar(options){
 
 export function jamrunParsArg(argv){
     
-    
+    console.log("got here")
     const arg = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun.mjs')))
     
     const file = checkJXEfile(arg)
+   
+
     let proccessedArgs = arg.filter((_,index) => (index !== 0 ));
     const options = getJamrunArgs(proccessedArgs);
     if(!options || options.help){
@@ -169,6 +171,7 @@ export function jamrunParsArg(argv){
         throw error;
 
     }
+
     for(let optionDefinition of jamrunOptionDefinitions ){
         if(options[optionDefinition.name] === null && optionDefinition.type != Boolean){
             throw new Error(`--${optionDefinition.name} requires a non-empty option argument`);
@@ -177,6 +180,7 @@ export function jamrunParsArg(argv){
     }
     const varsObject = SetJamrunVar(options);
     varsObject["file"] = file;
+   
     return varsObject;
 }
 //ASK wHAT VARIABLES ARE OPTIONAL
@@ -192,6 +196,7 @@ export function getCargs(argObject){
             args=args+` ${key} ${argObject[key]}`
         }
     }
+  
     return args;
 }
 export function getJargs(argObject){

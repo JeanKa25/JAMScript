@@ -14,29 +14,203 @@ import {getKilltArgs} from "./parser.mjs"
  */
 
 
-async function killtmux(tmuxid){
-    try{
-        console.log("curr address", process.cwd())
-        console.log(`${tmuxid}`)
-        const p = await $`tmux ls | grep ${tmuxid} | cut -d ':' -f 1`;
-        const tmuxList = p.stdout.toString().trim().split("\n")
-        for(let tmux of tmuxList){
-                console.log("list of tmuxes" , tmuxList)
-                await $`tmux kill-session -t ${tmux}`
+// async function killtmux(tmuxid){
+//     try{
+//         console.log("curr address", process.cwd())
+//         console.log(`${tmuxid}`)
+//         const p = await $`tmux ls | grep ${tmuxid} | cut -d ':' -f 1`;
+//         const tmuxList = p.stdout.toString().trim().split("\n")
+//         for(let tmux of tmuxList){
+//                 console.log("list of tmuxes" , tmuxList)
+//                 await $`tmux kill-session -t ${tmux}`
+//         }
+//     }
+//     catch(error){
+//     }
+// }
+
+function getRunningDirs(){
+    const jamFolder = getJamFolder()
+    const appToPort = new Map()
+    if(!fs.existsSync(jamFolder)){
+        throw new Error("jamFolder is Missing ")
+    }
+    if(!fs.existsSync(`${jamFolder}/ports`)){
+        console.log("THERE IS NO APP RUNNING")
+        return []
+    }
+    const activePorts = fs.readdirSync(`${jamFolder}/ports`)
+    for(let port of activePorts){
+        const apps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n");
+        for(let app of apps){
+            if(appToPort.has(app)){
+                const portList = appToPort.get(app);
+                portList.push(port)
+                appToPort.set(app,portList)
+            }
+            else{
+                appToPort.set(app,[port])
+            }
         }
     }
-    catch(error){
+    return appToPort;
+}
+
+function dirNameToAppName(dirName){
+    const dir = dirName.split('_')
+    if(dir.length > 2){
+        return (dir.filter((_,index) => index !== 0)).join("_")
     }
+    else{
+        return dir[1];
+    }
+    
+}
+function dirNameToProgramName(dirName){
+    return (dirName.split('_'))[0]
+    
+}
+
+function getAppDirs(){
+    const jamFolder = getJamFolder()
+    const subdirs = ((fs.readdirSync(`${jamFolder}/apps`,{ withFileTypes: true })).filter( entry => entry.isDirectory())).map(entry => entry.name);
+    return subdirs
 }
 
 
-async function killprocess(){
-    if(fs.existsSync("./shellpid")){
-        const pid = fs.readFileSync("./shellpid").toString().trim();
+
+function killDataByAppName(appName){
+    const toClean=[];
+    const activeDirs = getRunningDirs();
+    for(let dir of activeDirs.keys()){
+        const currApp = dirNameToAppName(dir)
+        if(currApp === appName){
+            for(let port of activeDirs.get(dir)){
+                const info ={
+                    programName :  dirNameToProgramName(dir)+".jxe",
+                    appName : currApp,
+                    portNumber : port
+                }
+                toClean.push(info)
+            }
+        }
+    }
+    return toClean
+}
+
+function killDataByProgramName(programName){
+    const toClean=[];
+    const activeDirs = getRunningDirs();
+    for(let dir of activeDirs.keys()){
+        const currProgram = dirNameToProgramName(dir)
+        if(currProgram === programName){
+            for(let port of activeDirs.get(dir)){
+                const info ={
+                    programName : currProgram+".jxe",
+                    appName : dirNameToAppName(dir),
+                    portNumber : port
+                }
+                toClean.push(info)
+            }
+        }
+    }
+    return toClean
+}
+
+
+function killDataByDirName(dirName){
+    const toClean=[];
+    const activeDirs = getRunningDirs();
+    console.log(activeDirs)
+    for(let dir of activeDirs.keys()){
+        console.log("this is my dir name", dir)
+        if(dir === dirName){
+            for(let port of activeDirs.get(dir)){
+                console.log("this is my port name", port)
+                const info ={
+                    programName : dirNameToProgramName(dir)+".jxe",
+                    appName : dirNameToAppName(dir),
+                    portNumber : port
+                }
+                toClean.push(info)
+            }
+        }
+    }
+    return toClean
+}
+
+function killDataForAll(){
+    const activeDirs = getRunningDirs();
+    for(let dir of Object.keys(activeDirs)){
+        for(let port of activeDirs.get(dir)){
+            const info ={
+                programName : dirNameToProgramName(dir)+".jxe",
+                appName : dirNameToAppName(dir),
+                portNumber : port
+            }
+            toClean.push(info)
+        }
+    }
+    return toClean
+}
+
+function jamKillByAppName(appName){
+    const data = killDataByAppName(appName);
+    if(data.length === 0 ){
+        console.log("No app with ",appName," name is running")
+    }
+
+
+}
+
+
+
+
+
+
+
+function getDirNameFromApp(appName){
+    const dirMap = new Map()
+    const subdirs = (fs.readdirSync(process.cwd()).map(entry => entry.split("_"))).filter(entry => entry.length > 1)
+    for(let dir of subdirs){
+        if(dir.length > 2){
+            const tail =(dir.filter((_,index) => index !== 0)).join("_")
+            if(tail === appName){
+                const dirName = dir.join("_")
+                dirMap.set(tail, dirName)
+            }
+            
+
+
+
+            dirMap.set(tail, dirName)
+
+        }
+        else{
+            const head = dir[0]
+            const tail = dir[1];
+            const dirName = dir.join("_")
+            dirMap.set(tail, dirName)
+        }
+    }
+    return dirMap;
+}
+
+
+
+
+async function killprocess(data){
+    const appName = data.programName;
+    const programName = data.programName
+    const portNumber = data.port
+    const dirName = ((programName.split('.'))[0]) +"_"+ appName;
+    const appfolder = getAppFolder()
+    if(fs.existsSync(`${appfolder}/${dirName}/${portNumber}/shellpid`)){
+        const pid = fs.readFileSync(`${appfolder}/${dirName}/${portNumber}/shellpid`).toString().trim();
         let exists;
         try {
             const p = await $`ps -p ${pid} | grep jamrun | wc -l | tr -d '[:space:]'`
-            exists = Number(p.stdout.trim());
+            exists = Number(p.stdout.toString().trim());
         } catch (error) {
             exists = 0 
         }
@@ -69,8 +243,6 @@ async function killprocess(){
             console.log(`Killing process ${pid}`)
             process.kill(pid);
         }
-
-
     }
 }
 async function getJobsSubDirMap(){
@@ -269,6 +441,8 @@ async function main(){
     
 }
 
-(async() => {
-    await main()
-})()
+// (async() => {
+//     await main()
+// })()
+
+// console.log(getAppDirs())

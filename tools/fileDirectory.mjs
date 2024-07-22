@@ -33,7 +33,7 @@ export function getAppFolder(){
     return `${HOME}/.jamruns/apps`
 }
 
-export function getPaths(file=null,app=null){
+export function getPaths(file,app){
     
     const jamfolder=`${HOME}/.jamruns`
     const appfolder=`${jamfolder}/apps`;
@@ -123,11 +123,16 @@ export function fileDirectoryMqtt(folder, iport,jamfolder,app){
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
+    const dirName = folder.split("/").pop()
     if(fs.existsSync(`${jamfolder}/ports/${iport}`)){
-        fs.appendFileSync(`${jamfolder}/ports/${iport}`, `${app}\n`)
+        const dirNames = fs.readFileSync(`${jamfolder}/ports/${iport}`).toString().trim().split("\n")
+        if(!dirNames.includes(dirName)){
+            fs.appendFileSync(`${jamfolder}/ports/${iport}`, `${dirName}\n`)
+        }
+
     }
     else{
-        fs.writeFileSync(`${jamfolder}/ports/${iport}`, `${app}\n`)
+        fs.writeFileSync(`${jamfolder}/ports/${iport}`, `${dirName}\n`)
     }
     
    
