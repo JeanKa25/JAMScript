@@ -48,12 +48,18 @@ const jamlistOptionDefinition = [
 
 const jamkillOptionDefinition = [
     {name : "help", alias : "h", type: Boolean, defaultValue : false },
-    {name : 'all',alias : "a", type: Boolean , defaultValue: false },
-    {name : 'app_id', type: String , defaultValue: undefined },
+    {name : 'all', type: Boolean , defaultValue: false },
+    {name : 'app', type: Boolean , defaultValue: false },
+    {name : 'program', type: Boolean , defaultValue: false },
+    {name : 'dir', type: Boolean , defaultValue: false },
+    {name : 'port', type: Boolean , defaultValue: false },
+    {name: "portDir", type: Boolean, defaultValue: false },
+    {name : 'name', alias : "n" , type: String , defaultValue: false },
 
 ];
 const jamcleanOptionDefinition = [
     {name : "help", alias : "h", type: Boolean, defaultValue : false },
+    {name : "reset", alias: "r", type: Boolean, defaultValue : false }
 
 ];
 
@@ -237,26 +243,54 @@ export function getJamListArgs(argv){
 export function getKilltArgs(argv){
     const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamkill.mjs')))
     let options
+    
     try{
         options = commandLineArgs(jamkillOptionDefinition, {argv: args});
     }
     catch(error){
     }
-    if(args.length === 0){
-        return "last"
-    }
-    if(options === undefined || options.help || args.length>1){
+
+    console.log(options, "these are my options")
+    if(options === undefined || options.help){
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
         throw error;
     }
-    const arg = options.all? "all": options.app_id
-    return arg
+    const flagCheck = ((options.all?1:0) + (options.app?1:0) + (options.dir?1:0) + (options.program?1:0) + (options.port? 1: 0) + (options.portDir? 1: 0) );
+    if( flagCheck !== 1 ){
+        const error = new Error("SHOW USAGE")
+        error.type = "ShowUsage"
+        throw error;
+    }
+    let flag;
+    if(!options.name && !options.all){
+        const error = new Error("SHOW USAGE")
+        error.type = "ShowUsage"
+        throw error;
+    }
 
+    if(options.all){
+        flag = "all";
+    }
+    else if(options.app){
+        flag = "app";
+    }
+    else if(options.dir){
+        flag = "dir";
+    }
+    else if(options.port){
+        flag = "port"
+    }
+    else if(options.portDir){
+        flag = "portDir"
+    }
+    else{
+        flag = "program";
+    }
+    console.log()
+    return {"flag": flag, "name" : options.name}
     
 }
-
-
 
 export function getcleanArgs(argv){
     const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs') && !entry.includes('jamlist.mjs')))
@@ -274,6 +308,7 @@ export function getcleanArgs(argv){
         error.type = "ShowUsage"
         throw error;
     }
+    return "reset"
      
 }
 
