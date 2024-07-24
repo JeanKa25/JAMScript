@@ -1,98 +1,169 @@
 #!/usr/bin/env zx
 /**
- * 1)The option to limit the search to the impprted app variable is not working
- * 2)Fix the usage msg
- * 3) when can /machType` be empty?!
- * 4)if device is _ then it is not running (true or false)
- * 5)can we have a jNode without a CNode?
- * 6)discuss strategies for jamlist
- * 8)what to delete in the cleanUp process
- * 7) what is the cleanUp exactly?
- * 
- * 
- * 8)make it monitor constantly. find a way to watch the file system. inotifyewait. keep it running. rp
- * 
- * 
- * 
- * ---------
- * remove cdevProcessId on jamlist if it is running 
- * 
- * 
- * 
+
+ * //DISCUSS PASUING AND THE INFO WE NEED HERE +++++ TAKE CARE OF THE DEFAULT APP NAME 
+
  */
 import { getJamListArgs } from "./parser.mjs";
-import {getAppFolderAndSubDir} from "./fileDirectory.mjs"
-// import { cleanUp } from "./jamclean.mjs";
+import {getAppFolder,getJamFolder} from "./fileDirectory.mjs"
+const { debounce } = require('lodash');
+const chokidar = require('chokidar');
+const jamFolder = getJamFolder()
+let lastInfo;
 
 
+function watch(filters) {
+    const updateInfo = debounce(async () => {
+        await sleep(500); 
+        if (!filters || filters === "all" || Object.keys(filters).length === 0) {
+            const info = getNodeInfo();
+            lastInfo = info;
 
+            if (info.length === 0) {
+                console.log("---------");
+                console.log("---------");
+                console.log("---------");
+                console.log("There is no program running");
+            } else {
+                console.log("---------");
+                console.log("---------");
+                console.log("---------");
+                printHeader();
+                printNodeInfo(info);
+            }
+        } else {
+            const nodeinfo = getNodeInfo();
+            const filtered = filter(nodeinfo, filters);
+            lastInfo = nodeinfo;
 
-async function printNodeInfo(dirName, programName){
-    const path = `${process.cwd()}/${dirName}`
-    let mType,appid,dstore,tmuxid,parid
-
-    if(fs.existsSync(`${path}/machType`)){
-        mType= fs.readFileSync(`${path}/machType`).toString().trim()
-    }
-    else{
-        mType = "-";
-
-    }
-    if(fs.existsSync(`${path}/appid`)){
-        appid= fs.readFileSync(`${path}/appid`).toString().trim()
-    }
-    else{
-        appid = "-"
-    }
-    if(fs.existsSync(`${path}/dataStore`)){
-        dstore= fs.readFileSync(`${path}/dataStore`).toString().trim()
-    }
-    else{
-        dstore = "-"
-    }
-    if(fs.existsSync(`${path}/tmuxid`)){
-        tmuxid= fs.readFileSync(`${path}/tmuxid`).toString().trim()
-    }
-    else{
-        tmuxid = "-"
-    }
-    if(fs.existsSync(`${path}/parentId`)){
-        parid= fs.readFileSync(`${path}/parentId`).toString().trim()
-    }
-    else{
-        parid = "-"
-    }
-    let cdevs = 0;
-    
-    if(mType === "device"){
-        
-        if(fs.existsSync(`${path}/numCnodes`)){
-            cdevs= fs.readFileSync(`${path}/numCnodes`).toString().trim()
+            if (filtered.length === 0) {
+                console.log("---------");
+                console.log("---------");
+                console.log("---------");
+                console.log("There is no such program running");
+            } else {
+                console.log("---------");
+                console.log("---------");
+                console.log("---------");
+                printHeader();
+                printNodeInfo(filtered);
+            }
         }
-        else{
-            cdevs = "-"
-        }
-        
-        const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${(cdevs.toString()).padEnd(15)} ${tmuxid.padEnd(15)}`;
-        console.log(headerString)
-
-    }
-    else{
-        const headerString = `   ${appid.padEnd(15)} ${appid.padEnd(15)} ${programName.padEnd(15)} ${("Local:"+dirName).padEnd(15)} ${parid.padEnd(15)} ${dstore.padEnd(15)} ${mType.padEnd(15)} ${("--").padEnd(15)} ${tmuxid.padEnd(15)}`;
-        console.log(headerString)
-    }
-    
-
+    }, 500); 
+    chokidar.watch(`${jamFolder}/ports`, { persistent: true, ignoreInitial: true }).on('all', () => {
+        updateInfo();
+    });
 }
 
-async function main(){
-    let subDirs;
-    let appfolder;
-    let app;
+
+export function getRunningDirs(){
+    const jamFolder = getJamFolder()
+    const appToPort = new Map()
+    const activePorts = fs.readdirSync(`${jamFolder}/ports`)
+    for(let port of activePorts){
+        const apps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n");
+        for(let app of apps){
+            if(appToPort.has(app)){
+                const portList = appToPort.get(app);
+                portList.push(port)
+                appToPort.set(app,portList)
+            }
+            else{
+                appToPort.set(app,[port])
+            }
+        }
+    }
+    return appToPort;
+}
+
+export function dirNameToAppName(dirName){
+    const dir = dirName.split('_')
+    if(dir.length > 2){
+        return (dir.filter((_,index) => index !== 0)).join("_")
+    }
+    else{
+        return dir[1];
+    }
+    
+}
+export function dirNameToProgramName(dirName){
+    return (dirName.split('_'))[0]
+    
+}
+
+
+function getNodeInfo(){
+    const appToPortMap = getRunningDirs()
+    // console.log(appToPortMap)
+    const appfolder  = getAppFolder();
+    const nodeInfo= [];
+    for(let app of appToPortMap.keys()){
+        const appName = dirNameToAppName(app)
+        const programName = dirNameToProgramName(app)
+        for(let port of appToPortMap.get(app)){
+            const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-" }
+            const dirPath = `${appfolder}/${app}/${port}`
+            if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
+                throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
+            }
+            for(let fileName of Object.keys(fileNames)){
+                if(fs.existsSync(`${dirPath}/${fileName}`)){
+                    const data = fs.readFileSync(`${dirPath}/${fileName}`).toString().trim();
+                    fileNames[fileName] = data;
+                }
+            }
+            fileNames["portNum"] = String(port)
+            fileNames["appName"] = appName
+            fileNames["programName"] = programName
+
+            nodeInfo.push(fileNames)
+        }
+    }
+
+    return nodeInfo;
+}
+
+function printNodeInfo(info){
+   
+    for (let row of info){
+     
+        const headerString = `   ${row["appName"].padEnd(15)} ${row["programName"].padEnd(15)} ${("Local:"+row["portNum"]).padEnd(15)} ${row["parentId"].padEnd(15)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(15)} ${row["numCnodes"].padEnd(15)} ${row["tmuxid"].padEnd(15)}`;
+        console.log(headerString)
+    }
+}
+
+
+function printHeader(){
+    const headerString = `   ${"NAME".padEnd(15)} ${"PROGRAM".padEnd(15)} ${"HOST".padEnd(15)} ${"PARENT".padEnd(15)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(15)} ${"C-NODES".padEnd(15)} ${"TMUX-ID".padEnd(15)}`;
+    console.log(headerString)
+}
+
+function filter(nodeinfo, filters){
+    const filteredInfo =[];
+    for(let info of nodeinfo){
+        let isPassing = true
+        for(let filter of Object.keys(filters)){
+            if(!(filters[filter] === info[filter])){
+                isPassing = false
+                break;
+            }
+        }
+        if(isPassing){
+            filteredInfo.push(info)
+        }
+    }
+    return filteredInfo;
+}
+
+
+function main(){
+    let args;
     try{
-        app = getJamListArgs(process.argv)
+        args = getJamListArgs(process.argv)
     }
     catch(error){
+        console.log(error)
+       
         if(error.type = "ShowUsage"){
             console.log(
                 `
@@ -105,71 +176,45 @@ async function main(){
             )
         process.exit(1);
         }
+
         throw error;
     }
-    try{
-    
-        [subDirs, appfolder] =await getAppFolderAndSubDir();
+    const filters = args.filters;
+    const monitor = args.monitor;
+    if(monitor){
+        watch(filters);
     }
-    catch(error){
-        console.log("No running instances of JAMScript.")
-    }
-    
-    process.chdir(appfolder)
-    const headerString = `   ${"ID".padEnd(15)} ${"NAME".padEnd(15)} ${"PROGRAM".padEnd(15)} ${"HOST".padEnd(15)} ${"PARENT".padEnd(15)} ${"D-STORE".padEnd(15)} ${"TYPE".padEnd(15)} ${"C-NODES".padEnd(15)} ${"TMUX-ID".padEnd(15)}`;
-    console.log(headerString);
-    for(let subDir of subDirs ){
-        const [programName, appName] = subDir.split("_");
-        process.chdir(`${subDir}`)
-        const jexs = ((await fs.readdir(process.cwd(),{ withFileTypes: true })).filter( entry => entry.isDirectory())).map(entry => entry.name)
-        if(!jexs || jexs.length === 0){
-            break;
-        }
-    
-        for(let jex of jexs){
-            let running;
-            if(fs.existsSync(`${appfolder}/${subDir}/${jex}/processId`)){
-                
-                const pid = fs.readFileSync(`${appfolder}/${subDir}/${jex}/processId`).toString().trim();
-                if(pid === "new")
-                    running = "new";
-                else if(!pid){
-                    running = "none"
-                }
-                else{
-                    //can use try catch istead
-                    const p = await $`ps -p ${pid} | grep node | wc -l | tr -d '[:space:]'`.nothrow()
-                    const present = p.stdout.trim()
-                    if (present == "1")
-                        running="ps"
-                    else
-                        running="none"
-                }
+    if(!filters || filters === "all" || Object.keys(filter) === 0){
+        const info = getNodeInfo();
+        lastInfo = info;
+        if(info.length === 0 ){
+            console.log("there is No program running")
+            if(!monitor){
+                process.exit(0)
             }
-            else{
-                running = "none"
-            }
-            if(running === "ps" || running === "new"){
-                if(!app)
-                    printNodeInfo(jex,programName)
-                
-                else
-                    if(appName.includes(app))
-                        printNodeInfo(jex,programName) 
-                    
-                
-            }        
+
         }
-    
-
-        process.chdir(`./..`)
-
-
-
+        printHeader();
+        printNodeInfo(info);
+    }
+    else{
+        const nodeinfo = getNodeInfo()
+        const filtered = filter(nodeinfo, filters)
+        lastInfo = filtered;
+        if(filtered.length === 0 ){
+            console.log("there is No such program running")
+            if(!monitor){
+                process.exit(0)
+            }
+        }
+        printHeader();
+        printNodeInfo(filtered);
     }
 
-    
+
+
 }
-(async () => {
-    await main()
+
+(async () => { 
+     main()
 })();

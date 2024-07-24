@@ -103,21 +103,24 @@ function ArchiveLog(removablePort, appName, programName){
     if(fs.existsSync(`${folder}/${removablePort}`)){
         process.chdir(`${folder}/${removablePort}`);
         const logs = fs.readdirSync('.').filter( (entry) => entry.includes("log"))
-        fs.writeFileSync(`${folder}/log`, "logs\n-------------\n" )
+        if(!fs.existsSync(`${folder}/log`)){
+            fs.mkdirSync(`${folder}/log`);
+        }
+        fs.writeFileSync(`${folder}/log/${removablePort}`, "logs\n-------------\n" )
         console.log(logs)
         for(const log of logs){
             if(log.includes("j")){
                 console.log("THIS NEEDS TO BE TESTE IN THE BG MODE")
                 const data = fs.readFileSync(log)
-                fs.appendFileSync(`${folder}/log`, `:\n-------------\n J Log:\n-------------\n`);
-                fs.appendFileSync(`${folder}/log`, data);
+                fs.appendFileSync(`${folder}/log/${removablePort}`, `:\n-------------\n J Log:\n-------------\n`);
+                fs.appendFileSync(`${folder}/log/${removablePort}`, data);
             }
             else{
                 console.log("WRITING WORKER LOG")
                 const workerNumber = log.split(".")[1];
                 const data = fs.readFileSync(log)
-                fs.appendFileSync(`${folder}/log`, `\n-------------\n woker number ${workerNumber} Log:\n-------------\n`);
-                fs.appendFileSync(`${folder}/log`, data);
+                fs.appendFileSync(`${folder}/log/${removablePort}`, `\n-------------\n woker number ${workerNumber} Log:\n-------------\n`);
+                fs.appendFileSync(`${folder}/log/${removablePort}`, data);
 
             }
         }

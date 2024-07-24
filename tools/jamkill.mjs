@@ -17,7 +17,7 @@ import { cleanByPortNumber } from "./cleanUp.mjs";
  */
 
 
-function getRunningDirs(){
+export function getRunningDirs(){
     const jamFolder = getJamFolder()
     const appToPort = new Map()
     const activePorts = fs.readdirSync(`${jamFolder}/ports`)
@@ -37,7 +37,7 @@ function getRunningDirs(){
     return appToPort;
 }
 
-function dirNameToAppName(dirName){
+export function dirNameToAppName(dirName){
     const dir = dirName.split('_')
     if(dir.length > 2){
         return (dir.filter((_,index) => index !== 0)).join("_")
@@ -47,7 +47,7 @@ function dirNameToAppName(dirName){
     }
     
 }
-function dirNameToProgramName(dirName){
+export function dirNameToProgramName(dirName){
     return (dirName.split('_'))[0]
     
 }
@@ -340,5 +340,5 @@ async function main(){
 
 (async() => {
     await main()
-    // console.log(killDataByPortNum(1883))
+
 })()

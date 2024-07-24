@@ -43,9 +43,16 @@ const jamrunOptionDefinitions = [
 
 const jamlistOptionDefinition = [
         {name : "help", alias : "h", type: Boolean, defaultValue : false },
-        {name : 'app',alias : "a", type: String , defaultValue: undefined },
-  ];
+        {name : "monitor", alias : "m", type: Boolean, defaultValue : false },
+        {name : 'type', type: String , defaultValue: undefined },
+        {name : 'dataStore', type: String , defaultValue: undefined },
+        {name : 'tmuxid', type: String , defaultValue: undefined },
+        {name : 'portNum', type: String , defaultValue: undefined },
+        {name : 'appName', type: String , defaultValue: undefined },
+        {name : 'programName', type: String , defaultValue: undefined },
 
+  ];
+  
 const jamkillOptionDefinition = [
     {name : "help", alias : "h", type: Boolean, defaultValue : false },
     {name : 'all', type: Boolean , defaultValue: false },
@@ -163,7 +170,6 @@ function SetJamrunVar(options){
 
 export function jamrunParsArg(argv){
     
-    console.log("got here")
     const arg = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun.mjs')))
     
     const file = checkJXEfile(arg)
@@ -229,12 +235,39 @@ export function getJamListArgs(argv){
     }
     catch(error){
     }
-    if(options === undefined || options.help){
+    if(options?.help || !options){
+        console.log("DON")
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
         throw error;
     }
-    return options.app
+    if(Object.keys(options).length === 1){
+        return "all"
+    }
+
+    const filters = {}
+    for(let key of Object.keys(options)){
+        if(key === "help" || key === "monitor")
+            continue;
+        
+        if(key=== "type"){
+            const deviceType = options[key]
+            if(deviceType !== "device" && deviceType !== "fog" && deviceType !== "cloud"){
+                throw new Error("wrong device type")
+            }
+            filters["machType"] = deviceType 
+
+        }
+        else{
+            filters[key] = options[key]
+
+        }
+
+    }
+
+
+
+    return {filters : filters, monitor: options.monitor}
 
     
 }
