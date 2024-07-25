@@ -10,9 +10,65 @@ const { debounce } = require('lodash');
 const chokidar = require('chokidar');
 const jamFolder = getJamFolder()
 let lastInfo;
+let watcher;
+
+
+
+
+function getRunningDirs(){
+    const jamFolder = getJamFolder()
+    const appToPort = new Map()
+    const activePorts = fs.readdirSync(`${jamFolder}/ports`)
+    for(let port of activePorts){
+        const apps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n");
+        for(let app of apps){
+            if(appToPort.has(app)){
+                const portList = appToPort.get(app);
+                portList.push(port)
+                appToPort.set(app,portList)
+            }
+            else{
+                appToPort.set(app,[port])
+            }
+        }
+    }
+    return appToPort;
+}
+function getWatchList(){
+    const watchList = []
+    const appFolder = getAppFolder()
+    watchList.push(`${jamFolder}/ports`)
+    const dirs = getRunningDirs()
+    for(let dir of dirs.keys()){
+        for(let port of dirs.get(dir)){
+            watchList.push(`${appFolder}/${dir}/${port}/numCnodes`)
+        }
+    }
+    return watchList
+
+}
+
 
 
 function watch(filters) {
+    function updateWatchList(watchList){
+        const newWatchList = getWatchList();
+        console.log(newWatchList);
+        console.log(watchList)
+        for(let item of newWatchList){
+            if(!watchList.includes(item)){
+                console.log(item)
+                watcher.add(item)
+            }
+        }
+        for(let item of watchList){
+            if(!newWatchList.includes(item)){
+                console.log(item);
+                watcher.unwatch(item)
+            }
+        }
+        return newWatchList;
+    }
     const updateInfo = debounce(async () => {
         await sleep(500); 
         if (!filters || filters === "all" || Object.keys(filters).length === 0) {
@@ -50,30 +106,11 @@ function watch(filters) {
             }
         }
     }, 500); 
-    chokidar.watch(`${jamFolder}/ports`, { persistent: true, ignoreInitial: true }).on('all', () => {
+    let watchList = getWatchList()
+    watcher = chokidar.watch(watchList, { persistent: true, ignoreInitial: true }).on('all', () => {
+        watchList = updateWatchList(watchList)
         updateInfo();
     });
-}
-
-
-export function getRunningDirs(){
-    const jamFolder = getJamFolder()
-    const appToPort = new Map()
-    const activePorts = fs.readdirSync(`${jamFolder}/ports`)
-    for(let port of activePorts){
-        const apps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n");
-        for(let app of apps){
-            if(appToPort.has(app)){
-                const portList = appToPort.get(app);
-                portList.push(port)
-                appToPort.set(app,portList)
-            }
-            else{
-                appToPort.set(app,[port])
-            }
-        }
-    }
-    return appToPort;
 }
 
 export function dirNameToAppName(dirName){

@@ -657,6 +657,6 @@ async function main(){
 
 }
 
-
+await $`zx jamclean.mjs`
 await main()
 

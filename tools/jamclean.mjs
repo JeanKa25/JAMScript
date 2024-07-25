@@ -1,5 +1,4 @@
 #!/usr/bin/env zx
-import {getcleanArgs} from "./parser.mjs"
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 const { spawnSync } = require('child_process');
 import { cleanByPortNumber } from "./cleanUp.mjs";
@@ -287,7 +286,7 @@ function cleanCfiles(portDir, currCfile){
     for(let oldCdev of oldCdevs){
         const cNum = oldCdev.split(".")[1];
         if(!currCfile.includes(cNum)){
-            fs.unlinkSync(`${portDir}/oldCdev`);
+            fs.unlinkSync(`${portDir}/${oldCdev}`);
         }
     }
 }
@@ -300,7 +299,7 @@ function cleanPorts(AppToRemove){
         const oldApss = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n")
         const toRemove = AppToRemove.get(port)
         const newApps = oldApss.filter((entry) => !toRemove.includes(entry))
-        fs.writeFileSync(`${jamFolder}/ports/${port}`, newApps )
+        fs.writeFileSync(`${jamFolder}/ports/${port}`, newApps.join("\n"))
     }
 }
 
@@ -344,18 +343,18 @@ async function clean(){
                 }
             }
             //It's running and files are uptodate, update Cnum and clean cdevs
-            if( (await isJfileRunning(dir,port)) && (await isDevice(Dir,port))){
+            if( (await isJfileRunning(dir,port)) && (await isDevice(dir,port))){
                 const Cfiles = await getRunningCfiles(dir,port);
                 const numCnodes = Cfiles.length
-                if(!fs.existsSync(`${jamFolder}/${dir}/${port}/numCnodes`)){
-                    fs.writeFileSync(`${jamFolder}/${dir}/${port}/numCnodes`,`${numCnodes}`)
+                if(!fs.existsSync(`${appFolder}/${dir}/${port}/numCnodes`)){
+                    fs.writeFileSync(`${appFolder}/${dir}/${port}/numCnodes`,`${numCnodes}`)
                     continue;
                 }
-                const numCnodeFile = Number(fs.readFileSync(`${jamFolder}/${dir}/${port}/numCnodes`).toString().trim())
+                const numCnodeFile = Number(fs.readFileSync(`${appFolder}/${dir}/${port}/numCnodes`).toString().trim())
                 if(numCnodeFile !== numCnodes){
-                    fs.writeFileSync(`${jamFolder}/${dir}/${port}/numCnodes`,`${numCnodes}`)
+                    fs.writeFileSync(`${appFolder}/${dir}/${port}/numCnodes`,`${numCnodes}`)
                 }
-                cleanCfiles(`${jamFolder}/${dir}/${port}`, Cfiles)
+                cleanCfiles(`${appFolder}/${dir}/${port}`, Cfiles)
             }
 
         }
