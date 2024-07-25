@@ -18,6 +18,9 @@ let watcher;
 function getRunningDirs(){
     const jamFolder = getJamFolder()
     const appToPort = new Map()
+    if(!fs.existsSync(`${jamFolder}/ports`)){
+        return appToPort;
+    }
     const activePorts = fs.readdirSync(`${jamFolder}/ports`)
     for(let port of activePorts){
         const apps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n");
@@ -189,7 +192,7 @@ function filter(nodeinfo, filters){
 }
 
 
-function main(){
+async function main(){
     let args;
     try{
         args = getJamListArgs(process.argv)
@@ -214,9 +217,7 @@ function main(){
     }
     const filters = args.filters;
     const monitor = args.monitor;
-    if(monitor){
-        watch(filters);
-    }
+
     const jamfolder = getJamFolder()
         
    if( (!fs.existsSync(`${jamfolder}/ports`)) || (!fs.existsSync(`${jamfolder}/apps`)) ){
@@ -228,7 +229,9 @@ function main(){
         
     }
 
+
     else if(!filters || filters === "all" || Object.keys(filter) === 0){
+        await $`zx jamclean.mjs`
         const info = getNodeInfo();
         lastInfo = info;
         if(info.length === 0 ){
@@ -243,6 +246,7 @@ function main(){
     }
 
     else{
+        await $`zx jamclean.mjs`
         const nodeinfo = getNodeInfo()
         const filtered = filter(nodeinfo, filters)
         lastInfo = filtered;
@@ -255,11 +259,14 @@ function main(){
         printHeader();
         printNodeInfo(filtered);
     }
+    if(monitor){
+        watch(filters);
+    }
 
 
 
 }
 
 (async () => { 
-     main()
+     await main()
 })();

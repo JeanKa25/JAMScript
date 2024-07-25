@@ -25,7 +25,8 @@ const jamrunOptionDefinitions = [
   {name : 'num', type: Number , defaultValue: 1},
   {name : 'loc', type: String , defaultValue: `${long},${lat}`},
   {name : 'edge', type: Number , defaultValue: 1},
-  {name : 'data', type: String , defaultValue: "127.0.0.1:6379"},
+//   {name : 'data', type: String , defaultValue: "127.0.0.1:6379"},
+  {name : 'data', type: String , defaultValue: undefined},
   {name : 'fog', type: Boolean, defaultValue: false},
   {name : 'cloud', type: Boolean, defaultValue: false},
   {name : 'device', type: Boolean, defaultValue: false},
@@ -163,6 +164,7 @@ function SetJamrunVar(options){
     if(!("tags" in AssignedVar)){
         AssignedVar["tags"] = undefined;
     }
+
     return AssignedVar;
     
 }
@@ -237,7 +239,7 @@ export function getJamListArgs(argv){
     catch(error){
     }
     if(options?.help || !options){
-        console.log("DON")
+
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
         throw error;
@@ -284,7 +286,7 @@ export function getKilltArgs(argv){
     catch(error){
     }
 
-    console.log(options, "these are my options")
+
     if(options === undefined || options.help){
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
@@ -324,7 +326,7 @@ export function getKilltArgs(argv){
     else{
         flag = "program";
     }
-    console.log(flag, "this is my flag")
+
     return {"flag": flag, "name" : options.name}
     
 }

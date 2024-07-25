@@ -279,8 +279,6 @@ portavailable() {
 
     if [ $porttaken -eq 0 ]; then 
         porttaken=`netstat -an -p tcp 2>/dev/null | grep $port | wc -l`
-        echo "this is my takken port"
-        echo $porttaken
     fi
 }
 

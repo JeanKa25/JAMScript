@@ -5,9 +5,8 @@ import { cleanByPortNumber } from "./cleanUp.mjs";
 
 /*
     IMPORTANT: fix it for the default name such as app_n
- */
-
-
+    Important
+*/
 export function getRunningDirs(){
     const jamFolder = getJamFolder()
     const appToPort = new Map()
@@ -266,12 +265,11 @@ async function jamKillBruteForce(){
     await $`ps aux | grep redis-server | grep -v grep | awk '{print $2}' | xargs kill`.nothrow().quiet();
     const jamfolder = getJamFolder();
     //should I remove the apps as well or that is not required
-    try{
+    if(fs.existsSync(`${jamfolder}/ports`))
         fs.rmSync(`${jamfolder}/ports`, { recursive: true, force: true })
-    }
-    catch(error){
-
-    }
+    if(fs.existsSync(`${jamfolder}/apps`))
+        fs.rmSync(`${jamfolder}/apps`, { recursive: true, force: true })
+            
 }
 
 async function main(){
@@ -310,14 +308,14 @@ async function main(){
   }
   const jamfolder = getJamFolder();
   const appfolder = getAppFolder();
-  if( !fs.existsSync(jamfolder) ){
-    throw new Error('.jamruns folder missing. JAMScript tools not setup?')
-  };
-  if( !fs.existsSync(appfolder) ){
-    throw new Error('.jamruns/apps folder missing. JAMScript tools not setup?')
-  };
   if(args.flag === "reset"){
     await jamKillBruteForce()
+  }
+  else if( !fs.existsSync(jamfolder) ){
+    throw new Error('.jamruns folder missing. JAMScript tools not setup?')
+  }
+  else if( !fs.existsSync(appfolder) ){
+    throw new Error('.jamruns/apps folder missing. JAMScript tools not setup?')
   }
   else{
     await jamKill(args.flag , args.name);

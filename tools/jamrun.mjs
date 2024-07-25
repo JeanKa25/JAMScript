@@ -5,7 +5,9 @@ import { cleanByPortNumber } from './cleanUp.mjs';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 
-/***
+/***\
+ * ///MAIN SCRIPT AND MY SCRIPT HAS A DEFAULT VALUE WHICH IS 127.0.0.1:6379. WHy? shouldn't it be undefinced?
+ * ///DOES NOT CONNECT TO THE MAIN CLOSEST ONE
  * QUESTION:
  * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it? (don't use others mqtt)
  * 2----> logging system needs improvementm
@@ -176,7 +178,9 @@ async function dojamout(iport, folder,jappid) {
 //tested.working
 async function dojamout_p1(pnum ,floc) {
     await startmqtt(pnum , `${floc}/${pnum}/mqtt.conf`, data)
-    fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
+    if(data){
+        fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
+    }
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
@@ -198,7 +202,6 @@ async function dojamout_p2(iport, folder, jappid, group=null){
 
 //tested, working
 async function dojamout_p2_fg(pnum, floc,jappid, group=null){
-    
     let argObject = {
         "--app":jappid,
         "--port":pnum,
@@ -389,7 +392,7 @@ async function waitforredis(port){
     while (true) {
         try{
 
-            const p = await $`redis-cli -p ${port} -c PING`
+            const p = await $`redis-cli -p ${port} -c PING`.quiet()
 
 
             if (p.stdout.trim() === "PONG") {
@@ -465,6 +468,7 @@ async function unpack(file,folder){
                 const ontime = Number(p2.stdout.toString().trim());
                 if(ntime > ontime){
                     try{
+                        console.log("outdated, unzippping again")
                         await $`cd ${folder} && unzip -oq ${file}`.quiet()
                     }
                     catch(error){
@@ -500,6 +504,7 @@ async function getjdata(folder) {
 
     const p = await $`cd ${folder} && grep JDATA MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`.nothrow().quiet()
     return p.stdout.trim()
+    
 
 }
 
@@ -526,7 +531,6 @@ async function main(){
     let dport;
     let group;
     try{    
-      
         ({
             app,
             tmux,
@@ -548,7 +552,7 @@ async function main(){
             resume,
         } = jamrunParsArg(process.argv))
     }
-    
+   
    
     catch(error){
         if(error.type === "ShowUsage"){
@@ -616,8 +620,7 @@ async function main(){
     }
 
 
-
-    if(jdata){
+    if(jdata.toLowerCase() === "true"){
         dport=iport + 20000;
         await resolvedata(`127.0.0.1:${dport}`)
 
@@ -631,10 +634,7 @@ async function main(){
         
     else
         await runNoneDevice(iport)
-            
-
 }
-
 await $`zx jamclean.mjs`
 await main()
 
