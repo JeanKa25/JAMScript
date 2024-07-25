@@ -4,15 +4,6 @@ import {getKilltArgs} from "./parser.mjs"
 import { cleanByPortNumber } from "./cleanUp.mjs";
 
 /*
- * 1)shouldn't kill last kill the last running job in the packground instead of the last job itself?
-    2) we kill based on app name but not the program name for some reason(ex. jt2,jt3 with appname shahin will both be killed and no way to seperate them apart from each others)(we can use the pattern)
-    3)discuss the new kill app appriach
-    4)what id the app is not found?
-    5)what if you run jamKill with no args back to back?
-    6)what is app_id exactly?
-    7)app and appId concept is mixed up in my head I don't think it is what it should  be()
-    8) how does the default name works?
-
     IMPORTANT: fix it for the default name such as app_n
  */
 
@@ -59,13 +50,11 @@ function killDataByPortDir(portDir){
 0   }
     const dirName = infoList[0]
     const portName = infoList[1]
-    console.log("dirName",dirName )
-    console.log("portNumber", portName)
+
     if(!fs.existsSync(`${jamFolder}/ports/${portName}`)){
         return[]
     }
     const dirsRunning = fs.readFileSync(`${jamFolder}/ports/${portName}`).toString().trim().split("\n")
-    console.log("running dir", dirsRunning)
     if(!dirsRunning.includes(dirName)){
         return []
     }
@@ -94,7 +83,6 @@ function killDataByPortNum(portNum){
         }
         toClean.push(info)
     }
-    console.log(toClean, "return from portkill")
     return toClean;
 
 }
@@ -119,14 +107,10 @@ function killDataByAppName(appName){
 }
 
 function killDataByProgramName(programName){
-    console.log("gathering data for program name")
     const toClean=[];
     const activeDirs = getRunningDirs();
     for(let dir of activeDirs.keys()){
         const currProgram = dirNameToProgramName(dir)
-        console.log("this are the active dirs", activeDirs.keys())
-        console.log("this is the curretn program", currProgram)
-
         if(currProgram === programName){
             for(let port of activeDirs.get(dir)){
                 const info ={
@@ -145,12 +129,9 @@ function killDataByProgramName(programName){
 function killDataByDirName(dirName){
     const toClean=[];
     const activeDirs = getRunningDirs();
-    console.log(activeDirs)
     for(let dir of activeDirs.keys()){
-        console.log("this is my dir name", dir)
         if(dir === dirName){
             for(let port of activeDirs.get(dir)){
-                console.log("this is my port name", port)
                 const info ={
                     programName : dirNameToProgramName(dir)+".jxe",
                     appName : dirNameToAppName(dir),
@@ -165,13 +146,9 @@ function killDataByDirName(dirName){
 
 function killDataForAll(){
     const toClean=[];
-    console.log("I M HERE GATHERING DATA FOR ALL")
     const activeDirs = getRunningDirs();
-    console.log(activeDirs)
     for(let dir of activeDirs.keys()){
-        console.log("this is my dir:", dir)
         for(let port of activeDirs.get(dir)){
-            console.log("this is my port:", port)
             const info ={
                 programName : dirNameToProgramName(dir)+".jxe",
                 appName : dirNameToAppName(dir),
@@ -183,29 +160,24 @@ function killDataForAll(){
     return toClean
 }
 async function killJamRun(data){
-    console.log("KILL JAM RUNS STARTING");
     const appName = data.appName;
     const programName = data.programName
     const portNumber = data.portNumber
     const dirName = ((programName.split('.'))[0]) +"_"+ appName;
     const appfolder = getAppFolder()
-    console.log(fs.existsSync(`${appfolder}/${dirName}/${portNumber}/shellpid`, "IF MY FILE EXISTS"))
     if(fs.existsSync(`${appfolder}/${dirName}/${portNumber}/shellpid`)){
         const pid = fs.readFileSync(`${appfolder}/${dirName}/${portNumber}/shellpid`).toString().trim();
         let exists;
         try {
             const cwd = process.cwd()
-            console.log(cwd)
             const p = await $`ps -p ${pid} | grep jamrun | wc -l | tr -d '[:space:]'`
             exists = Number(p.stdout.toString().trim());
-            console.log("NO ERRIR")
         } catch (error) {
             exists = 0 
      
         }
 
         if(exists){
-            console.log(`Killing process ${pid}`)
             process.kill(pid);
         }
     }
@@ -227,7 +199,6 @@ async function killJFile(data){
             exists = 0 
         }
         if(exists){
-            console.log(`Killing process ${pid}`)
             process.kill(pid);
             return;
         }

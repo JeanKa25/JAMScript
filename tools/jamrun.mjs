@@ -25,7 +25,8 @@ const { spawn,spawnSync } = require('child_process');
 
  
    
-
+ADD PAUSE UNPAUSE
+ADD GIT LOG
 
 
  */
@@ -138,7 +139,6 @@ function show_usage(){
     The jamrun command creates a run state in the $HOME/.jamruns folder.
     `;
 
-    // console.log(usageMessage);
     
 }
 
@@ -213,7 +213,6 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
     }
 
     let jargs = getJargs(argObject)
-    console.log("this is my jarg", jargs)
     const command = 'node';
     const args = ['jstart.js', ...jargs];
     const options = {
@@ -226,14 +225,12 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
 
     const child = spawn(command, args, options);
     child.on('exit', () => {
-        console.log("gotHERE")
         process.kill(process.pid, 'SIGTERM');
     });
 }
 
 
 function dojamout_p2_bg(pnum, floc, jappid, group=null){
-    // console.log("THE EXECUTION IS ON THE BG")
     let argObject = {
         "--app":jappid,
         "--port":pnum,
@@ -290,9 +287,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                 "-o": datap,
             }
             let cargs = getCargs(argObject)
-            // console.log("THIS IS MY CARGS",cargs)
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
-            // console.log("this is my log", log)
             if (!log){
 
                     if(valgrind)
@@ -363,13 +358,10 @@ async function portavailable(folder,port) {
 
     if(porttaken === 0){
         if(!fs.existsSync(`${jamFolder}/ports`)){
-            console.log(port)
             const p = await $`netstat -lan -p tcp -f inet | grep ${port} | wc -l`.nothrow().quiet()
-            console.log((p.stdout.trim()))
             porttaken = Number(p.stdout.trim()) === 0 ? 0 : 1;
         }
     }
-    console.log(porttaken)
     return porttaken;
 }
 
@@ -383,11 +375,8 @@ function setuptmux(path, appfolder) {
 
 //patially tested, hopefullt works
 async function startredis(port) {
-    // console.log("this is my port in Start redis:", port);
     try{
-        // console.log(process.cwd())
         const p =$`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').nothrow().quiet();
-        // console.log("terminated")
     }
     catch(error){
         console.log(error)
@@ -398,12 +387,10 @@ async function startredis(port) {
 //tested, works
 async function waitforredis(port){
     while (true) {
-        // console.log("this is the port we have in waitforredis", port)
         try{
 
             const p = await $`redis-cli -p ${port} -c PING`
-            // console.log("stdout for waitForRedis")
-            // console.log(p.stdout)
+
 
             if (p.stdout.trim() === "PONG") {
                 
@@ -411,8 +398,6 @@ async function waitforredis(port){
             }
         }
         catch(error){
-            // console.log("Ponging reddis error")
-            console.log(error)
         }
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
@@ -450,13 +435,11 @@ async function resolvedata(Name) {
 
     //trim space left behind by hostname -I
     data = Name.split(/\s+/).join('');
-    // console.log("THIS IS MY DATA INRESOLVE DATA" , data)
 
 
 }
 //tested working
 async function unpack(file,folder){
-    // console.log("got to unpack")
     if(!old){
         if(!fs.existsSync("./MANIFEST.txt")){
             try{
@@ -475,7 +458,6 @@ async function unpack(file,folder){
             catch(error){
                 forceRedo = true;
             }
-            // console.log("this is my forced red0 var", forceRedo)
             if(!forceRedo){
                 const p1  = await $`cd ${folder} && zipgrep CREATE ${file} | awk 'NR==1{split($0,a, " "); print a[3]}'`;
                 const p2 = await $`cd ${folder} && grep CREATE MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`;
@@ -540,7 +522,6 @@ async function runDevice(iport,dport,group){
 
 
 async function main(){
-    console.log("HI")
     let iport;
     let dport;
     let group;
@@ -566,7 +547,6 @@ async function main(){
             file,
             resume,
         } = jamrunParsArg(process.argv))
-        console.log("HO")
     }
     
    
@@ -577,7 +557,6 @@ async function main(){
         }
         else{
             show_usage()
-            console.log(error)
             process.exit(1)
         }
     }
@@ -585,7 +564,6 @@ async function main(){
 
     fileDirectorySetUp(file,app)
     const folder = getFolder(file,app)
-    // console.log(num)
     const ifile = path.resolve(file);
     process.chdir(folder);
     await unpack(ifile, folder)

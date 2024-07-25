@@ -6,17 +6,12 @@ const TMUX = p.stdout.toString().trim()
 
 function getTmuxIds(PortNumber,appName , programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName);
-    console.log(`${folder}/${PortNumber}/tmuxid`)
-    console.log()
     if(fs.existsSync(`${folder}/${PortNumber}/tmuxid`)){
 
         const tmuxID = fs.readFileSync(`${folder}/${PortNumber}/tmuxid`).toString().trim();
-        console.log(tmuxID, "this is my tmux id")
         const p = spawnSync(TMUX, ['ls', '-F', '#S']);
         const runningTMUXS = p.stdout.toString().trim().split("\n");
-        console.log(runningTMUXS, "this is my alllllll tmux running")
         const currTmuxids = runningTMUXS.filter((entry) => entry.includes(tmuxID));
-        console.log(currTmuxids, "this is my curr tmux running")
         return currTmuxids;
 
     }
@@ -43,7 +38,6 @@ function stalePort(removablePort,app,programName){
     }
    
     const appNames = fs.readFileSync(`${jamfolder}/ports/${removablePort}`).toString().trim().split("\n");
-    console.log("this is my program name :  ", programName)
     const dirName = (programName.split(".")[0])+"_"+app
     if(appNames.includes(dirName)){
         if(appNames.length === 1){
@@ -53,13 +47,11 @@ function stalePort(removablePort,app,programName){
         }
         else{
             const newAppNames =  appNames.filter((appName) => appName !== dirName)
-            console.log( newAppNames.join("\n"))
             fs.writeFileSync(`${jamfolder}/ports/${removablePort}`, newAppNames.join("\n"))
             return false;
         }
     }
     else{
-        console.log("PORT DIR IS CORRUPTED")
         return false;
     }
 }
@@ -78,7 +70,6 @@ function killMosquitto(removablePort){
 function killRedis(removablePort){
     const dport =  Number(removablePort)+20000
     spawnSync('redis-cli', ['-p', dport, 'shutdown']);
-    console.log("REDIS CLEANED")
 }
 
 function cleanPort(removablePort,app,programName){
@@ -94,11 +85,6 @@ function cleanPort(removablePort,app,programName){
 }
 function ArchiveLog(removablePort, appName, programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName)
-    console.log("CLEAN UP, PORT NUMBER:" ,  removablePort);
-    console.log("CLEAN UP, app number" ,  appName);
-    console.log("CLEAN UP, program NUMBER:" ,  programName);
-
-
     console.log(folder)
     if(fs.existsSync(`${folder}/${removablePort}`)){
         process.chdir(`${folder}/${removablePort}`);
@@ -110,13 +96,11 @@ function ArchiveLog(removablePort, appName, programName){
         console.log(logs)
         for(const log of logs){
             if(log.includes("j")){
-                console.log("THIS NEEDS TO BE TESTE IN THE BG MODE")
                 const data = fs.readFileSync(log)
                 fs.appendFileSync(`${folder}/log/${removablePort}`, `:\n-------------\n J Log:\n-------------\n`);
                 fs.appendFileSync(`${folder}/log/${removablePort}`, data);
             }
             else{
-                console.log("WRITING WORKER LOG")
                 const workerNumber = log.split(".")[1];
                 const data = fs.readFileSync(log)
                 fs.appendFileSync(`${folder}/log/${removablePort}`, `\n-------------\n woker number ${workerNumber} Log:\n-------------\n`);
@@ -130,15 +114,10 @@ function ArchiveLog(removablePort, appName, programName){
 }
 function cleanAppDir(removablePort,appName, programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName)
-    console.log(folder, "this is my folder")
     if(fs.existsSync(`${folder}/${removablePort}`)){
         try {
-            console.log("removing")
-            console.log(removablePort)
             fs.rmSync(`${folder}/${removablePort}`, { recursive: true, force: true });
-            console.log("removedz")
         } catch (error) {
-            console.log(error)
         }
         return true;
     }
@@ -148,11 +127,8 @@ function cleanAppDir(removablePort,appName, programName){
 export function cleanup(removablePort, tmuxIds,app,TMUX){
     cleanPort(removablePort,app);
     ArchiveLog(removablePort);
-    console.log("LOGS ARE ARCHIVED");
     cleanAppDir(removablePort);
-    console.log("STOPPED PORT IS REMOVED GROM APP DIR");
     killtmux(tmuxIds,TMUX);
-    console.log("STOPPED TMUX");
 }
 
 export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){

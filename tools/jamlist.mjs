@@ -53,20 +53,17 @@ function getWatchList(){
 function watch(filters) {
     setInterval(async () => {
         await $`zx jamclean.mjs`
-    }, 200);
+    }, 1000);
     function updateWatchList(watchList){
         const newWatchList = getWatchList();
-        console.log(newWatchList);
-        console.log(watchList)
+
         for(let item of newWatchList){
             if(!watchList.includes(item)){
-                console.log(item)
                 watcher.add(item)
             }
         }
         for(let item of watchList){
             if(!newWatchList.includes(item)){
-                console.log(item);
                 watcher.unwatch(item)
             }
         }
