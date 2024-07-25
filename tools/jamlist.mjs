@@ -51,6 +51,9 @@ function getWatchList(){
 
 
 function watch(filters) {
+    setInterval(async () => {
+        await $`zx jamclean.mjs`
+    }, 200);
     function updateWatchList(watchList){
         const newWatchList = getWatchList();
         console.log(newWatchList);
@@ -77,13 +80,11 @@ function watch(filters) {
 
             if (info.length === 0) {
                 console.log("---------");
-                console.log("---------");
-                console.log("---------");
+
                 console.log("There is no program running");
             } else {
                 console.log("---------");
-                console.log("---------");
-                console.log("---------");
+
                 printHeader();
                 printNodeInfo(info);
             }
@@ -94,13 +95,11 @@ function watch(filters) {
 
             if (filtered.length === 0) {
                 console.log("---------");
-                console.log("---------");
-                console.log("---------");
+
                 console.log("There is no such program running");
             } else {
                 console.log("---------");
-                console.log("---------");
-                console.log("---------");
+  
                 printHeader();
                 printNodeInfo(filtered);
             }
