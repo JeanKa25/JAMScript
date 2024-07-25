@@ -226,7 +226,8 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
 
     const child = spawn(command, args, options);
     child.on('exit', () => {
-        process.exit(1);
+        console.log("gotHERE")
+        process.kill(process.pid, 'SIGTERM');
     });
 }
 

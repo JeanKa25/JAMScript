@@ -184,7 +184,18 @@ function main(){
     if(monitor){
         watch(filters);
     }
-    if(!filters || filters === "all" || Object.keys(filter) === 0){
+    const jamfolder = getJamFolder()
+        
+   if( (!fs.existsSync(`${jamfolder}/ports`)) || (!fs.existsSync(`${jamfolder}/apps`)) ){
+        console.log("there is No program running")
+        if(!monitor){
+            process.exit(0)
+        }
+
+        
+    }
+
+    else if(!filters || filters === "all" || Object.keys(filter) === 0){
         const info = getNodeInfo();
         lastInfo = info;
         if(info.length === 0 ){
@@ -197,6 +208,7 @@ function main(){
         printHeader();
         printNodeInfo(info);
     }
+
     else{
         const nodeinfo = getNodeInfo()
         const filtered = filter(nodeinfo, filters)

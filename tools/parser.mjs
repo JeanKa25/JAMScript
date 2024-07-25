@@ -56,6 +56,7 @@ const jamlistOptionDefinition = [
 const jamkillOptionDefinition = [
     {name : "help", alias : "h", type: Boolean, defaultValue : false },
     {name : 'all', type: Boolean , defaultValue: false },
+    {name : 'reset', type: Boolean , defaultValue: false },
     {name : 'app', type: Boolean , defaultValue: false },
     {name : 'program', type: Boolean , defaultValue: false },
     {name : 'dir', type: Boolean , defaultValue: false },
@@ -289,14 +290,14 @@ export function getKilltArgs(argv){
         error.type = "ShowUsage"
         throw error;
     }
-    const flagCheck = ((options.all?1:0) + (options.app?1:0) + (options.dir?1:0) + (options.program?1:0) + (options.port? 1: 0) + (options.portDir? 1: 0) );
+    const flagCheck = ((options.all?1:0) + (options.app?1:0) + (options.dir?1:0) + (options.program?1:0) + (options.port? 1: 0) + (options.portDir? 1: 0) + (options.reset? 1: 0));
     if( flagCheck !== 1 ){
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
         throw error;
     }
     let flag;
-    if(!options.name && !options.all){
+    if(!options.name && !options.all && !options.reset){
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
         throw error;
@@ -317,33 +318,36 @@ export function getKilltArgs(argv){
     else if(options.portDir){
         flag = "portDir"
     }
+    else if(options.reset){
+        flag = "reset"
+    }
     else{
         flag = "program";
     }
-    console.log()
+    console.log(flag, "this is my flag")
     return {"flag": flag, "name" : options.name}
     
 }
 
-export function getcleanArgs(argv){
-    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs') && !entry.includes('jamlist.mjs')))
-    let options
+// export function getcleanArgs(argv){
+//     const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs') && !entry.includes('jamlist.mjs')))
+//     let options
 
-    try{
-        options = commandLineArgs(jamcleanOptionDefinition, {argv: args});
-    }
-    catch(error){
-    }
+//     try{
+//         options = commandLineArgs(jamcleanOptionDefinition, {argv: args});
+//     }
+//     catch(error){
+//     }
 
 
-    if(options === undefined || options.help){
-        const error = new Error("SHOW USAGE")
-        error.type = "ShowUsage"
-        throw error;
-    }
-    return "reset"
+//     if(options === undefined || options.help){
+//         const error = new Error("SHOW USAGE")
+//         error.type = "ShowUsage"
+//         throw error;
+//     }
+//     return "reset"
      
-}
+// }
 
 
 

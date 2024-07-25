@@ -192,10 +192,8 @@ async function killJamRun(data){
     console.log(fs.existsSync(`${appfolder}/${dirName}/${portNumber}/shellpid`, "IF MY FILE EXISTS"))
     if(fs.existsSync(`${appfolder}/${dirName}/${portNumber}/shellpid`)){
         const pid = fs.readFileSync(`${appfolder}/${dirName}/${portNumber}/shellpid`).toString().trim();
-        console.log("THIS IS MY PID", pid)
         let exists;
         try {
-            console.log("BEFORE GETTING THE ERROR")
             const cwd = process.cwd()
             console.log(cwd)
             const p = await $`ps -p ${pid} | grep jamrun | wc -l | tr -d '[:space:]'`
@@ -203,11 +201,9 @@ async function killJamRun(data){
             console.log("NO ERRIR")
         } catch (error) {
             exists = 0 
-            console.log("ERROR")
-            console.log(error)
+     
         }
-        console.log("got here 5")
-        console.log(exists, "this is my flag to kill or not to kill")
+
         if(exists){
             console.log(`Killing process ${pid}`)
             process.kill(pid);
@@ -226,7 +222,7 @@ async function killJFile(data){
         let exists;
         try {
             const p = await $`ps -p ${pid} | grep node | wc -l | tr -d '[:space:]'`
-            exists = Number(p.stdout.trim());
+            exists = Number(p.stdout.toString().trim());
         } catch (error) {
             exists = 0 
         }
@@ -240,7 +236,6 @@ async function killJFile(data){
 
 async function killProcess(data){
     await killJamRun(data);
-    console.log("got here 3")
     await killJFile(data);
 }
 
@@ -293,6 +288,21 @@ async function jamKill(flag, name)
 
 }
 
+async function jamKillBruteForce(){
+    await $`pkill node`.nothrow().quiet();
+    await $`pkill mosquitto`.nothrow().quiet();
+    await $`pkill tmux`.nothrow().quiet();
+    await $`ps aux | grep redis-server | grep -v grep | awk '{print $2}' | xargs kill`.nothrow().quiet();
+    const jamfolder = getJamFolder();
+    //should I remove the apps as well or that is not required
+    try{
+        fs.rmSync(`${jamfolder}/ports`, { recursive: true, force: true })
+    }
+    catch(error){
+
+    }
+}
+
 async function main(){
 
   let args;
@@ -335,7 +345,13 @@ async function main(){
   if( !fs.existsSync(appfolder) ){
     throw new Error('.jamruns/apps folder missing. JAMScript tools not setup?')
   };
-  await jamKill(args.flag , args.name);
+  if(args.flag === "reset"){
+    await jamKillBruteForce()
+  }
+  else{
+    await jamKill(args.flag , args.name);
+  }
+  
 }
 
 (async() => {
