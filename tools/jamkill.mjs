@@ -252,6 +252,7 @@ async function jamKill(flag, name, pause)
     }
     console.log(pause)
     if(pause){
+        console.log("Pausing from jam kill")
         for(let data of jamData){
             console.log(data)
             const appName = data.appName;
@@ -264,7 +265,9 @@ async function jamKill(flag, name, pause)
         }
     }
     else{
+        console.log("KILL,KILL")
         for(let data of jamData){
+            console.log("I GET HERE")
             console.log(data)
             const appName = data.appName;
             const programName = data.programName
@@ -328,6 +331,7 @@ async function main(){
   const jamfolder = getJamFolder();
   const appfolder = getAppFolder();
   if(args.flag === "reset"){
+    console.log("kill reset")
     await jamKillBruteForce()
   }
   else if( !fs.existsSync(jamfolder) ){

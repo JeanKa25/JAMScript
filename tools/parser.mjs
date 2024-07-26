@@ -1,5 +1,6 @@
 #!/usr/bin/env zx
 import commandLineArgs from 'command-line-args';
+import { string } from 'random-js';
 import { fs } from 'zx';
 const path = require('path');
 const VALGRIND_OPTS = 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s';
@@ -31,7 +32,6 @@ const jamrunOptionDefinitions = [
   {name : 'cloud', type: Boolean, defaultValue: false},
   {name : 'device', type: Boolean, defaultValue: false},
   {name : 'local_registry', type: Boolean, defaultValue: false},
-  {name : 'temp_broker', type: Boolean, defaultValue: false},
   {name : 'bg', type: Boolean, defaultValue: false},
   {name : 'verb', type: Boolean, defaultValue: false},
   {name : 'log', type: Boolean, defaultValue: false},
@@ -39,7 +39,8 @@ const jamrunOptionDefinitions = [
   {name : 'local', type: Boolean, defaultValue: false},
   {name : 'valgrind', type: Boolean, defaultValue: false},
   {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
-  {name : 'resume', type: Boolean, defaultValue: false},
+  {name: 'resume', type: Boolean, defaultValue: false},
+  {name: "port", type: String, defaultValue: undefined},
 ];
 
 const jamlistOptionDefinition = [

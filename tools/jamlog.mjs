@@ -4,37 +4,21 @@ import { getLogArgs } from "./parser.mjs";
 const readline = require('readline');
 
 
-function printlog(path,tail){
-    
-    if (tail) {
+function printlogArchived(path,tail){
+    const appfolder = getAppFolder()
+    if(tail) {
         const fileName = path.split("/").pop();
 
         if (fileName.includes("j")) {
-            return new Promise((resolve) =>{
-                console.log(`\nLast ${tail} lines of J-File\n------`);
-                const myLineJ = readline.createInterface({
-                    input: fs.createReadStream(path),
-                });
-        
-                const linesJ = [];
-                myLineJ.on('line', (line) => {
-                    linesJ.push(line);
-                    if (linesJ.length > tail) {
-                        linesJ.shift();
-                    }
-                });
-                console.log("GOT HERER 2")
-           
-                myLineJ.on('close', () => {
-                    console.log(linesJ.join('\n'));
-                    resolve()
-                });
-            })
-
+            const string = (fs.readFileSync(`${path}`).toString().trim())
+            const lines = string.split('\n');
+            const lastNLines = lines.slice(-Number(tail));
+            console.log(`---\nworker number J file \n---`)
+            console.log(lastNLines.join('\n'))
             
         } else {
             return new Promise((resolve) =>{
-                console.log(`Last ${tail} lines of C-NODES`);
+                console.log(`\nLast ${tail} lines of C-NODES`);
                 const myLineC = readline.createInterface({
                     input: fs.createReadStream(path),
                 });
@@ -45,20 +29,34 @@ function printlog(path,tail){
                 myLineC.on('line', (line) => {
                     if (line.includes('worker number')) {
                         if (cNode.length !== 0) {
+                            // linesC.push("---")
                             linesC.push(header)
+                            linesC.push("---")
                             linesC.push(cNode.join("\n"));
-                            header = line;
+
                         }
+                        header = line
+
+                       
                     }
-                    cNode.push(line);
-                    if (cNode.length > tail) {
-                        cNode.shift();
-                    }
+             
+                cNode.push(line);
+                if (cNode.length > tail) {
+                    cNode.shift();
+                }
+                    
                 });
         
                 myLineC.on('close', () => {
-                        console.log(linesC.join('\n'));
-                        resolve()
+
+                    // linesC.push("---")
+                    linesC.push(header)
+                    linesC.push("---")
+                    linesC.push(cNode.join("\n"));
+                    
+                       
+                    console.log(linesC.join('\n'));
+                    resolve()
                 });
             })
 
@@ -71,6 +69,8 @@ function printlog(path,tail){
         console.log(data);
     }
 }
+
+
 
 async function main(){
     let arg;
@@ -97,46 +97,134 @@ async function main(){
     const tail = arg.tail
     const appFolder = getAppFolder()
     const path = `${appFolder}/${logFiles}/${port}`
-
-    if(port){
-
-        if(!fs.existsSync(path)){
-            console.log(`THERE IS NO LOG ON ${port} for ${logFiles.split("/")[0]}`)
-        }
-
+    if(fs.existsSync(`${appFolder}/${arg.file}`)){
         if(flag === "all"){
-            if(!fs.existsSync(`${path}/log.j`)){
-                console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+            if(!fs.existsSync(`${appFolder}/${arg.file}/log.j`)){
+                console.log("we do not have the log file for j files")
+            }
+            const string = (fs.readFileSync(`${appFolder}/${arg.file}/log.j`).toString().trim())
+            if(tail){
+                const lines = string.split('\n');
+                const lastNLines = lines.slice(-Number(tail));
+                console.log(`---\nworker number J file \n---`)
+                console.log(lastNLines.join('\n'))
             }
             else{
-                
-                await printlog(`${path}/log.j`,tail)
-                
+       
+
+                console.log(`---\nworker number J file \n---`)
+                console.log(string)
             }
-            if(!fs.existsSync(`${path}/log.c`)){
-                console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
-            }
-            else{
-                await printlog(`${path}/log.c`,tail)
-            }
-        }   
-        else if(flag === "j"){
-            if(!fs.existsSync(`${path}/log.j`)){
-                console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+
+            const cFiles = fs.readdirSync(`${appFolder}/${arg.file}`).filter((entry) => (entry.includes("log") && !entry.includes(".j")));
+            if(cFiles.length === 0 ){
+                console.log("we do not have the log files for c files")
             }
             else{
-                await printlog(`${path}/log.j`,tail)
+                for(let cFile of cFiles ){
+                    const string = fs.readFileSync(`${appFolder}/${arg.file}/${cFile}`).toString().trim()
+                    if(tail){
+                        const lines = string.split('\n');
+                        const lastNLines = lines.slice(-Number(tail));
+                        console.log(`---\nworker number ${cFile.split(".")[1]} \n---`)
+
+                        console.log(lastNLines.join('\n'))
+                    }
+                    else{
+
+                        console.log(`---\nworker number ${cFile.split(".")[1]} \n---`)
+                        console.log(string)
+                    }
+                }
             }
+
         }
-        else if(flag === "c"){
-            if(!fs.existsSync(`${path}/log.c`)){
-                console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+        else if(flag === "j"){
+            
+            if(!fs.existsSync(`${appFolder}/${arg.file}/log.j`)){
+                console.log("we do not have the log file for j files")
+            }
+            const string = (fs.readFileSync(`${appFolder}/${arg.file}/log.j`).toString().trim())
+            if(tail){
+                const lines = string.split('\n');
+                const lastNLines = lines.slice(-Number(tail));
+                console.log(`---\nworker number J file \n---`)
+                console.log(lastNLines.join('\n'))
             }
             else{
-                await printlog(`${path}/log.c`,tail)
+       
+
+                console.log(`---\nworker number J file \n---`)
+                console.log(string)
+            }
+            
+        }
+        else{
+            const cFiles = fs.readdirSync(`${appFolder}/${arg.file}`).filter((entry) => (entry.includes("log") && !entry.includes(".j")));
+            if(cFiles.length === 0 ){
+                console.log("we do not have the log files for c files")
+            }
+            else{
+                for(let cFile of cFiles ){
+                    const string = fs.readFileSync(`${appFolder}/${arg.file}/${cFile}`).toString().trim()
+                    if(tail){
+                        const lines = string.split('\n');
+                        const lastNLines = lines.slice(-Number(tail));
+                        console.log(`---\nworker number ${cFile.split(".")[1]} \n---`)
+
+                        console.log(lastNLines.join('\n'))
+                    }
+                    else{
+
+                        console.log(`---\nworker number ${cFile.split(".")[1]} \n---`)
+                        console.log(string)
+                    }
+                }
+            }
+
+        }
+    }
+    else{    
+        if(port){
+            if(!fs.existsSync(path)){
+                console.log(`THERE IS NO LOG ON ${port} for ${logFiles.split("/")[0]}`)
+            }
+
+            if(flag === "all"){
+                if(!fs.existsSync(`${path}/log.j`)){
+                    console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+                }
+                else{
+                    
+                    await printlogArchived(`${path}/log.j`,tail)
+                    
+                }
+                if(!fs.existsSync(`${path}/log.c`)){
+                    console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+                }
+                else{
+                    await printlogArchived(`${path}/log.c`,tail)
+                }
+            }   
+            else if(flag === "j"){
+                if(!fs.existsSync(`${path}/log.j`)){
+                    console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+                }
+                else{
+                    await printlogArchived(`${path}/log.j`,tail)
+                }
+            }
+            else if(flag === "c"){
+                if(!fs.existsSync(`${path}/log.c`)){
+                    console.log(`There is no log for C files on port ${port} for ${logFiles.split("/")[0]}`)
+                }
+                else{
+                    await printlogArchived(`${path}/log.c`,tail)
+                }
             }
         }
     }
+
  
 }
 

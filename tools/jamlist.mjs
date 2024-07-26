@@ -45,6 +45,7 @@ function getWatchList(){
     for(let dir of dirs.keys()){
         for(let port of dirs.get(dir)){
             watchList.push(`${appFolder}/${dir}/${port}/numCnodes`)
+            watchList.push(`${appFolder}/${dir}/${port}/paused`)
         }
     }
     return watchList
@@ -58,8 +59,8 @@ function watch(filters) {
         await $`zx jamclean.mjs`
     }, 1000);
     function updateWatchList(watchList){
-        const newWatchList = getWatchList();
 
+        const newWatchList = getWatchList();
         for(let item of newWatchList){
             if(!watchList.includes(item)){
                 watcher.add(item)
@@ -151,7 +152,7 @@ function getNodeInfo(){
             fileNames["portNum"] = String(port)
             fileNames["appName"] = appName
             fileNames["programName"] = programName
-            if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() === "true"){
+            if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
                 fileNames["status"] = "paused"
             }
             else{

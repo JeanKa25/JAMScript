@@ -1,7 +1,7 @@
 #!/usr/bin/env zx
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
-import { cleanByPortNumber } from './cleanUp.mjs';
+import { cleanByPortNumber, pauseByPortNumber } from './cleanUp.mjs';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 
@@ -34,13 +34,58 @@ ADD GIT LOG
  */
 //
 //global variables
-let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume;
+let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume, port;
 const tmuxIds = [];
 let removablePort
 
 //SETUP CLEANING
-process.on('SIGINT', () => {cleanByPortNumber(file,app,removablePort,NOVERBOSE); process.exit();});
-process.on('SIGTERM', () =>  {cleanByPortNumber(file,app,removablePort,NOVERBOSE);  process.exit();});
+process.on('SIGINT', () => {
+    if(removablePort){
+        const toPause = fs.readFileSync(`${process.cwd()}/${removablePort}/paused`).toString().trim()
+        console.log(toPause);
+        if(toPause !== "false"){
+            console.log("Cleaning")
+            pauseByPortNumber(file,app,removablePort,NOVERBOSE)
+            process.exit();
+
+        }
+        else{
+            console.log("Killing")
+            cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+            process.exit();
+        }
+    }
+    else{
+        console.log("Killing")
+        cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+        process.exit();
+    }
+});
+process.on('SIGTERM', () =>  {
+    if(removablePort){
+        const toPause = fs.readFileSync(`${process.cwd()}/${removablePort}/paused`).toString().trim()
+        console.log(toPause);
+        if(toPause !== "false"){
+            console.log("Cleaning")
+            pauseByPortNumber(file,app,removablePort,NOVERBOSE)
+            process.exit();
+
+        }
+        else{
+            console.log("Killing")
+            cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+            process.exit();
+        }
+    }
+    else{
+        console.log("Killing")
+
+        cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+        process.exit();
+    }
+    
+        
+});
 
 
 //MOVE HOME TO CONST FILE
@@ -251,6 +296,7 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
         };
         const child = spawn(command, args, options);
         child.on('exit', () => {
+            console.log("sending sig term")
             process.kill(process.pid, 'SIGTERM');
         });
     }
@@ -363,7 +409,6 @@ async function portavailable(folder,port) {
             }
 
             if(pid === "new"){
-               
                 porttaken=1;
             }
             else if(pid){
@@ -575,6 +620,7 @@ async function main(){
             tags,
             file,
             resume,
+            port
         } = jamrunParsArg(process.argv))
     }
    
@@ -589,8 +635,22 @@ async function main(){
             process.exit(1)
         }
     }
-    
 
+    if(resume){
+        if(!port){
+            console.log("can't resume the app without port number")
+        }
+        const folder = getFolder(file,app);
+        process.chdir(folder);
+        console.log(process.cwd())
+
+        
+
+    }
+    
+    else{
+        
+    }
     fileDirectorySetUp(file,app)
     const folder = getFolder(file,app)
     const ifile = path.resolve(file);

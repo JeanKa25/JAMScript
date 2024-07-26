@@ -323,12 +323,13 @@ async function clean(){
         }
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
         for(let dir of dirs){
-            const isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) === "true") ? true : false
+            const isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) !== "false") ? true : false
             if(isPaused){
                 continue;
             }
             //mosquitto not running kill 
             if(!await isMosquittoRunning(port)){
+                console.log("gotHERE")
                 await $`zx jamkill.mjs --port --name=${port}`
                 continue portLoop;
             }

@@ -96,17 +96,17 @@ function ArchiveLog(removablePort, appName, programName){
         if(!fs.existsSync(`${folder}/log/${removablePort}`,{recursive: true})){
             fs.mkdirSync(`${folder}/log/${removablePort}`,{recursive: true});
         }
-        fs.writeFileSync(`${folder}/log/${removablePort}/log.c`,"----")
-        fs.writeFileSync(`${folder}/log/${removablePort}/log.j`,"----")   
+        fs.writeFileSync(`${folder}/log/${removablePort}/log.c`,"---")
+        fs.writeFileSync(`${folder}/log/${removablePort}/log.j`,"---")   
         for(const log of logs){
             if(log.includes("j")){
                 const data = fs.readFileSync(log)
-                fs.appendFileSync(`${folder}/log/${removablePort}/\n-------------\nlog.j`, data);
+                fs.appendFileSync(`${folder}/log/${removablePort}/log.j`, data);
             }
             else{
                 const workerNumber = log.split(".")[1];
                 const data = fs.readFileSync(log)
-                fs.appendFileSync(`${folder}/log/${removablePort}/log.c`, `\n-------------\nworker number ${workerNumber}:`);
+                fs.appendFileSync(`${folder}/log/${removablePort}/log.c`, `\nworker number ${workerNumber}:\n`);
                 fs.appendFileSync(`${folder}/log/${removablePort}/log.c`, data);
 
             }
@@ -132,14 +132,16 @@ function markPause(PortNumber,appName ,programName){
     const pName = programName.split(".")[0]
     fs.writeFileSync(`${appfolder}/${pName}_${appName}/${PortNumber}/paused`, `${PortNumber}`)
 }
-export function cleanup(removablePort, tmuxIds,app,TMUX){
-    cleanPort(removablePort,app);
-    ArchiveLog(removablePort);
-    cleanAppDir(removablePort);
-    killtmux(tmuxIds,TMUX);
-}
+// export function cleanup(removablePort, tmuxIds,app,TMUX){
+//     cleanPort(removablePort,app);
+//     ArchiveLog(removablePort);
+//     cleanAppDir(removablePort);
+//     killtmux(tmuxIds,TMUX);
+// }
 
 export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
+    console.log("killing port")
+
     if(!programName || !appName || !PortNumber){
         if(!NOVERBOSE)
             console.log("NO NEED FOR CLEANING")
@@ -166,6 +168,7 @@ export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=tr
 };
 
 export function pauseByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
+    console.log("pausing port")
     if(!programName || !appName || !PortNumber){
         if(!NOVERBOSE)
             console.log("NO NEED FOR CLEANING")
