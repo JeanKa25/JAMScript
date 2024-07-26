@@ -1,5 +1,5 @@
 #!/usr/bin/env zx
-import {getJamFolder, getPaths} from './fileDirectory.mjs'
+import {getJamFolder,getAppFolder, getPaths} from './fileDirectory.mjs'
 const { spawnSync } = require('child_process');
 const p = spawnSync('which', ['tmux']);
 const TMUX = p.stdout.toString().trim()
@@ -89,22 +89,25 @@ function ArchiveLog(removablePort, appName, programName){
     if(fs.existsSync(`${folder}/${removablePort}`)){
         process.chdir(`${folder}/${removablePort}`);
         const logs = fs.readdirSync('.').filter( (entry) => entry.includes("log"))
-        if(!fs.existsSync(`${folder}/log`)){
-            fs.mkdirSync(`${folder}/log`);
+
+        if(!logs || logs.length === 0 ){
+            return
+        }     
+        if(!fs.existsSync(`${folder}/log/${removablePort}`,{recursive: true})){
+            fs.mkdirSync(`${folder}/log/${removablePort}`,{recursive: true});
         }
-        fs.writeFileSync(`${folder}/log/${removablePort}`, "logs\n-------------\n" )
-        console.log(logs)
+        fs.writeFileSync(`${folder}/log/${removablePort}/log.c`,"----")
+        fs.writeFileSync(`${folder}/log/${removablePort}/log.j`,"----")   
         for(const log of logs){
             if(log.includes("j")){
                 const data = fs.readFileSync(log)
-                fs.appendFileSync(`${folder}/log/${removablePort}`, `:\n-------------\n J Log:\n-------------\n`);
-                fs.appendFileSync(`${folder}/log/${removablePort}`, data);
+                fs.appendFileSync(`${folder}/log/${removablePort}/\n-------------\nlog.j`, data);
             }
             else{
                 const workerNumber = log.split(".")[1];
                 const data = fs.readFileSync(log)
-                fs.appendFileSync(`${folder}/log/${removablePort}`, `\n-------------\n woker number ${workerNumber} Log:\n-------------\n`);
-                fs.appendFileSync(`${folder}/log/${removablePort}`, data);
+                fs.appendFileSync(`${folder}/log/${removablePort}/log.c`, `\n-------------\nworker number ${workerNumber}:`);
+                fs.appendFileSync(`${folder}/log/${removablePort}/log.c`, data);
 
             }
         }
@@ -124,6 +127,11 @@ function cleanAppDir(removablePort,appName, programName){
     return false;
 }
 
+function markPause(PortNumber,appName ,programName){
+    const appfolder = getAppFolder()
+    const pName = programName.split(".")[0]
+    fs.writeFileSync(`${appfolder}/${pName}_${appName}/${PortNumber}/paused`, `${PortNumber}`)
+}
 export function cleanup(removablePort, tmuxIds,app,TMUX){
     cleanPort(removablePort,app);
     ArchiveLog(removablePort);
@@ -155,4 +163,17 @@ export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=tr
     if(!NOVERBOSE && isDirCleaned ){
         console.log(`port ${PortNumber} is cleaned for ${programName.split(".")[0]}_${appName}`)
     }
+};
+
+export function pauseByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
+    if(!programName || !appName || !PortNumber){
+        if(!NOVERBOSE)
+            console.log("NO NEED FOR CLEANING")
+        return;
+    }
+    const tmuxIds = killtmux(PortNumber,appName ,programName);
+    if(!NOVERBOSE &&  tmuxIds)
+        console.log("Killed :", tmuxIds)
+    markPause(PortNumber,appName ,programName)
+
 };

@@ -151,6 +151,13 @@ function getNodeInfo(){
             fileNames["portNum"] = String(port)
             fileNames["appName"] = appName
             fileNames["programName"] = programName
+            if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() === "true"){
+                fileNames["status"] = "paused"
+            }
+            else{
+                fileNames["status"] = "running"
+                
+            }
 
             nodeInfo.push(fileNames)
         }
@@ -163,14 +170,14 @@ function printNodeInfo(info){
    
     for (let row of info){
      
-        const headerString = `   ${row["appName"].padEnd(15)} ${row["programName"].padEnd(15)} ${("Local:"+row["portNum"]).padEnd(15)} ${row["parentId"].padEnd(15)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(15)} ${row["numCnodes"].padEnd(15)} ${row["tmuxid"].padEnd(15)}`;
+        const headerString = `   ${row["appName"].padEnd(10)} ${row["programName"].padEnd(10)} ${("Local:"+row["portNum"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)}`;
         console.log(headerString)
     }
 }
 
 
 function printHeader(){
-    const headerString = `   ${"NAME".padEnd(15)} ${"PROGRAM".padEnd(15)} ${"HOST".padEnd(15)} ${"PARENT".padEnd(15)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(15)} ${"C-NODES".padEnd(15)} ${"TMUX-ID".padEnd(15)}`;
+    const headerString = `   ${"NAME".padEnd(10)} ${"PROGRAM".padEnd(10)} ${"HOST".padEnd(10)} ${"PARENT".padEnd(10)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(10)} ${"C-NODES".padEnd(10)} ${"TMUX-ID".padEnd(10)} ${"STATUS".padEnd(10)}`;
     console.log(headerString)
 }
 

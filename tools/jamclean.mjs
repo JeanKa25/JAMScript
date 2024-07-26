@@ -227,7 +227,7 @@ async function isCfileRunning(Dir,port,num){
     const workerNum = num;
     const appFolder = getAppFolder()
     const cdevID = `${appFolder}/${myAppDir}/${portNum}/cdevProcessId.${workerNum}`
-    //make sure j file is getting the time to write to filedirectory
+
     if(!fs.existsSync(`${cdevID}`)){
         return false;
     }
@@ -323,6 +323,10 @@ async function clean(){
         }
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
         for(let dir of dirs){
+            const isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) === "true") ? true : false
+            if(isPaused){
+                continue;
+            }
             //mosquitto not running kill 
             if(!await isMosquittoRunning(port)){
                 await $`zx jamkill.mjs --port --name=${port}`

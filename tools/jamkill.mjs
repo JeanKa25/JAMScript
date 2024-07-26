@@ -1,7 +1,7 @@
 #!/usr/bin/env zx
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import {getKilltArgs} from "./parser.mjs"
-import { cleanByPortNumber } from "./cleanUp.mjs";
+import { cleanByPortNumber , pauseByPortNumber} from "./cleanUp.mjs";
 
 /*
     IMPORTANT: fix it for the default name such as app_n
@@ -209,7 +209,12 @@ async function killProcess(data){
     await killJFile(data);
 }
 
-async function jamKill(flag, name)
+async function pauseProcess(data){
+    await killJamRun(data);
+    await killJFile(data);
+}
+
+async function jamKill(flag, name, pause)
 {   
     console.log("KILLING PROCESS STARTING")
     let jamData;
@@ -245,16 +250,30 @@ async function jamKill(flag, name)
         }
         
     }
-    for(let data of jamData){
-        console.log(data)
-        const appName = data.appName;
-        const programName = data.programName
-        const portNumber = data.portNumber
-        console.log("got here1")
-        await killProcess(data);
-        console.log("got here2")
-        cleanByPortNumber(programName,appName,portNumber)
+    console.log(pause)
+    if(pause){
+        for(let data of jamData){
+            console.log(data)
+            const appName = data.appName;
+            const programName = data.programName
+            const portNumber = data.portNumber
+            pauseByPortNumber(programName,appName,portNumber)
+            await pauseProcess(data);
+            
+
+        }
     }
+    else{
+        for(let data of jamData){
+            console.log(data)
+            const appName = data.appName;
+            const programName = data.programName
+            const portNumber = data.portNumber
+            await killProcess(data);
+            cleanByPortNumber(programName,appName,portNumber)
+        }
+    }
+
 
 }
 
@@ -318,7 +337,7 @@ async function main(){
     throw new Error('.jamruns/apps folder missing. JAMScript tools not setup?')
   }
   else{
-    await jamKill(args.flag , args.name);
+    await jamKill(args.flag , args.name, args.pause);
   }
   
 }

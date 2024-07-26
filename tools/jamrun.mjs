@@ -182,6 +182,7 @@ async function dojamout_p1(pnum ,floc) {
         fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
     }
     fs.writeFileSync(`${floc}/${pnum}/class`, "process\n");
+    fs.writeFileSync(`${floc}/${pnum}/paused`, "false\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
     if(Type === "device"){
@@ -218,18 +219,42 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
     let jargs = getJargs(argObject)
     const command = 'node';
     const args = ['jstart.js', ...jargs];
-    const options = {
-        cwd: floc,
-        stdio: 'inherit'
-    };
+
     if(resume){
         console.log("############## RESUME ##############")
     }
+    if(log){
+        const options = {
+            cwd: floc,
+            stdio: ['pipe', 'pipe', 'pipe']
+        };
+        const stream = fs.createWriteStream(`${floc}/${pnum}/log.j`, { flags: 'a' });
+        const child = spawn(command, args, options);
+        child.stdout.on('data', (data) => {
+            process.stdout.write(data);
+            stream.write(data);
+        });
 
-    const child = spawn(command, args, options);
-    child.on('exit', () => {
-        process.kill(process.pid, 'SIGTERM');
-    });
+        child.stderr.on('data', (data) => {
+            process.stderr.write(data);
+            stream.write(data);
+        });
+
+        child.on('exit', () => {
+            process.kill(process.pid, 'SIGTERM');
+        });
+
+    }else{
+        const options = {
+            cwd: floc,
+            stdio: 'inherit'
+        };
+        const child = spawn(command, args, options);
+        child.on('exit', () => {
+            process.kill(process.pid, 'SIGTERM');
+        });
+    }
+
 }
 
 
@@ -417,7 +442,7 @@ async function waitforredis(port){
 //tested, works
 async function setupredis(port) {
 
-    
+    //QUESTION: how would it work if multiple apps are using the same reddis? how would the flush work. how any of this work?
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`

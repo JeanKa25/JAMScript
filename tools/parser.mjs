@@ -63,12 +63,22 @@ const jamkillOptionDefinition = [
     {name : 'dir', type: Boolean , defaultValue: false },
     {name : 'port', type: Boolean , defaultValue: false },
     {name: "portDir", type: Boolean, defaultValue: false },
-    {name : 'name', alias : "n" , type: String , defaultValue: false },
+    {name: "pause", type: Boolean, defaultValue: false },
+    {name : 'name', alias : "n" , type: String , defaultValue: undefined },
 
 ];
-const jamcleanOptionDefinition = [
+const jamclogOptionDefinition = [
     {name : "help", alias : "h", type: Boolean, defaultValue : false },
-    {name : "reset", alias: "r", type: Boolean, defaultValue : false }
+    {name : "program", type: String, defaultValue : undefined },
+    {name : "app", type: String, defaultValue : undefined },
+    {name: "port", type:String, defaultValue: undefined},
+    {name : "j", alias: "j", type: Boolean, defaultValue : false },
+    {name : "c", alias: "c", type: Boolean, defaultValue : false },
+    {name : "tail", alias: "t", type: Number, defaultValue : undefined },
+
+
+
+
 
 ];
 
@@ -327,29 +337,50 @@ export function getKilltArgs(argv){
         flag = "program";
     }
 
-    return {"flag": flag, "name" : options.name}
+    return {"flag": flag, "name" : options.name, "pause": options.pause}
     
 }
 
-// export function getcleanArgs(argv){
-//     const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs') && !entry.includes('jamlist.mjs')))
-//     let options
+export function getLogArgs(argv){
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlog.mjs') ))
+    let options
+    let file;
+    let flag;
+    try{
+        options = commandLineArgs(jamclogOptionDefinition, {argv: args});
+        
+    }
+    catch(error){
+        console.log(error)
+    }
 
-//     try{
-//         options = commandLineArgs(jamcleanOptionDefinition, {argv: args});
-//     }
-//     catch(error){
-//     }
 
+    if(options === undefined || options.help){
+        const error = new Error("SHOW USAGE")
+        error.type = "ShowUsage"
+        throw error;
+    }
 
-//     if(options === undefined || options.help){
-//         const error = new Error("SHOW USAGE")
-//         error.type = "ShowUsage"
-//         throw error;
-//     }
-//     return "reset"
+    else if(!options.program || !options.app || !options.port){
+        throw new Error("Missing programName or appName or port")
+    }
+    else if(options.port && options.app && options.program){
+        file =  `${options.program}_${options.app}/${options.port}`
+    }
+    else{
+        file = `${options.program}_${options.app}`
+    }
+
+    if((options.j && options.c) || (!options.c && !options.j)){
+        flag = "all"
+    }
+    else{
+        flag = (options.j)? "j" : "c"
+    }
+    return {file : file , flag : flag, tail : options.tail}
+
      
-// }
+}
 
 
 
