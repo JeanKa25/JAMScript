@@ -255,13 +255,24 @@ async function jamKill(flag, name, pause)
         console.log("Pausing from jam kill")
         for(let data of jamData){
             console.log(data)
+            let appfolder = getAppFolder()
             const appName = data.appName;
             const programName = data.programName
             const portNumber = data.portNumber
+            if(
+                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/machType`)) ||
+                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/numCnodes`)) ||
+                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/mqtt.conf`)) ||
+                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/dataStore`)) ||
+                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/processId`))
+            ){
+                console.log("CAN'T PAUSE",`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}. TRY LATER` )
+            }
+            if(fs.readFileSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/processId`).toString().trim() === "new"){
+                console.log("CAN'T PAUSE",`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}. TRY LATER` )
+            }
             pauseByPortNumber(programName,appName,portNumber)
             await pauseProcess(data);
-            
-
         }
     }
     else{

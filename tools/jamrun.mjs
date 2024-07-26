@@ -2,12 +2,13 @@
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
 import { cleanByPortNumber, pauseByPortNumber } from './cleanUp.mjs';
-import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder} from './fileDirectory.mjs'
+import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder, getFileNoext} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 
 /***\
  * ///MAIN SCRIPT AND MY SCRIPT HAS A DEFAULT VALUE WHICH IS 127.0.0.1:6379. WHy? shouldn't it be undefinced?
  * ///DOES NOT CONNECT TO THE MAIN CLOSEST ONE
+ * //CONNECTING TO THE SAME REDIS CAN CAUSE MULTIPLE PROBLEMS(THE INTERACT WITH EACHOTHERS IN A WEIRD WAY)
  * QUESTION:
  * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it? (don't use others mqtt)
  * 2----> logging system needs improvementm
@@ -394,45 +395,31 @@ async function doaout(num,port,group,datap,myf,jappid){
 
 //tested. working
 async function portavailable(folder,port) {
-    let pid;
     let porttaken;
     const jamFolder = getJamFolder()
     if(fs.existsSync(`${folder}/${port}`)){
-
-        if(fs.existsSync(`${folder}/${port}/processId`)){
-    
-            try{
-                pid = Number(fs.readFileSync(`${folder}/${port}/processId`).toString().trim())
-            }
-            catch(error){
-                pid = null;
-            }
-
-            if(pid === "new"){
-                porttaken=1;
-            }
-            else if(pid){
-
-                const p = await $`ps -o pid= -p ${pid} | wc -l | tr -d '[:space:]'`.nothrow()
-                porttaken = Number(p.stdout.toString().trim())
-            }
-            else{
-                porttaken=0;
-            }
-        }
-        else{
-            porttaken=0;
-        }
+        porttaken=1
     }
-
     else{
         porttaken=0;
     }
 
     if(porttaken === 0){
-        if(!fs.existsSync(`${jamFolder}/ports`)){
+        if(!fs.existsSync(`${jamFolder}/ports/${port}`)){
             const p = await $`netstat -lan -p tcp -f inet | grep ${port} | wc -l`.nothrow().quiet()
+            console.log(Number(p.stdout.trim()))
             porttaken = Number(p.stdout.trim()) === 0 ? 0 : 1;
+
+        }
+        else{
+            const runningApps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split();
+            const fileNoExt = getFileNoext(file)
+            if(runningApps.includes(`${fileNoExt}_${app}`)){
+                porttaken = 1;
+            }
+            else{
+                porttaken = 0;
+            }
         }
     }
     return porttaken;
@@ -491,6 +478,7 @@ async function setupredis(port) {
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
+    //IMPORTANT: flushing redis
     if(!resume){
         await $`redis-cli -p ${port} FLUSHALL`;
     }
@@ -635,68 +623,124 @@ async function main(){
             process.exit(1)
         }
     }
-
+    let folder;
+    let ifile;
+    let jdata;
     if(resume){
+        const fileNoExt = getFileNoext(file)
         if(!port){
             console.log("can't resume the app without port number")
+            process.exit(1)
+
         }
-        const folder = getFolder(file,app);
+        folder = getFolder(file,app);
+        if(!fs.existsSync(folder)){
+            console.log("NO PAUSED INSTANCE OF", `${fileNoExt}_${app}` )
+            process.exit(1)
+
+        }
+        if(!fs.existsSync(`${folder}/${port}`) || !fs.existsSync(`${folder}/${port}/paused`)){
+            console.log("NO PAUSED INSTANCE OF", `${fileNoExt}_${app} on port: ${port}` )
+            process.exit(1)
+        }
+        else{
+            const isPaused = (fs.readFileSync(`${folder}/${port}/paused`).toString().trim()) === "false" ? false : true;
+            if(!isPaused){
+                console.log("NO PAUSED INSTANCE OF", `${fileNoExt}_${app} on port: ${port}` )
+                process.exit(1)
+            }
+
+        }
+        if(num, data, Type){
+            console.log("IN CASE OF RESUMING, WILL NOT USE ANY OF NUM, DATA, TYPE ARGUMENTS.")
+        }
+
+        // num = fs.readFileSync(`${folder}/${port}/numCnodes`).toString().trim();
+        Type = fs.readFileSync(`${folder}/${port}/machType`).toString().trim();
+        // data = fs.readFileSync(`${folder}/${port}/dataStore`).toString().trim();
+        // process.chdir(folder);
+        // iport = port;
         process.chdir(folder);
-        console.log(process.cwd())
-
-        
-
+        isValidExecutable();
+        jdata = await getjdata(folder);
     }
-    
     else{
-        
+        if(port){
+            console.log("Warning. If it's not to resume the port argument will not be used")
+        }
+        fileDirectorySetUp(file,app)
+        folder = getFolder(file,app)
+        ifile = path.resolve(file);
+        process.chdir(folder);
+        await unpack(ifile, folder)
+        isValidExecutable()
+        jdata = await getjdata(folder);
     }
-    fileDirectorySetUp(file,app)
-    const folder = getFolder(file,app)
-    const ifile = path.resolve(file);
-    process.chdir(folder);
-    await unpack(ifile, folder)
-    isValidExecutable()
-    const jdata = await getjdata(folder);
+
     let isDevice;
+
     switch(Type){
         case "cloud":
-            iport=9883
-            isDevice = false;
-            while(true){
-                const porttaken = Number(await portavailable(folder ,iport))
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
+            if(resume){
+                iport = port;
+                removablePort = port;
+                isDevice = false;
             }
-            removablePort = iport;
+            else{
+                iport=9883
+                isDevice = false;
+
+                while(true){
+                    const porttaken = Number(await portavailable(folder ,iport))
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                removablePort = iport;
+            }
             break;
             
         case "fog":
-            iport=5883
-            isDevice = false
-            while(true){
-                const porttaken = Number(await portavailable(folder ,iport))
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
+            if(resume){
+                iport = port;
+                removablePort = port;
+                isDevice = false;
             }
-            removablePort = iport;
+            else{
+                iport=5883
+                isDevice = false
+                while(true){
+
+                    const porttaken = Number(await portavailable(folder ,iport))
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                removablePort = iport;
+            }
+
             break;
 
         case "device":
-            iport=1883;
-            isDevice = true;
-            while(true){
-                const porttaken = Number(await portavailable(folder ,iport))
-                if(porttaken !== 1){
-                    break;
-                }
-                iport++;
+            if(resume){
+                iport = port;
+                removablePort = port;
+                isDevice = true;
             }
-            removablePort = iport;
+            else{
+                iport=1883;
+                isDevice = true;
+                while(true){
+                    const porttaken = Number(await portavailable(folder ,iport))
+                    if(porttaken !== 1){
+                        break;
+                    }
+                    iport++;
+                }
+                removablePort = iport;
+            }
             if(!local){
                 group= iport-1882
             }
@@ -719,7 +763,9 @@ async function main(){
         
     else
         await runNoneDevice(iport)
-}
+    }
+
+    
 await $`zx jamclean.mjs`
 await main()
 

@@ -193,9 +193,10 @@ async function isJfileRunning(dir,portNum){
     if(!fs.existsSync(`${processId}`)){
         return false;
     }
-    const pid = fs.readFileSync(`${processId}`).toString().trim();
-
-    
+    let pid = fs.readFileSync(`${processId}`).toString().trim();
+    if(pid === "new"){
+        return false;
+    }
     let running;
     try{
         const p = await $`ps -p ${pid} | grep node | wc -l | tr -d '[:space:]'`

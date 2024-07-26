@@ -40,7 +40,7 @@ const jamrunOptionDefinitions = [
   {name : 'valgrind', type: Boolean, defaultValue: false},
   {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
   {name: 'resume', type: Boolean, defaultValue: false},
-  {name: "port", type: String, defaultValue: undefined},
+  {name: "port", type: Number, defaultValue: undefined},
 ];
 
 const jamlistOptionDefinition = [
