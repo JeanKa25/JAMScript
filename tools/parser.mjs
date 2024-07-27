@@ -26,7 +26,6 @@ const jamrunOptionDefinitions = [
   {name : 'num', type: Number , defaultValue: 1},
   {name : 'loc', type: String , defaultValue: `${long},${lat}`},
   {name : 'edge', type: Number , defaultValue: 1},
-//   {name : 'data', type: String , defaultValue: "127.0.0.1:6379"},
   {name : 'data', type: String , defaultValue: undefined},
   {name : 'fog', type: Boolean, defaultValue: false},
   {name : 'cloud', type: Boolean, defaultValue: false},

@@ -1,7 +1,7 @@
 #!/usr/bin/env zx
 /**
 
- * //DISCUSS PASUING AND THE INFO WE NEED HERE +++++ TAKE CARE OF THE DEFAULT APP NAME 
+ * //DISCUSS PASUING AND THE INFO WE NEED HERE +++++ 
 
  */
 import { getJamListArgs } from "./parser.mjs";
@@ -210,11 +210,17 @@ async function main(){
        
         if(error.type = "ShowUsage"){
             console.log(
-                `
-        Usage: jamlist [--app=appl_name]
+                /**
 
-        Lists details about all activated instances of JAMScript programs. Use the --app=X
-        option to limit the listing to programs that match the given name (i.e., X).
+                 */
+                
+                `
+                Usage: jamlist [--app=appl_name]
+                [help] to show the Usage.
+                [monitor] use this flag to turnn on the monitoring mode
+                [type=<type> | dataStore=<dataStore> | tmuxid=<tmux> | portNum=<portNum> | appName=<appName> | programName=<programName> ] 
+                the flags abouve are used for filtering the jamlist 
+     
                 `
                 
             )

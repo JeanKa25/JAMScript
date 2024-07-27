@@ -3,10 +3,7 @@ import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import {getKilltArgs} from "./parser.mjs"
 import { cleanByPortNumber , pauseByPortNumber} from "./cleanUp.mjs";
 
-/*
-    IMPORTANT: fix it for the default name such as app_n
-    Important
-*/
+
 export function getRunningDirs(){
     const jamFolder = getJamFolder()
     const appToPort = new Map()
@@ -317,6 +314,18 @@ async function main(){
     console.log(error)
     if(error.type === "ShowUsage"){
         console.log(
+    /**
+     {name : "help", alias : "h", type: Boolean, defaultValue : false },
+    {name : 'all', type: Boolean , defaultValue: false },
+    {name : 'reset', type: Boolean , defaultValue: false },
+    {name : 'app', type: Boolean , defaultValue: false },
+    {name : 'program', type: Boolean , defaultValue: false },
+    {name : 'dir', type: Boolean , defaultValue: false },
+    {name : 'port', type: Boolean , defaultValue: false },
+    {name: "portDir", type: Boolean, defaultValue: false },
+    {name: "pause", type: Boolean, defaultValue: false },
+    {name : 'name', alias : "n" , type: String , defaultValue: undefined },
+     */
     `
     Kill running instances of the application.
 
@@ -331,8 +340,12 @@ async function main(){
     jamkill --all
     kills all running instances
 
-    jamkill app_id
-    kills all running instances that were started under app-id
+    [--name && (--app=<appName> || --program=<jt2>(without ext)|| --dir=<jt2_shahin> || --port=<portNum> || --portDir<jt2_shahin/1883>)] 
+    the --name is used to set the name and the other flags are used to mention what the name associates to
+
+    [--pause] is used to pause the running program 
+
+    [--reset] is the hard reset. it closes all the running nodes, mosquito,tmux,reddis and remove all the directories including ports and apps
 
     `
         )

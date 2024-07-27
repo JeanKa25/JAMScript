@@ -4,27 +4,20 @@ import { fileURLToPath } from 'url';
 import { cleanByPortNumber, pauseByPortNumber } from './cleanUp.mjs';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder, getFileNoext} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
+import { Client } from 'ssh2';
 
 /***\
- * ///MAIN SCRIPT AND MY SCRIPT HAS A DEFAULT VALUE WHICH IS 127.0.0.1:6379. WHy? shouldn't it be undefinced?
- * ///DOES NOT CONNECT TO THE MAIN CLOSEST ONE
+//REMOVE PARENT ID
+ * ///DOES NOT CONNECT TO THE MAIN CLOSEST ONE(LET IT BE AS IS)
  * //CONNECTING TO THE SAME REDIS CAN CAUSE MULTIPLE PROBLEMS(THE INTERACT WITH EACHOTHERS IN A WEIRD WAY)
  * QUESTION:
- * 1----> WHEN TO KILL MQTT? WHY and who and how to kill it? (don't use others mqtt)
- * 2----> logging system needs improvementm
- * 3----> same name can't connect to reddis(two instances of shahin12 running as device is going to be problamatic)
- * 5---->.jamruns/ports/port# : ls ->>>apps using port number
- * 6---->keep track of num of workers
- * 7---->log directory
- * 8---> don't like the idea of using other mqtt servers, what if the one that started them closes them?''''''''''''''av    
+ 
  * 9 ----> app             appid          program         tmuxid we do not need
- * 10 ---> do not use mqtt of another file
- * 11 ---> kill reddiss on cleaning
- * DONOT FORGET TO: discuss about the temp broker topic. with the new ports dir we don't necessarily need the temp_broker no more cuz that would not make the decison of when to remove and when not to.
+
  * NOTES
     TOCHANGE: 
-              categtorize the log files.
-              remove portDir on kill.
+             
+              
 
  
    
@@ -166,11 +159,13 @@ function show_usage(){
     
     Use --local to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.
     
-    Use --resume to avoid reseting the reddis and resume the ongoing task
+    Use --resume to resume the paused program. Using resume will dissable [--old | --data | --num | --fog|--cloud|--device ] flags
+
+    Use --port only with --resume (it's gonna be dissabled if --resume flag is is not on.) to resume the program on the program on the right port.
 
     Usage: jamrun file.jxe
                     [--app=appl_name]
-                    [--fog|--cloud]
+                    [--fog|--cloud|--device]
                     [--num=num_c_devs]
                     [--data=data-url]
                     [--tags=quoted_list_of_tags]
@@ -183,6 +178,8 @@ function show_usage(){
                     [--valgrind]
                     [--local]
                     [--resume]
+                    
+
     
     The jamrun command creates a run state in the $HOME/.jamruns folder.
     `;
@@ -448,12 +445,8 @@ async function startredis(port) {
 async function waitforredis(port){
     while (true) {
         try{
-
             const p = await $`redis-cli -p ${port} -c PING`.quiet()
-
-
             if (p.stdout.trim() === "PONG") {
-                
                 break;
             }
         }
@@ -479,6 +472,9 @@ async function setupredis(port) {
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`
     //IMPORTANT: flushing redis
+    //USE FLUSH DB TO ONLY FLUSH THE CURRENT DB FOR THE APP
+    //DB NUMBER
+    //FOR NOW KEEP AS IT IS
     if(!resume){
         await $`redis-cli -p ${port} FLUSHALL`;
     }
