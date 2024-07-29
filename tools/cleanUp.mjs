@@ -39,6 +39,8 @@ function stalePort(removablePort,app,programName){
    
     const appNames = fs.readFileSync(`${jamfolder}/ports/${removablePort}`).toString().trim().split("\n");
     const dirName = (programName.split(".")[0])+"_"+app
+    console.log(dirName, "DIR NAME")
+    console.log("PROGRAM NAME", programName)
     if(appNames.includes(dirName)){
         if(appNames.length === 1){
             fs.rmSync(`${jamfolder}/ports/${removablePort}`, { recursive: true, force: true });

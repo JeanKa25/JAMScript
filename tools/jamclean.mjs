@@ -2,6 +2,8 @@
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 const { spawnSync } = require('child_process');
 import { cleanByPortNumber } from "./cleanUp.mjs";
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 ////////////////// //////// /////// //////// ////// ////// ///
 /////////////what should we do when we see new? linger there? wait/force. what to do exactly?. it is for broken apps.MAKE THE JT@ FILES BREAK.
 ///////Shopuld we check of reddis is running or not like we do for mqtt, JFile, Cfiles
@@ -119,6 +121,12 @@ import { cleanByPortNumber } from "./cleanUp.mjs";
 // }
 
 //////////////////////////////////////////////////////////////////////////
+
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename);
+const jamcKillPath = resolve(__dirname, 'jamkill.mjs');
+
 const p = spawnSync('which', ['mosquitto_pub']);
 const MOSQUITTO_PUB = p.stdout.toString().trim()
 
@@ -323,7 +331,10 @@ async function clean(){
             continue;
         }
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
+        console.log(dirs)
         for(let dir of dirs){
+            console.log(fs.readFileSync(`${appFolder}/${dir}/${port}/paused`), "THIS IS FROM JAMCLEAN")
+
             const isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) !== "false") ? true : false
             if(isPaused){
                 continue;
@@ -331,7 +342,7 @@ async function clean(){
             //mosquitto not running kill 
             if(!await isMosquittoRunning(port)){
                 console.log("gotHERE")
-                await $`zx jamkill.mjs --port --name=${port}`
+                await $`zx ${jamcKillPath} --port --name=${port}`
                 continue portLoop;
             }
             //jFile is not running. to remove fromport list

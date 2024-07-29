@@ -6,11 +6,17 @@
  */
 import { getJamListArgs } from "./parser.mjs";
 import {getAppFolder,getJamFolder} from "./fileDirectory.mjs"
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 const { debounce } = require('lodash');
 const chokidar = require('chokidar');
 const jamFolder = getJamFolder()
 let lastInfo;
 let watcher;
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename);
+const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
+
 
 
 
@@ -56,7 +62,7 @@ function getWatchList(){
 
 function watch(filters) {
     setInterval(async () => {
-        await $`zx jamclean.mjs`
+        await $`zx ${jamcleanPath}`
     }, 1000);
     function updateWatchList(watchList){
 
@@ -245,7 +251,7 @@ async function main(){
 
 
     else if(!filters || filters === "all" || Object.keys(filter) === 0){
-        await $`zx jamclean.mjs`
+        await $`zx ${jamcleanPath}`
         const info = getNodeInfo();
         lastInfo = info;
         if(info.length === 0 ){
@@ -260,7 +266,7 @@ async function main(){
     }
 
     else{
-        await $`zx jamclean.mjs`
+        await $`zx ${jamcleanPath}`
         const nodeinfo = getNodeInfo()
         const filtered = filter(nodeinfo, filters)
         lastInfo = filtered;

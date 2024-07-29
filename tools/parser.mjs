@@ -205,7 +205,7 @@ export function jamrunParsArg(argv){
     }
     const varsObject = SetJamrunVar(options);
     varsObject["file"] = file;
-   
+    console.log(varsObject)
     return varsObject;
 }
 //ASK wHAT VARIABLES ARE OPTIONAL
@@ -221,7 +221,7 @@ export function getCargs(argObject){
             args=args+` ${key} ${argObject[key]}`
         }
     }
-  
+    
     return args;
 }
 export function getJargs(argObject){

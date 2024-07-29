@@ -2,6 +2,7 @@
 import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
 import { fileURLToPath } from 'url';
 import { cleanByPortNumber, pauseByPortNumber } from './cleanUp.mjs';
+import { dirname, resolve } from 'path';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder, getFileNoext} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 import { Client } from 'ssh2';
@@ -35,23 +36,29 @@ let removablePort
 //SETUP CLEANING
 process.on('SIGINT', () => {
     if(removablePort){
+
         const toPause = fs.readFileSync(`${process.cwd()}/${removablePort}/paused`).toString().trim()
         console.log(toPause);
         if(toPause !== "false"){
             console.log("Cleaning")
-            pauseByPortNumber(file,app,removablePort,NOVERBOSE)
+            const fileNoext = getFileNoext(file);
+            pauseByPortNumber(`${fileNoext}.jxe`,app,removablePort,NOVERBOSE)
             process.exit();
 
         }
         else{
             console.log("Killing")
-            cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+            console.log(file)
+            const fileNoext = getFileNoext(file);
+            cleanByPortNumber(`${fileNoext}.jxe`,app,removablePort,NOVERBOSE); 
             process.exit();
         }
     }
     else{
         console.log("Killing")
-        cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+        console.log(file)
+        const fileNoext = getFileNoext(file);
+        cleanByPortNumber(`${fileNoext}.jxe`,app,removablePort,NOVERBOSE); 
         process.exit();
     }
 });
@@ -61,20 +68,22 @@ process.on('SIGTERM', () =>  {
         console.log(toPause);
         if(toPause !== "false"){
             console.log("Cleaning")
-            pauseByPortNumber(file,app,removablePort,NOVERBOSE)
+            const fileNoext = getFileNoext(file);
+            pauseByPortNumber(`${fileNoext}.jxe`,app,removablePort,NOVERBOSE)
             process.exit();
 
         }
         else{
             console.log("Killing")
-            cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+            const fileNoext = getFileNoext(file);
+            cleanByPortNumber(`${fileNoext}.jxe`,app,removablePort,NOVERBOSE); 
             process.exit();
         }
     }
     else{
         console.log("Killing")
-
-        cleanByPortNumber(file,app,removablePort,NOVERBOSE); 
+        const fileNoext = getFileNoext(file);
+        cleanByPortNumber(`${fileNoext}.jxe`,app,removablePort,NOVERBOSE); 
         process.exit();
     }
     
@@ -761,7 +770,10 @@ async function main(){
         await runNoneDevice(iport)
     }
 
-    
-await $`zx jamclean.mjs`
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename);
+const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
+console.log(jamcleanPath)
+await $`zx ${jamcleanPath}`
 await main()
 
