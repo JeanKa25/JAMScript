@@ -8,6 +8,8 @@ function you(str) {
 while (1) {
     await jsys.sleep(1000);
     console.log("                             hello.. main loop ");
-    you("hello..");
+
+    if (jsys.type == "device")
+	you("hello..");
 }
 

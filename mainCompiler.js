@@ -210,7 +210,7 @@ function nativeCompile(code, cargs, userIncludes, userLinkerFlags) {
         fs.writeFileSync(`${tmpDir}/jamout.c`, code);
 
         try {
-            var command = `clang -g ${tmpDir}/jamout.c -o ${tmpDir}/a.out -I/usr/local/include -I${homeDir}/.jamruns/clib/include -I${homeDir}/.jamruns/clib/src ${options} -pthread -ltinycbor -lmosquitto -lhiredis -levent ${userLinkerFlags.join(" ")} ${homeDir}/.jamruns/clib/libjam.a  ${homeDir}/.jamruns/jamhome/deps/mujs2/build/release/libmujs.a -L/usr/local/lib ${includes}`;
+            var command = `clang -g ${tmpDir}/jamout.c -o ${tmpDir}/a.out -I/usr/local/include -I${homeDir}/.jamruns/clib/include -I${homeDir}/.jamruns/clib/src ${options} -pthread -ltinycbor -lmosquitto -lhiredis -levent ${userLinkerFlags.join(" ")} ${homeDir}/.jamruns/clib/libjam.a  ${homeDir}/.jamruns/jamhome/deps/mujs2/build/release/libmujs.a ${homeDir}/.jamruns/jamhome/deps/tinycbor/lib/libtinycbor.a ${includes}`;
 
             if (args.verbosity) console.log("[C] Compiling code...");
             if (cargs.verbosity == 2) {

@@ -1,36 +1,71 @@
 FROM ubuntu
+
+RUN apt update && apt install -y openssh-server
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+
 RUN apt-get update && apt-get install -y --no-install-recommends apt-utils && \
         apt-get install -y -q wget \
         build-essential \
-        python \
+        python3 \
         unzip \
         libbsd-dev \
         git \
         sudo \
         vim \
         curl \
-        libssl-dev \
-        cmake \
+        make \
+        clang \
         iproute2 \
         net-tools \
-        iputils-ping \
+        unzip \
+        iputils-ping 
+
+RUN apt-get install -y -q mosquitto \
+        mosquitto-clients \
+        libmosquitto-dev 
+
+RUN apt-get install -y -q redis-server \
+        redis-tools \
+        libhiredis-dev 
+
+RUN apt-get install -y -q libevent-dev \
+        tmux \
         inotify-tools
 
 RUN useradd -m admin && echo "admin:admin" | chpasswd && adduser admin sudo
 RUN echo "admin ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 USER admin
 WORKDIR /home/admin
-RUN wget https://deb.nodesource.com/setup_13.x && chmod +x ./setup_13.x && echo admin | sudo -S ./setup_13.x && \
+RUN wget https://deb.nodesource.com/setup_20.x && chmod +x ./setup_20.x && echo admin | sudo -S ./setup_20.x && \
         sudo apt-get install -y -q nodejs
 
 RUN git clone https://github.com/citelab/JAMScript 
 
-RUN mkdir ~/.npm-global && npm config set prefix '~/.npm-global'
+WORKDIR /home/admin/JAMScript/deps
+RUN git clone https://github.com/intel/tinycbor
+WORKDIR /home/admin/JAMScript/deps/tinycbor
+RUN make 
+RUN sudo make install 
+
+WORKDIR /home/admin/JAMScript/deps/mujs2
+RUN make
+RUN sudo make install
 
 WORKDIR /home/admin/JAMScript
-RUN npm run link
-ENV PATH="/home/admin/.npm-global/bin:$PATH"
-RUN mkdir /home/admin/temp
-WORKDIR /home/admin/temp
+RUN npm install 
 
-CMD sudo chmod -R a+Xr /etc/avahi && sudo sed -i "s|rlimit-nproc=3|#rlimit-nproc=3 |g" /etc/avahi/avahi-daemon.conf && sudo chmod -R a+Xr /var/run && cd /var/run/ && sudo rm -rf dbus && sudo mkdir dbus && sudo dbus-daemon --system &&  sudo avahi-daemon
+WORKDIR /home/admin/JAMScript/lib/cside 
+RUN make archive
+
+WORKDIR /home/admin
+RUN mkdir .jamruns
+WORKDIR /home/admin/.jamruns
+RUN ln -s /home/admin/JAMScript/lib/cside clib
+RUN ln -s /home/admin/JAMScript jamhome
+RUN ln -s /home/admin/JAMScript/lib/jside node_modules
+
+WORKDIR /home/admin
+
+EXPOSE 22
+ENTRYPOINT sudo service ssh start && bash
