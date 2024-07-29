@@ -67,5 +67,7 @@ RUN ln -s /home/admin/JAMScript/lib/jside node_modules
 
 WORKDIR /home/admin
 
+ENV PATH="$PATH:/home/admin/JAMScript/tools"
+
 EXPOSE 22
 ENTRYPOINT sudo service ssh start && bash
