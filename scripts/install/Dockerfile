@@ -158,5 +158,5 @@ WORKDIR /home/admin
 RUN echo 'export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin' >> /home/admin/.bashrc
 RUN echo 'export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin' >> /home/admin/.profile
 
-EXPOSE 22 1883 21883
+EXPOSE 22 
 ENTRYPOINT sudo service ssh start && bash
