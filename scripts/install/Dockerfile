@@ -54,7 +54,7 @@ RUN sudo make install
 
 WORKDIR /home/admin/JAMScript
 RUN npm install 
-RUN npm install zx -g
+#RUN npm install zx -g
 
 WORKDIR /home/admin/JAMScript/lib/cside 
 RUN make archive
