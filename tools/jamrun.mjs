@@ -627,6 +627,7 @@ async function main(){
             Type,
             tags,
             port,
+            file,
             remote,
         } = jamrunParsArg(process.argv))
     }
@@ -645,34 +646,34 @@ async function main(){
     let ifile;
     let jdata;
     let client;
-    if(remote){
-        console.log("SET UP SSH CONNECTION");
-        const config = {
-            host: 'localhost',
-            port: remote,
-            username: 'admin',
-            // You may need to specify a password or private key depending on your SSH server configuration
-            password: 'admin' // or use privateKey: require('fs').readFileSync('/path/to/your/key')
-          };          
-        client = await new Promise((resolve, reject) => {
-            const client = new Client();
+    // if(remote){
+    //     console.log("SET UP SSH CONNECTION");
+    //     const config = {
+    //         host: 'localhost',
+    //         port: remote,
+    //         username: 'admin',
+    //         // You may need to specify a password or private key depending on your SSH server configuration
+    //         password: 'admin' // or use privateKey: require('fs').readFileSync('/path/to/your/key')
+    //       };          
+    //     client = await new Promise((resolve, reject) => {
+    //         const client = new Client();
 
-            client.on('ready', () => {
-                resolve(client);
-            });
+    //         client.on('ready', () => {
+    //             resolve(client);
+    //         });
 
-            client.on('error', (error) => {
-                reject(error);
-            });
+    //         client.on('error', (error) => {
+    //             reject(error);
+    //         });
 
-            client.connect(config);
-        });
+    //         client.connect(config);
+    //     });
 
-        executeCommand(client, "node ")
+    //     executeCommand(client, "node ")
 
 
         
-    }
+    // }
 
 
     if(resume){
@@ -717,6 +718,8 @@ async function main(){
         if(port){
             console.log("Warning. If it's not to resume the port argument will not be used")
         }
+        console.log(file,"this is my file")
+        console.log(app, "this is my path")
         fileDirectorySetUp(file,app)
         folder = getFolder(file,app)
         ifile = path.resolve(file);

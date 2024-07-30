@@ -1,8 +1,9 @@
 #!/usr/bin/env zx
 import commandLineArgs from 'command-line-args';
+import { string } from 'random-js';
 import { fs } from 'zx';
-import { path } from 'zx';
 
+const path = require('path');
 const VALGRIND_OPTS = 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s';
 
 function generatelonglat() {
