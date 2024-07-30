@@ -29,7 +29,7 @@ ADD GIT LOG
  */
 //
 //global variables
-let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume, port;
+let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume, port, remote;
 const tmuxIds = [];
 let removablePort
 
@@ -123,6 +123,21 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
     )
 )
 
+
+async function executeCommand(client, command){
+    return (await new Promise((resolve, reject) =>{
+        client.exec(command, (err,stream) =>{
+            if (err) throw err;
+            let result;
+            stream.on("close", () => {
+                resolve(result)
+            })
+            stream.on("data" , (data) =>{
+                result = data.toString()
+            })
+        })
+    }))
+}
 //tested.working
 function show_usage(){
     const usageMessage = 
@@ -611,9 +626,8 @@ async function main(){
             lat,
             Type,
             tags,
-            file,
-            resume,
-            port
+            port,
+            remote,
         } = jamrunParsArg(process.argv))
     }
    
@@ -624,13 +638,43 @@ async function main(){
             process.exit(1)
         }
         else{
-            show_usage()
-            process.exit(1)
+            throw error
         }
     }
     let folder;
     let ifile;
     let jdata;
+    let client;
+    if(remote){
+        console.log("SET UP SSH CONNECTION");
+        const config = {
+            host: 'localhost',
+            port: remote,
+            username: 'admin',
+            // You may need to specify a password or private key depending on your SSH server configuration
+            password: 'admin' // or use privateKey: require('fs').readFileSync('/path/to/your/key')
+          };          
+        client = await new Promise((resolve, reject) => {
+            const client = new Client();
+
+            client.on('ready', () => {
+                resolve(client);
+            });
+
+            client.on('error', (error) => {
+                reject(error);
+            });
+
+            client.connect(config);
+        });
+
+        executeCommand(client, "node ")
+
+
+        
+    }
+
+
     if(resume){
         const fileNoExt = getFileNoext(file)
         if(!port){

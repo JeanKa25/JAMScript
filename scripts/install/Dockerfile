@@ -55,6 +55,7 @@ RUN sudo make install
 WORKDIR /home/admin/JAMScript
 RUN npm install 
 
+
 WORKDIR /home/admin/JAMScript/lib/cside 
 RUN make archive
 
@@ -67,7 +68,8 @@ RUN ln -s /home/admin/JAMScript/lib/jside node_modules
 
 WORKDIR /home/admin
 
-ENV PATH="$PATH:/home/admin/JAMScript/tools"
+# ENV PATH="$PATH:/home/admin/JAMScript/tools"
+ENV PATH="/home/admin/JAMScript/node_modules/.bin:$PATH"
 
 EXPOSE 22
 ENTRYPOINT sudo service ssh start && bash

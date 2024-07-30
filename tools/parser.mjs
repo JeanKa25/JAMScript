@@ -1,8 +1,8 @@
 #!/usr/bin/env zx
 import commandLineArgs from 'command-line-args';
-import { string } from 'random-js';
 import { fs } from 'zx';
-const path = require('path');
+import { path } from 'zx';
+
 const VALGRIND_OPTS = 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s';
 
 function generatelonglat() {
@@ -20,7 +20,7 @@ let [long, lat] = generatelonglat();
 
 const jamrunOptionDefinitions = [
   { name: 'help', alias: 'h', type: Boolean, defaultValue: false},
-  {name : 'app', type: String , defaultValue: "app-n"},
+  {name : 'app', type: String , defaultValue: undefined},
   {name : 'tags', type: String , defaultValue: undefined},
   {name : 'tmux', type: String , defaultValue: `tg-${Math.floor(Math.random() * 32768)}`},
   {name : 'num', type: Number , defaultValue: 1},
@@ -40,6 +40,7 @@ const jamrunOptionDefinitions = [
   {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
   {name: 'resume', type: Boolean, defaultValue: false},
   {name: "port", type: Number, defaultValue: undefined},
+  {name: "remote", type:Number, defaultValue: undefined}
 ];
 
 const jamlistOptionDefinition = [
@@ -205,6 +206,9 @@ export function jamrunParsArg(argv){
     }
     const varsObject = SetJamrunVar(options);
     varsObject["file"] = file;
+    if(!varsObject.app){
+        throw new Error("MISSING APP NAME")
+    }
     console.log(varsObject)
     return varsObject;
 }
