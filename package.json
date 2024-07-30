@@ -22,9 +22,6 @@
     "bin": {
         "jamc": "./mainCompiler.js"
     },
-    "scripts": {
-        "preinstall": "npm i -g zx"
-    },
     "dependencies": {
         "cbor-x": "1.5.4",
         "command-line-args": ">= 3.0.5",
