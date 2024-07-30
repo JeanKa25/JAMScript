@@ -345,7 +345,51 @@ export function getKilltArgs(argv){
     return {"flag": flag, "name" : options.name, "pause": options.pause}
     
 }
-
+/**
+ *{ name: 'help', alias: 'h', type: Boolean, defaultValue: false},
+  {name : 'app', type: String , defaultValue: undefined},
+  {name : 'tags', type: String , defaultValue: undefined},
+  {name : 'tmux', type: String , defaultValue: `tg-${Math.floor(Math.random() * 32768)}`},
+  {name : 'num', type: Number , defaultValue: 1},
+  {name : 'loc', type: String , defaultValue: `${long},${lat}`},
+  {name : 'edge', type: Number , defaultValue: 1},
+  {name : 'data', type: String , defaultValue: undefined},
+  {name : 'fog', type: Boolean, defaultValue: false},
+  {name : 'cloud', type: Boolean, defaultValue: false},
+  {name : 'device', type: Boolean, defaultValue: false},
+  {name : 'local_registry', type: Boolean, defaultValue: false},
+  {name : 'bg', type: Boolean, defaultValue: false},
+  {name : 'verb', type: Boolean, defaultValue: false},
+  {name : 'log', type: Boolean, defaultValue: false},
+  {name : 'old', type: Boolean, defaultValue: false},
+  {name : 'local', type: Boolean, defaultValue: false},
+  {name : 'valgrind', type: Boolean, defaultValue: false},
+  {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
+  {name: 'resume', type: Boolean, defaultValue: false},
+  {name: "port", type: Number, defaultValue: undefined},
+  {name: "remote", type:Number, defaultValue: undefined}
+ */
+export function getRemoteArgs(argObject){
+    const args =[]
+    for(let arg of Object.keys(argObject)){
+        if(argObject[arg] === false || argObject[arg] === undefined ){
+            continue;
+        }
+        if(arg === "long" || arg ==="lat" || arg === "Type" || arg === "NOVERBOSE" || arg === "remote"){
+            continue;
+        }
+        if(argObject[arg] === true){
+            args.push(`--${arg}`)
+        }
+        else{
+            args.push(`--${arg}=${argObject[arg]}`)
+        }
+    }
+    args.push(`--loc=${long},${lat}`)
+    if (argObject["NOVERBOSE"]) args.push(`--verb`) 
+    args.push(`--${argObject["Type"]}`)
+    return args.join(" ")
+}
 export function getLogArgs(argv){
     const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlog.mjs') ))
     let options

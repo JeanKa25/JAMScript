@@ -1,5 +1,5 @@
 #!/usr/bin/env zx
-import {jamrunParsArg , getCargs, getJargs} from './parser.mjs'
+import {jamrunParsArg , getCargs, getJargs, getRemoteArgs} from './parser.mjs'
 import { fileURLToPath } from 'url';
 import { cleanByPortNumber, pauseByPortNumber } from './cleanUp.mjs';
 import { dirname, resolve } from 'path';
@@ -124,16 +124,16 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
 )
 
 
-async function executeCommand(client, command){
+async function executeScript(client, command){
     return (await new Promise((resolve, reject) =>{
         client.exec(command, (err,stream) =>{
-            if (err) throw err;
-            let result;
+            if (err) reject(err);
+            let result = ''
             stream.on("close", () => {
                 resolve(result)
             })
             stream.on("data" , (data) =>{
-                result = data.toString()
+                result = result + data;
             })
         })
     }))
@@ -646,34 +646,60 @@ async function main(){
     let ifile;
     let jdata;
     let client;
-    // if(remote){
-    //     console.log("SET UP SSH CONNECTION");
-    //     const config = {
-    //         host: 'localhost',
-    //         port: remote,
-    //         username: 'admin',
-    //         // You may need to specify a password or private key depending on your SSH server configuration
-    //         password: 'admin' // or use privateKey: require('fs').readFileSync('/path/to/your/key')
-    //       };          
-    //     client = await new Promise((resolve, reject) => {
-    //         const client = new Client();
+    if(remote){
+        console.log("SET UP SSH CONNECTION");
+        const config = {
+            host: 'localhost',
+            port: remote,
+            username: 'admin',
+            // You may need to specify a password or private key depending on your SSH server configuration
+            password: 'admin' // or use privateKey: require('fs').readFileSync('/path/to/your/key')
+          };          
+        client = await new Promise((resolve, reject) => {
+            const client = new Client();
 
-    //         client.on('ready', () => {
-    //             resolve(client);
-    //         });
+            client.on('ready', () => {
+                resolve(client);
+            });
 
-    //         client.on('error', (error) => {
-    //             reject(error);
-    //         });
+            client.on('error', (error) => {
+                reject(error);
+            });
 
-    //         client.connect(config);
-    //     });
+            client.connect(config);
+        });
+        const remoteArgs = getRemoteArgs(jamrunParsArg(process.argv))
+        //QUESTION: HOW TO FIND WHERE THE FILE EXACTLY IS?(JAMRUN>MJS)
+        const toExecute = `zx jamrun ${remoteArgs}`
+        console.log(toExecute)
+        console.log(remoteArgs, "from JAM RUN")
+        console.log(await executeScript(client, "cd JAMScript/tools && node --version"))
+        console.log(await executeScript(client, "ls"))
 
-    //     executeCommand(client, "node ")
-
-
-        
-    // }
+        // try{
+        //     const check  = await executeScript(client, "node --version")
+        //     console.log(check)
+        // }
+        // catch(error){
+        //     throw error
+        // }
+        //run the new sctipy.
+        const jamfolder = getJamFolder()
+        const fileNoext = getFileNoext(file);
+        if(!fs.existsSync(`${jamfolder}/remote`)){
+            fs.mkdirSync(`${jamfolder}/remote`);
+        }
+        if(fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}`)){
+            const remoteApps = fs.readFileSync(`${jamfolder}/remote/${config.host}_${config.port}`).toString().trim().split("\n")
+            if(!remoteApps.includes(`${fileNoext}_app`)){
+                fs.appendFileSync(`${jamfolder}/remote/${config.host}_${config.port}`, `${fileNoext}_app`);
+            }
+        }
+        else{
+            fs.writeFileSync(`${jamfolder}/remote/${config.host}_${config.port}`, `${fileNoext}_app`)
+        }
+        process.exit(0)
+    }
 
 
     if(resume){
