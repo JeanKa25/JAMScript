@@ -4,7 +4,9 @@ const { spawnSync } = require('child_process');
 import { cleanByPortNumber } from "./cleanUp.mjs";
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-////////////////// //////// /////// //////// ////// ////// ///
+import { Client } from 'ssh2';
+
+////////////////// //////// /////// //////// ////// ////// ///NOTE: NAME CAN NOT HAVE = IN IT
 /////////////what should we do when we see new? linger there? wait/force. what to do exactly?. it is for broken apps.MAKE THE JT@ FILES BREAK.
 ///////Shopuld we check of reddis is running or not like we do for mqtt, JFile, Cfiles
 
@@ -295,7 +297,14 @@ function cleanCfiles(portDir, currCfile){
     for(let oldCdev of oldCdevs){
         const cNum = oldCdev.split(".")[1];
         if(!currCfile.includes(cNum)){
-            fs.unlinkSync(`${portDir}/${oldCdev}`);
+            try{
+                fs.unlinkSync(`${portDir}/${oldCdev}`);
+
+            }
+            catch(error){
+                
+            }
+
         }
     }
 }
@@ -331,17 +340,14 @@ async function clean(){
             continue;
         }
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
-        console.log(dirs)
         for(let dir of dirs){
-            console.log(fs.readFileSync(`${appFolder}/${dir}/${port}/paused`), "THIS IS FROM JAMCLEAN")
-
             const isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) !== "false") ? true : false
             if(isPaused){
                 continue;
             }
             //mosquitto not running kill 
             if(!await isMosquittoRunning(port)){
-                console.log("gotHERE")
+
                 await $`zx ${jamcKillPath} --port --name=${port}`
                 continue portLoop;
             }
@@ -382,12 +388,170 @@ async function clean(){
 
 
 
+function getRemoteapps(){
+    const jamfolder = getJamFolder()
+    const myMap = new Map()
+    if(!fs.existsSync(`${jamfolder}/remote`)){
+        return null
+    }
+    const remoteMachines = fs.readdirSync(`${jamfolder}/remote`)
+    for(let remoteMachine of remoteMachines){
+        const ports = fs.readdirSync(`${jamfolder}/remote/${remoteMachine}`)
+        let arg=''
+        for(let port of ports){
+            const apps = fs.readFileSync(`${jamfolder}/remote/${remoteMachine}/${port}`).toString().trim().split("\n")
+            for(let app of apps){
+                arg = arg+app+":"+port+"##"
+            }
+        }
+        const result = arg.slice(0, -2);
+        myMap.set(remoteMachine,result)
+    }
 
+    return myMap;
+}
+async function makeConnection(config){
+    return await new Promise((resolve, reject) => {
+        const client = new Client();
+        client.on('ready', () => {
+            resolve(client);
+        });
 
+        client.on('error', (error) => {
+            reject(error);
+        });
 
+        client.connect(config);
+    });
+}
+async function executeScript(client, command){
+    return (await new Promise((resolve, reject) =>{
+        client.exec(command, (err,stream) =>{
 
+            if (err) console.log(error);
+            let result = '';
+            stream.on("close", () => {
+                resolve(result)
+            })
+            stream.on("data" , (data) =>{
+
+                if(data.includes("TOREMOVE:")){
+                    let rm = data.toString().split(":")[1]
+                    result = result + rm 
+                }
+            })
+        })
+    }))
+}
 // main()
+async function cleanRemote(toRemove){
+    const jamfolder = getJamFolder()
+
+
+    for(let machine of toRemove.keys()){
+        for(let rm of toRemove.get(machine)){
+
+            const dir = rm.split("/")[0]
+            const port = rm.split("/")[1]
+            if(!port){
+                fs.rmSync(`${jamfolder}/remote/${machine}`, { recursive: true, force: true });
+            }
+            if(!fs.readFileSync(`${jamfolder}/remote/${machine}/${port}`)){
+                return
+            }
+            const apps = fs.readFileSync(`${jamfolder}/remote/${machine}/${port}`).toString().trim().split("\n");
+            const currApps = apps.filter((entry)=>(!entry.includes(dir)));
+
+            if(currApps.length === 0 ){
+                fs.rmSync(`${jamfolder}/remote/${machine}/${port}`, { recursive: true, force: true });
+            }
+            else{
+                const toWrite = currApps.join("\n")
+                fs.writeFileSync(`${jamfolder}/remote/${machine}/${port}`,`${toWrite}`)
+            }
+        }
+        if((fs.readdirSync(`${jamfolder}/remote/${machine}`)).length === 0 ){
+            fs.rmSync(`${jamfolder}/remote/${machine}`, { recursive: true, force: true });
+        }
+    }
+}
 
 (async () =>{
+    const arg = process.argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs')));
+    const appfolder = getAppFolder();
+    const jamFolder = getJamFolder();
+    if(arg.length === 0){
+        let currIP ;
+        if (os.platform() === 'win32') {
+        currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
+        } else if (os.platform() === 'darwin') {
+        currIP = (await $`ipconfig getifaddr en0`.catch(() => '')).toString().trim();
+        } else if (os.platform() === 'linux') {
+        currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
+        }
+        const map = getRemoteapps();
+
+        const removalMap = new Map()
+        if(map){
+            for(let machines of map.keys()){
+                const [host,port] =  machines.split("_");
+                const arg = map.get(machines);
+                const config = {
+                    host: host,
+                    port: port,
+                    username: 'admin',
+                    password: 'admin' 
+                };
+                const client = await makeConnection(config);
+                const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
+                const changeDir= "cd JAMScript/tools"
+                const script = `zx jamclean.mjs --root=${currIP} --hash=${arg}`
+                const result = await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
+                const toRemove = result.trim().split("\n");
+                if(toRemove.length !==0 && toRemove[0] !== ''){
+                    removalMap.set(machines,toRemove)
+                }
+                
+            }  
+ 
+            cleanRemote(removalMap)
+        }
+    }
     await clean()
+
+    if(arg.length === 2){
+        const rootIP = (arg[0].split("="))[1]
+        const hash = (arg[1].split("="))[1]
+
+        const portDirs =  hash.split("##")
+        for(let portDir of portDirs){
+            let dirName = portDir.split(":")[0]
+            let portName = portDir.split(":")[1]
+            if(!fs.existsSync(`${jamFolder}/ports/${portName}`)){
+                console.log(`TOREMOVE:${dirName}/${portName}`);
+                await sleep(5)
+                continue
+            };
+            const running = fs.readFileSync(`${jamFolder}/ports/${portName}`).toString().trim();
+            console.log(running, "this is my running")
+            if(!running.includes(dirName)){
+                console.log(`TOREMOVE:${dirName}/${portName}`);
+                await sleep(5)
+                continue
+            };
+            if(!fs.existsSync(`${appfolder}/${dirName}/${portName}/root`)){
+                console.log(`TOREMOVE:${dirName}/${portName}`);
+                await sleep(5)
+                continue
+            };
+            const dirRoot = fs.readFileSync(`${appfolder}/${dirName}/${portName}/root`).toString().trim()
+            if(rootIP !== dirRoot){
+                console.log(`TOREMOVE:${dirName}/${portName}`);
+                await sleep(5)
+                continue
+            };
+        }
+    }
+    process.exit()
+
 })();

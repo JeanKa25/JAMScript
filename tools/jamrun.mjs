@@ -27,9 +27,9 @@ ADD GIT LOG
 
 
  */
-//
+//FORE NOW DON"T RUN REMOTE TASKS ON THE FOREGROUND
 //global variables
-let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume, port, remote;
+let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume, port, remote, root;
 const tmuxIds = [];
 let removablePort
 
@@ -122,18 +122,51 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
         }
     )
 )
-
+// async function executeScript(client, command) {
+//     return await new Promise((resolve, reject) => {
+//         client.exec(command, (err, stream) => {
+//             if (err) return reject(err);
+//             let result = '';
+//             stream.on('close', () => {
+//                 resolve(result);
+//             });
+//             stream.on('data', (data) => {
+//                 result += data.toString();
+//             });
+//             stream.stderr.on('data', (data) => {
+//                 result += data.toString();
+//             });
+//             stream.on('error', (streamErr) => {
+//                 reject(streamErr);
+//             });
+//         });
+//     });
+// }
 
 async function executeScript(client, command){
+    console.log("GOT HERE")
     return (await new Promise((resolve, reject) =>{
         client.exec(command, (err,stream) =>{
-            if (err) reject(err);
-            let result = ''
+            if (err){
+                console.log(err)
+                reject(err);
+            } 
+            let result;
             stream.on("close", () => {
+                console.log("closed")
                 resolve(result)
             })
-            stream.on("data" , (data) =>{
-                result = result + data;
+            stream.on("data" , async (data) =>{
+                console.log(data.toString())
+                if(data.includes("MY PORT IS:"))
+                    {
+                        console.log(data.toString())
+                        result = data.toString().trim().split(":")[1]
+                    }  
+                if(data.includes("EXIT BG")){
+                    // await sleep(5000)
+                    resolve(result)
+                }  
             })
         })
     }))
@@ -213,7 +246,7 @@ function show_usage(){
 
 //teste.working.
 async function startmqtt(port, cFile){
-
+    const jamfolder = getJamFolder()
     try{ 
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
 
@@ -230,6 +263,8 @@ async function startmqtt(port, cFile){
             detached: true,
         };
         mqttProcesse =  spawn(command, args, options);
+        console.log(mqttProcesse.pid)
+        fs.writeFileSync(`${jamfolder}/mqttpid/${port}`,`${mqttProcesse.pid}` )
         mqttProcesse.unref();
             
         return;
@@ -254,6 +289,9 @@ async function dojamout_p1(pnum ,floc) {
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
     if(Type === "device"){
         fs.writeFileSync(`${floc}/${pnum}/numCnodes`, `${num}`); 
+    }
+    if(root){
+        fs.writeFileSync(`${floc}/${pnum}/root`, root)
     }
 }
 
@@ -323,6 +361,7 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
         });
     }
 
+
 }
 
 
@@ -360,6 +399,8 @@ function dojamout_p2_bg(pnum, floc, jappid, group=null){
     if(!NOVERBOSE){
         console.log("Started the J node in background")
     }
+
+    console.log("EXIT BG")
     process.exit(0)
 }
 
@@ -383,6 +424,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                 "-o": datap,
             }
             let cargs = getCargs(argObject)
+            console.log("this is my cargs",cargs )
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
             if (!log){
 
@@ -400,8 +442,20 @@ async function doaout(num,port,group,datap,myf,jappid){
                     if(valgrind)
                         await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
                     else
-                        await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 ${myf}/${port}/log.${counter} ./a.out" ${cargs} C-m`;
-    
+                        
+                        {
+                            console.log("WTFWTFWTF")
+                            console.log("GOT TO THE TMUX")
+                            console.log(process.cwd())
+                            console.log(myf)
+                            console.log(port)
+                            console.log(`${myf}/${port}/log.${counter}`)
+                            console.log(fs.existsSync(`${myf}/${port}`))
+                            //TMUX DOES NOT WORK FOR DOCKER CONTAINER(SCRIPT IS THE ISSUE)
+                            await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 ${myf}/${port}/log.${counter} ./a.out" ${cargs} C-m`;
+
+  
+                        }
                 }
             }
             tmuxIds.push(`${tmux}-${counter}`)
@@ -457,7 +511,11 @@ function setuptmux(path, appfolder) {
 //patially tested, hopefullt works
 async function startredis(port) {
     try{
-        const p =$`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').nothrow().quiet();
+        
+        const p = $`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').nothrow().quiet();
+
+        console.log(p)
+
     }
     catch(error){
         console.log(error)
@@ -475,6 +533,7 @@ async function waitforredis(port){
             }
         }
         catch(error){
+            console.log(error)
         }
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
@@ -591,6 +650,8 @@ async function runNoneDevice(iport){
     fileDirectoryMqtt(folder,iport,jamfolder,app)
     const jappid = getappid(jamfolder, `${folder}/${iport}`,app,appfolder)
     await dojamout(iport, folder, jappid)
+    console.log("SCRIPT RUNNING")
+
 }
 
 async function runDevice(iport,dport,group){
@@ -601,6 +662,7 @@ async function runDevice(iport,dport,group){
     setuptmux(`${folder}/${iport}`, appfolder)
     await doaout(num,iport, group, dport,folder,jappid)
     await dojamout_p2(iport, folder,jappid,group )
+    console.log("SCRIPT RUNNING")
 }
 
 
@@ -629,6 +691,7 @@ async function main(){
             port,
             file,
             remote,
+            root,
         } = jamrunParsArg(process.argv))
     }
    
@@ -647,14 +710,29 @@ async function main(){
     let jdata;
     let client;
     if(remote){
-        console.log("SET UP SSH CONNECTION");
         const config = {
             host: 'localhost',
             port: remote,
             username: 'admin',
-            // You may need to specify a password or private key depending on your SSH server configuration
-            password: 'admin' // or use privateKey: require('fs').readFileSync('/path/to/your/key')
-          };          
+            password: 'admin' 
+          };    
+        if(resume){
+            const jamfolder = getJamFolder()
+            const fileNoext = getFileNoext(file);
+            if(!fs.existsSync(`${jamfolder}/remote`)){
+                console.log(`this machine is not the root for any running app`);
+                process.exit(0);
+            }
+            if(!fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}`)){
+                console.log(`this machine is not the root for any running app on ${config.host}_${config.port}`);
+                process.exit(0);
+            }
+            const remoteApps = fs.readFileSync(`${jamfolder}/remote/${config.host}_${config.port}`).toString().trim().split("\n")
+            if(!remoteApps.includes(`${fileNoext}_${app}`)){
+                console.log(`this machine is not the root for any running ${fileNoext}_${app}`);
+                process.exit(0)
+            }
+        }
         client = await new Promise((resolve, reject) => {
             const client = new Client();
 
@@ -669,36 +747,49 @@ async function main(){
             client.connect(config);
         });
         const remoteArgs = getRemoteArgs(jamrunParsArg(process.argv))
-        //QUESTION: HOW TO FIND WHERE THE FILE EXACTLY IS?(JAMRUN>MJS)
-        const toExecute = `zx jamrun ${remoteArgs}`
+        const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
+        const changeDir= "cd JAMScript/tools"
+        let currIP ;
+        if (os.platform() === 'win32') {
+          currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
+        } else if (os.platform() === 'darwin') {
+          currIP = (await $`ipconfig getifaddr en0`.catch(() => '')).toString().trim();
+        } else if (os.platform() === 'linux') {
+          currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
+        }
+        const toExecute = `zx jamrun.mjs ${remoteArgs} --root=${currIP}`
         console.log(toExecute)
-        console.log(remoteArgs, "from JAM RUN")
-        console.log(await executeScript(client, "cd JAMScript/tools && node --version"))
-        console.log(await executeScript(client, "ls"))
+        const remoteTerminal = '/dev/pts/1';
+        // const command = `${pathExport} && ${changeDir} && ${toExecute} > > ${remoteTerminal} 2>&1`
+        // THIS SHOULD BE THE IDEAM SOLUTION!!!!!!!!!
+        // const myPort = await executeScript(client, `${changeDir} && zx jamrun.mjs ${remoteArgs} --root=${currIP} > ${remoteTerminal} 2>&1`)
+        const myPort = await executeScript(client, `${changeDir} && zx jamrun.mjs ${remoteArgs} --root=${currIP}`)
 
-        // try{
-        //     const check  = await executeScript(client, "node --version")
-        //     console.log(check)
-        // }
-        // catch(error){
-        //     throw error
-        // }
-        //run the new sctipy.
-        const jamfolder = getJamFolder()
-        const fileNoext = getFileNoext(file);
-        if(!fs.existsSync(`${jamfolder}/remote`)){
-            fs.mkdirSync(`${jamfolder}/remote`);
-        }
-        if(fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}`)){
-            const remoteApps = fs.readFileSync(`${jamfolder}/remote/${config.host}_${config.port}`).toString().trim().split("\n")
-            if(!remoteApps.includes(`${fileNoext}_app`)){
-                fs.appendFileSync(`${jamfolder}/remote/${config.host}_${config.port}`, `${fileNoext}_app`);
+        console.log(myPort)
+        if(!resume){
+            const jamfolder = getJamFolder()
+            const fileNoext = getFileNoext(file);
+            if(!fs.existsSync(`${jamfolder}/remote`)){
+                fs.mkdirSync(`${jamfolder}/remote`);
             }
-        }
-        else{
-            fs.writeFileSync(`${jamfolder}/remote/${config.host}_${config.port}`, `${fileNoext}_app`)
+            if(!fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}`)){
+                fs.mkdirSync(`${jamfolder}/remote/${config.host}_${config.port}`);
+
+            }
+            if(fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}/${myPort}`)){
+                const remoteApps = fs.readFileSync(`${jamfolder}/remote/${config.host}_${config.port}/${myPort}`).toString().trim().split("\n")
+                if(!remoteApps.includes(`${fileNoext}_${app}`)){
+                    console.log("NOT INCLUDEDE APPEND")
+                    fs.appendFileSync(`${jamfolder}/remote/${config.host}_${config.port}/${myPort}`,`${fileNoext}_${app}\n`);
+                }
+            }
+            else{
+                console.log("FILE DONT EXISTS")
+                fs.writeFileSync(`${jamfolder}/remote/${config.host}_${config.port}/${myPort}`,`${fileNoext}_${app}\n`)
+            }   
         }
         process.exit(0)
+
     }
 
 
@@ -756,7 +847,7 @@ async function main(){
     }
 
     let isDevice;
-
+    console.log("SELECTING THE TYPE")
     switch(Type){
         case "cloud":
             if(resume){
@@ -836,6 +927,7 @@ async function main(){
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
+    console.log(`MY PORT IS:${removablePort}`)
     if(isDevice)
         await runDevice(iport,dport,group)
         
@@ -846,7 +938,13 @@ async function main(){
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
 const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
-console.log(jamcleanPath)
-await $`zx ${jamcleanPath}`
+
+// console.log(jamcleanPath)
+
+// await $`zx ${jamcleanPath}`
+
+
 await main()
+// const p = await $`redis-server --port ${port}`
+// console.log(p)
 

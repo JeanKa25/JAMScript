@@ -125,6 +125,9 @@ export async function cleanExecutables(){
 }
 
 export function fileDirectoryMqtt(folder, iport,jamfolder,app){
+    if(!fs.existsSync(`${jamfolder}/mqttpid`)){
+        fs.mkdirSync(`${jamfolder}/mqttpid`);
+    }
     fs.writeFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "allow_anonymous true\n");
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, "#\n");

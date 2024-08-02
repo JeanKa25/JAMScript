@@ -8,16 +8,24 @@ import { getJamListArgs } from "./parser.mjs";
 import {getAppFolder,getJamFolder} from "./fileDirectory.mjs"
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { Client } from 'ssh2';
+
 const { debounce } = require('lodash');
 const chokidar = require('chokidar');
 const jamFolder = getJamFolder()
-let lastInfo;
 let watcher;
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
 const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
-
-
+let NODESINFO = []
+let currIP ;
+if (os.platform() === 'win32') {
+currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
+} else if (os.platform() === 'darwin') {
+currIP = (await $`ipconfig getifaddr en0`.catch(() => '')).toString().trim();
+} else if (os.platform() === 'linux') {
+currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
+}
 
 
 
@@ -46,7 +54,9 @@ function getRunningDirs(){
 function getWatchList(){
     const watchList = []
     const appFolder = getAppFolder()
+    //make sure it is watching recursively
     watchList.push(`${jamFolder}/ports`)
+    watchList.push(`${jamFolder}/remote`)
     const dirs = getRunningDirs()
     for(let dir of dirs.keys()){
         for(let port of dirs.get(dir)){
@@ -81,11 +91,14 @@ function watch(filters) {
     }
     const updateInfo = debounce(async () => {
         await sleep(500); 
-        if (!filters || filters === "all" || Object.keys(filters).length === 0) {
+        if (!filters || filters.all === true || Object.keys(filters).length === 0) {
             const info = getNodeInfo();
-            lastInfo = info;
+            NODESINFO = []
+            await main(true)
 
-            if (info.length === 0) {
+
+
+            if (info.length + NODESINFO.length === 0) {
                 console.log("---------");
 
                 console.log("There is no program running");
@@ -94,13 +107,21 @@ function watch(filters) {
 
                 printHeader();
                 printNodeInfo(info);
+                printNodeInfo(NODESINFO);
             }
         } else {
             const nodeinfo = getNodeInfo();
-            const filtered = filter(nodeinfo, filters);
-            lastInfo = nodeinfo;
+            let keysToRemove = ["root","remote","help","all" ];
+            let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+            const filtered = filter(nodeinfo, filteredObj);
+            NODESINFO = []
+            await main(true)
+     
 
-            if (filtered.length === 0) {
+
+
+
+            if (filtered.length + NODESINFO.length === 0) {
                 console.log("---------");
 
                 console.log("There is no such program running");
@@ -109,11 +130,14 @@ function watch(filters) {
   
                 printHeader();
                 printNodeInfo(filtered);
+                printNodeInfo(NODESINFO);
+
             }
         }
     }, 500); 
     let watchList = getWatchList()
-    watcher = chokidar.watch(watchList, { persistent: true, ignoreInitial: true }).on('all', () => {
+    watcher = chokidar.watch(watchList, { persistent: true, ignoreInitial: true }).on('all', (event, path) => {
+        console.log(`Event: ${event}, Path: ${path}`);
         watchList = updateWatchList(watchList)
         updateInfo();
     });
@@ -134,39 +158,85 @@ export function dirNameToProgramName(dirName){
     
 }
 
-
-function getNodeInfo(){
+function getNodeInfo(root=null){
     const appToPortMap = getRunningDirs()
+
+
     // console.log(appToPortMap)
+    const jamfolder = getJamFolder()
     const appfolder  = getAppFolder();
-    const nodeInfo= [];
+    const nodeInfo =[]
+    if( (!fs.existsSync(`${jamfolder}/ports`)) || (!fs.existsSync(`${jamfolder}/apps`)) ){
+        return []
+    }
+
     for(let app of appToPortMap.keys()){
         const appName = dirNameToAppName(app)
         const programName = dirNameToProgramName(app)
         for(let port of appToPortMap.get(app)){
-            const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-" }
-            const dirPath = `${appfolder}/${app}/${port}`
-            if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
-                throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
-            }
-            for(let fileName of Object.keys(fileNames)){
-                if(fs.existsSync(`${dirPath}/${fileName}`)){
-                    const data = fs.readFileSync(`${dirPath}/${fileName}`).toString().trim();
-                    fileNames[fileName] = data;
+            if(root){
+                if(fs.existsSync(`${appfolder}/${app}/${port}/root`)){
+                    const rootIP = fs.readFileSync(`${appfolder}/${app}/${port}/root`).toString().trim();
+                    if(rootIP === root){
+                        const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-"}
+                        const dirPath = `${appfolder}/${app}/${port}`
+                        if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
+                            throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
+                        }
+                        for(let fileName of Object.keys(fileNames)){
+                            if(fs.existsSync(`${dirPath}/${fileName}`)){
+                                const data = fs.readFileSync(`${dirPath}/${fileName}`).toString().trim();
+                                fileNames[fileName] = data;
+                            }
+                        }
+                        fileNames["portNum"] = String(port)
+                        fileNames["appName"] = appName
+                        fileNames["programName"] = programName
+                        if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
+                            fileNames["status"] = "paused"
+                        }
+                        else{
+                            fileNames["status"] = "running"
+                            
+                        }
+                        
+                        fileNames["host"] = currIP
+                        
+                    
+            
+                        nodeInfo.push(fileNames)
+                    
+                    }
                 }
             }
-            fileNames["portNum"] = String(port)
-            fileNames["appName"] = appName
-            fileNames["programName"] = programName
-            if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
-                fileNames["status"] = "paused"
-            }
             else{
-                fileNames["status"] = "running"
-                
+                const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-" }
+                const dirPath = `${appfolder}/${app}/${port}`
+                if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
+                    throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
+                }
+                for(let fileName of Object.keys(fileNames)){
+                    if(fs.existsSync(`${dirPath}/${fileName}`)){
+                        const data = fs.readFileSync(`${dirPath}/${fileName}`).toString().trim();
+                        fileNames[fileName] = data;
+                    }
+                }
+                fileNames["portNum"] = String(port)
+                fileNames["appName"] = appName
+                fileNames["programName"] = programName
+                if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
+                    fileNames["status"] = "paused"
+                }
+                else{
+                    fileNames["status"] = "running"
+                    
+                }
+                fileNames["host"] = "localHost"
+
+    
+                nodeInfo.push(fileNames)
             }
 
-            nodeInfo.push(fileNames)
         }
     }
 
@@ -176,15 +246,17 @@ function getNodeInfo(){
 function printNodeInfo(info){
    
     for (let row of info){
-     
-        const headerString = `   ${row["appName"].padEnd(10)} ${row["programName"].padEnd(10)} ${("Local:"+row["portNum"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)}`;
+        if(row["host"] === currIP){
+            row["host"] = "localHost"
+        }
+        const headerString = `   ${row["appName"].padEnd(10)} ${row["programName"].padEnd(10)} ${("Local:"+row["portNum"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)} ${row["host"].padEnd(10)}`;
         console.log(headerString)
     }
 }
 
 
 function printHeader(){
-    const headerString = `   ${"NAME".padEnd(10)} ${"PROGRAM".padEnd(10)} ${"HOST".padEnd(10)} ${"PARENT".padEnd(10)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(10)} ${"C-NODES".padEnd(10)} ${"TMUX-ID".padEnd(10)} ${"STATUS".padEnd(10)}`;
+    const headerString = `   ${"NAME".padEnd(10)} ${"PROGRAM".padEnd(10)} ${"HOST".padEnd(10)} ${"PARENT".padEnd(10)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(10)} ${"C-NODES".padEnd(10)} ${"TMUX-ID".padEnd(10)} ${"STATUS".padEnd(10)} ${"HOST".padEnd(10)}`;
     console.log(headerString)
 }
 
@@ -205,8 +277,62 @@ function filter(nodeinfo, filters){
     return filteredInfo;
 }
 
+function getRemoteMachines(){
+    const jamfolder = getJamFolder()
+    if(!fs.existsSync(`${jamfolder}/remote`)){
+        return []
+    }
+    return (fs.readdirSync(`${jamfolder}/remote`))
 
-async function main(){
+}
+
+async function makeConnection(config){
+    return await new Promise((resolve, reject) => {
+        const client = new Client();
+        client.on('ready', () => {
+            resolve(client);
+        });
+
+        client.on('error', (error) => {
+            reject(error);
+        });
+
+        client.connect(config);
+    });
+}
+
+async function executeScript(client, command){
+    return (await new Promise((resolve, reject) =>{
+        client.exec(command, (err,stream) =>{
+            if (err) console.log(error);
+            stream.on("close", () => {
+                resolve("closed")
+            })
+            stream.on("data" , (data) =>{
+                // console.log(data.toString())
+                if(data.includes("NODEINFO##")){
+                    let JSONrow = data.toString().trim().split("##")[1]
+                    let row;
+                    try{
+                        row = JSON.parse(JSONrow)
+                    }
+                    catch(error){
+                        console.log(error)
+                    }
+
+         
+
+
+                    NODESINFO.push(row)
+                }
+            })
+        })
+    }))
+}
+
+async function main(update=null){
+    NODESINFO = []
+
     let args;
     try{
         args = getJamListArgs(process.argv)
@@ -232,58 +358,131 @@ async function main(){
             )
         process.exit(1);
         }
-
+        console.log(error)
         throw error;
     }
     const filters = args.filters;
     const monitor = args.monitor;
 
     const jamfolder = getJamFolder()
-        
-   if( (!fs.existsSync(`${jamfolder}/ports`)) || (!fs.existsSync(`${jamfolder}/apps`)) ){
-        console.log("there is No program running")
-        if(!monitor){
-            process.exit(0)
-        }
+    if(filters.remote || update){
 
-        
+        const map = getRemoteMachines();
+
+        for(let machines of map){
+
+            const [host,port] =  machines.split("_");
+            const config = {
+                host: host,
+                port: port,
+                username: 'admin',
+                password: 'admin' 
+            };
+            const client = await makeConnection(config);
+            const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
+            const changeDir= "cd JAMScript/tools"
+            let args= ""
+            for(let filter of Object.keys(filters)){
+                if(filter === "remote"){
+                    continue
+                }
+                if(filter === "all" || filter === "help"  ){
+                    if(filters.filter)
+                        {
+                            args = args + `--${filter} `
+
+                        }
+                        continue
+       
+                }
+                  args = args + `--${filter}=${filters[filter]} `
+            } 
+            args =args.trim() 
+
+
+            const script = `zx jamlist.mjs ${args} --root=${currIP}`
+            await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
+   
+        }  
     }
 
+    if(filters.root){
 
-    else if(!filters || filters === "all" || Object.keys(filter) === 0){
-        await $`zx ${jamcleanPath}`
-        const info = getNodeInfo();
-        lastInfo = info;
-        if(info.length === 0 ){
-            console.log("there is No program running")
-            if(!monitor){
-                process.exit(0)
+        if(filters.all){
+
+            await $`zx ${jamcleanPath}`
+
+
+            const info = getNodeInfo(filters.root);
+
+
+
+            for(let row of info){
+
+                const jsonRow = JSON.stringify(row)
+
+                await sleep(50)
             }
-
         }
-        printHeader();
-        printNodeInfo(info);
-    }
+        else{
 
-    else{
-        await $`zx ${jamcleanPath}`
-        const nodeinfo = getNodeInfo()
-        const filtered = filter(nodeinfo, filters)
-        lastInfo = filtered;
-        if(filtered.length === 0 ){
-            console.log("there is No such program running")
-            if(!monitor){
-                process.exit(0)
+            await $`zx ${jamcleanPath}`
+            const nodeinfo = getNodeInfo(filters.root)
+
+
+            let keysToRemove = ["root","remote","help","all" ];
+            let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+
+            const filtered = filter(nodeinfo, filteredObj)
+
+            if(filtered.length === 0 ){
+                process.exit(0)  
+            }
+            for(let row of filtered){
+                const jsonRow = JSON.stringify(row)
+                console.log(`NODEINFO##${jsonRow}`)
+                await sleep(50)
             }
         }
-        printHeader();
-        printNodeInfo(filtered);
     }
-    if(monitor){
-        watch(filters);
+    else if(!update){
+
+        if(filters.all){
+            await $`zx ${jamcleanPath}`
+            const info = getNodeInfo();
+            if(info.length + NODESINFO.length === 0 ){
+                console.log("there is No program running")
+                if(!monitor){
+                    process.exit(0)
+                }
+            }
+            printHeader();
+            printNodeInfo(info);
+            printNodeInfo(NODESINFO)
+        }
+
+        else{
+            // console.log("got here")
+            await $`zx ${jamcleanPath}`
+            const nodeinfo = getNodeInfo()
+            let keysToRemove = ["root","remote","help","all" ];
+            let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+
+            const filtered = filter(nodeinfo, filteredObj)
+            if(filtered.length + NODESINFO.length === 0 ){
+                console.log("there is No such program running")
+                if(!monitor){
+                    process.exit(0)
+                }
+            }
+            printHeader();
+            printNodeInfo(filtered);
+            printNodeInfo(NODESINFO)
+        }
+        if(monitor){
+            watch(filters);
+        }
     }
-
-
 
 }
 

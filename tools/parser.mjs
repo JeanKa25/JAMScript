@@ -1,5 +1,6 @@
 #!/usr/bin/env zx
 import commandLineArgs from 'command-line-args';
+import { type } from 'os';
 import { string } from 'random-js';
 import { fs } from 'zx';
 
@@ -20,7 +21,7 @@ let [long, lat] = generatelonglat();
 
 
 const jamrunOptionDefinitions = [
-  { name: 'help', alias: 'h', type: Boolean, defaultValue: false},
+  { name: 'help',type: Boolean, defaultValue: false},
   {name : 'app', type: String , defaultValue: undefined},
   {name : 'tags', type: String , defaultValue: undefined},
   {name : 'tmux', type: String , defaultValue: `tg-${Math.floor(Math.random() * 32768)}`},
@@ -41,23 +42,29 @@ const jamrunOptionDefinitions = [
   {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
   {name: 'resume', type: Boolean, defaultValue: false},
   {name: "port", type: Number, defaultValue: undefined},
-  {name: "remote", type:Number, defaultValue: undefined}
+  {name: "remote", type:Number, defaultValue: undefined},//the IP ADDRESS YOU WANT TO CONNECT TO
+  {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
+
 ];
 
 const jamlistOptionDefinition = [
-        {name : "help", alias : "h", type: Boolean, defaultValue : false },
-        {name : "monitor", alias : "m", type: Boolean, defaultValue : false },
+        {name : "help", type: Boolean, defaultValue : false },
+        {name : "all",  type: Boolean, defaultValue : false },
+        {name : "monitor", type: Boolean, defaultValue : false },
         {name : 'type', type: String , defaultValue: undefined },
         {name : 'dataStore', type: String , defaultValue: undefined },
         {name : 'tmuxid', type: String , defaultValue: undefined },
         {name : 'portNum', type: String , defaultValue: undefined },
         {name : 'appName', type: String , defaultValue: undefined },
         {name : 'programName', type: String , defaultValue: undefined },
+        {name : 'hostIP', type: String , defaultValue: undefined },
+        {name: "remote", type:Boolean, defaultValue: false},//the IP ADDRESS YOU WANT TO CONNECT TO
+        {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
 
   ];
   
 const jamkillOptionDefinition = [
-    {name : "help", alias : "h", type: Boolean, defaultValue : false },
+    {name : "help", type: Boolean, defaultValue : false },
     {name : 'all', type: Boolean , defaultValue: false },
     {name : 'reset', type: Boolean , defaultValue: false },
     {name : 'app', type: Boolean , defaultValue: false },
@@ -66,17 +73,20 @@ const jamkillOptionDefinition = [
     {name : 'port', type: Boolean , defaultValue: false },
     {name: "portDir", type: Boolean, defaultValue: false },
     {name: "pause", type: Boolean, defaultValue: false },
-    {name : 'name', alias : "n" , type: String , defaultValue: undefined },
+    {name : 'name',  type: String , defaultValue: undefined },
+    {name: "remote", type:Boolean, defaultValue: false},//the IP ADDRESS YOU WANT TO CONNECT TO
+    {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
+
 
 ];
 const jamclogOptionDefinition = [
-    {name : "help", alias : "h", type: Boolean, defaultValue : false },
+    {name : "help", type: Boolean, defaultValue : false },
     {name : "program", type: String, defaultValue : undefined },
     {name : "app", type: String, defaultValue : undefined },
     {name: "port", type:String, defaultValue: undefined},
-    {name : "j", alias: "j", type: Boolean, defaultValue : false },
-    {name : "c", alias: "c", type: Boolean, defaultValue : false },
-    {name : "tail", alias: "t", type: Number, defaultValue : undefined },
+    {name : "j", type: Boolean, defaultValue : false },
+    {name : "c", type: Boolean, defaultValue : false },
+    {name : "tail", type: Number, defaultValue : undefined },
 
 
 
@@ -143,7 +153,7 @@ function checkJXEfile(arg){
         }
     }
     const absolutePath = path.resolve(file);
-    if(!fs.existsSync(absolutePath)){
+    if(!fs.existsSync(absolutePath) && !arg.some(item => item.startsWith('--remote='))){
         throw new Error(`File: ${file} not found`)
     }
     
@@ -210,7 +220,7 @@ export function jamrunParsArg(argv){
     if(!varsObject.app){
         throw new Error("MISSING APP NAME")
     }
-    console.log(varsObject)
+
     return varsObject;
 }
 //ASK wHAT VARIABLES ARE OPTIONAL
@@ -253,6 +263,7 @@ export function getJamListArgs(argv){
     }
     catch(error){
     }
+
     if(options?.help || !options){
 
         const error = new Error("SHOW USAGE")
@@ -284,7 +295,7 @@ export function getJamListArgs(argv){
     }
 
 
-
+    
     return {filters : filters, monitor: options.monitor}
 
     
@@ -342,7 +353,7 @@ export function getKilltArgs(argv){
         flag = "program";
     }
 
-    return {"flag": flag, "name" : options.name, "pause": options.pause}
+    return {"flag": flag, "name" : options.name, "pause": options.pause , "remote": options.remote , "root":options.root}
     
 }
 /**
@@ -371,11 +382,12 @@ export function getKilltArgs(argv){
  */
 export function getRemoteArgs(argObject){
     const args =[]
+    args.push(argObject.file)
     for(let arg of Object.keys(argObject)){
         if(argObject[arg] === false || argObject[arg] === undefined ){
             continue;
         }
-        if(arg === "long" || arg ==="lat" || arg === "Type" || arg === "NOVERBOSE" || arg === "remote"){
+        if(arg === "long" || arg ==="lat" || arg === "Type" || arg === "NOVERBOSE" || arg === "remote" || arg =="file"){
             continue;
         }
         if(argObject[arg] === true){
