@@ -527,6 +527,8 @@ async function main(){
 
     [--reset] is the hard reset. it closes all the running nodes, mosquito,tmux,reddis and remove all the directories including ports and apps
 
+    [--remote] is a flag to kill programs on remote machines as well if the program root is current machine
+
     `
         )
     }

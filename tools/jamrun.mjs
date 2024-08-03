@@ -219,6 +219,8 @@ function show_usage(){
     Use --resume to resume the paused program. Using resume will dissable [--old | --data | --num | --fog|--cloud|--device ] flags
 
     Use --port only with --resume (it's gonna be dissabled if --resume flag is is not on.) to resume the program on the program on the right port.
+    
+    USE --remote to run the jamscript on another machine: --remote=<IPadress>
 
     Usage: jamrun file.jxe
                     [--app=appl_name]

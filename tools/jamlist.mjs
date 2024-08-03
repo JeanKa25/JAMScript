@@ -352,7 +352,7 @@ async function main(update=null){
                 [monitor] use this flag to turnn on the monitoring mode
                 [type=<type> | dataStore=<dataStore> | tmuxid=<tmux> | portNum=<portNum> | appName=<appName> | programName=<programName> ] 
                 the flags abouve are used for filtering the jamlist 
-     
+                [--remote] is a flag to list the apps running on the remote machines. only for programs that chave current machine as root
                 `
                 
             )
