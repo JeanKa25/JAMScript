@@ -87,6 +87,8 @@ const jamclogOptionDefinition = [
     {name : "j", type: Boolean, defaultValue : false },
     {name : "c", type: Boolean, defaultValue : false },
     {name : "tail", type: Number, defaultValue : undefined },
+    {name : "remote", type: String, defaultValue : undefined },
+
 
 
 
@@ -438,7 +440,7 @@ export function getLogArgs(argv){
     else{
         flag = (options.j)? "j" : "c"
     }
-    return {file : file , flag : flag, tail : options.tail}
+    return {file : file , flag : flag, tail : options.tail, remote: options.remote}
 
      
 }
