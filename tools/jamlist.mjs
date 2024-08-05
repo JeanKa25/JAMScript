@@ -51,12 +51,16 @@ function getRunningDirs(){
     }
     return appToPort;
 }
-function getWatchList(){
+function getWatchList(filters){
     const watchList = []
     const appFolder = getAppFolder()
+    console.log(filters)
     //make sure it is watching recursively
     watchList.push(`${jamFolder}/ports`)
-    watchList.push(`${jamFolder}/remote`)
+    if(filters.remote){
+        watchList.push(`${jamFolder}/remote`)
+
+    }
     const dirs = getRunningDirs()
     for(let dir of dirs.keys()){
         for(let port of dirs.get(dir)){
@@ -75,8 +79,8 @@ function watch(filters) {
         await $`zx ${jamcleanPath}`
     }, 1000);
     function updateWatchList(watchList){
-
-        const newWatchList = getWatchList();
+        console.log(filters, "this is my filters from watch function")
+        const newWatchList = getWatchList(filters);
         for(let item of newWatchList){
             if(!watchList.includes(item)){
                 watcher.add(item)
@@ -93,8 +97,10 @@ function watch(filters) {
         await sleep(500); 
         if (!filters || filters.all === true || Object.keys(filters).length === 0) {
             const info = getNodeInfo();
-            NODESINFO = []
-            await main(true)
+            if(filters.remote){
+                NODESINFO = []
+                await main(true)
+            }
 
 
 
@@ -107,15 +113,21 @@ function watch(filters) {
 
                 printHeader();
                 printNodeInfo(info);
-                printNodeInfo(NODESINFO);
+                if(filters.remote){
+                    printNodeInfo(NODESINFO);
+                }
             }
         } else {
             const nodeinfo = getNodeInfo();
             let keysToRemove = ["root","remote","help","all" ];
             let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
             const filtered = filter(nodeinfo, filteredObj);
-            NODESINFO = []
-            await main(true)
+            console.log("INCLUDING REMOTE?", filters.remote);
+            if(filters.remote){
+                NODESINFO = []
+                await main(true)
+            }
+
      
 
 
@@ -130,12 +142,14 @@ function watch(filters) {
   
                 printHeader();
                 printNodeInfo(filtered);
+            if(filters.remote){
                 printNodeInfo(NODESINFO);
+            }
 
             }
         }
     }, 500); 
-    let watchList = getWatchList()
+    let watchList = getWatchList(filters)
     watcher = chokidar.watch(watchList, { persistent: true, ignoreInitial: true }).on('all', (event, path) => {
         console.log(`Event: ${event}, Path: ${path}`);
         watchList = updateWatchList(watchList)
@@ -366,6 +380,7 @@ async function main(update=null){
 
     const jamfolder = getJamFolder()
     if(filters.remote || update){
+        console.log("GOT TO THE remote call SECTION")
 
         const map = getRemoteMachines();
 
@@ -407,6 +422,7 @@ async function main(update=null){
     }
 
     if(filters.root){
+        console.log("GOT TO THE root SECTION")
 
         if(filters.all){
 
@@ -446,7 +462,7 @@ async function main(update=null){
         }
     }
     else if(!update){
-
+        console.log("GOT TO THE LOCAL SECTION")
         if(filters.all){
             await $`zx ${jamcleanPath}`
             const info = getNodeInfo();
@@ -462,7 +478,7 @@ async function main(update=null){
         }
 
         else{
-            // console.log("got here")
+            
             await $`zx ${jamcleanPath}`
             const nodeinfo = getNodeInfo()
             let keysToRemove = ["root","remote","help","all" ];

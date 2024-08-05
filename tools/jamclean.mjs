@@ -245,7 +245,7 @@ async function isCfileRunning(Dir,port,num){
     const pid = fs.readFileSync(`${cdevID}`).toString().trim();
     let running;
     try{
-        const p = await $`ps -p ${pid} | grep ./a.out |  wc -l | tr -d '[:space:]'`
+        const p = await $`ps -p ${pid} | grep a.out |  wc -l | tr -d '[:space:]'`
         running = Number(p.stdout.toString().trim());
     }
     catch(error){
@@ -456,7 +456,7 @@ async function cleanRemote(toRemove){
             if(!port){
                 fs.rmSync(`${jamfolder}/remote/${machine}`, { recursive: true, force: true });
             }
-            if(!fs.readFileSync(`${jamfolder}/remote/${machine}/${port}`)){
+            if(!fs.existsSync(`${jamfolder}/remote/${machine}/${port}`)){
                 return
             }
             const apps = fs.readFileSync(`${jamfolder}/remote/${machine}/${port}`).toString().trim().split("\n");
@@ -467,7 +467,7 @@ async function cleanRemote(toRemove){
             }
             else{
                 const toWrite = currApps.join("\n")
-                fs.writeFileSync(`${jamfolder}/remote/${machine}/${port}`,`${toWrite}`)
+                fs.writeFileSync(`${jamfolder}/remote/${machine}/${port}`,`${toWrite}\n`)
             }
         }
         if((fs.readdirSync(`${jamfolder}/remote/${machine}`)).length === 0 ){
@@ -502,7 +502,15 @@ async function cleanRemote(toRemove){
                     username: 'admin',
                     password: 'admin' 
                 };
-                const client = await makeConnection(config);
+                let client
+                try{
+                    client = await makeConnection(config);
+                }
+                catch(error){
+                        fs.rmSync(`${jamFolder}/remote/${machines}`, { recursive: true, force: true });
+                        continue;
+                }
+
                 const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
                 const changeDir= "cd JAMScript/tools"
                 const script = `zx jamclean.mjs --root=${currIP} --hash=${arg}`

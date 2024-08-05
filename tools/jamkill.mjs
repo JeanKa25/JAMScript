@@ -268,9 +268,11 @@ function killDataForAll(root){
     const toClean=[];
     const activeDirs = getRunningDirs();
     const appfolder = getAppFolder()
+    console.log("ACTIVE DIRS", activeDirs)
     for(let dir of activeDirs.keys()){
         for(let port of activeDirs.get(dir)){
             if(root){
+                console.log("root exists")
                 if(fs.existsSync(`${appfolder}/${dir}/${port}/root`)){
                     const rootIP = fs.readFileSync(`${appfolder}/${dir}/${port}/root`).toString().trim();
                     if(rootIP === root){
@@ -285,6 +287,7 @@ function killDataForAll(root){
 
             }
             else{
+                console.log("root does not exists")
                 const info ={
                     programName : dirNameToProgramName(dir)+".jxe",
                     appName : dirNameToAppName(dir),
@@ -294,6 +297,7 @@ function killDataForAll(root){
             }
         }
     }
+    console.log("TO CLEAN", toClean)
     return toClean
 }
 async function killJamRun(data){
@@ -402,11 +406,7 @@ async function jamKill(flag, name, pause, root)
             const programName = data.programName
             const portNumber = data.portNumber
             if(
-                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/machType`)) ||
-                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/numCnodes`)) ||
-                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/mqtt.conf`)) ||
-                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/dataStore`)) ||
-                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/processId`))
+                (!fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/machType`)) 
             ){
                 console.log("CAN'T PAUSE",`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}. TRY LATER` )
             }
