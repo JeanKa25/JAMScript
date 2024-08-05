@@ -682,6 +682,7 @@ async function main(){
             local_registry,
             bg,
             NOVERBOSE,
+            resume,
             log,
             old,
             local,

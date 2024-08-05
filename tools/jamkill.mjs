@@ -541,6 +541,8 @@ async function main(){
     const remotes = fs.readdirSync(`${jamfolder}/remote`)
     console.log(remotes)
     console.log("GOT HERE 2")
+    console.log(args.pause, "IF IT IS PAUSED")
+
     for(let remote of remotes){
         const [host,port] =  remote.split("_");
         console.log(host)
@@ -568,22 +570,25 @@ async function main(){
         const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
         const changeDir= "cd JAMScript/tools"
         let toExecute;
+
         if(args.flag == "reset"){
                 toExecute = `zx jamkill.mjs --reset --root=${currIP}`
         }
+       
         else if(args.flag == "all"){
             if(!args.pause)
                 toExecute = `zx jamkill.mjs --${args.flag} --root=${currIP}`
             else
-                toExecute = `zx jamkill.mjs --${args.flag} --${args.pause} --root=${currIP}`
+                toExecute = `zx jamkill.mjs --${args.flag} --pause --root=${currIP}`
         }
         else{
             if(!args.pause)
                 toExecute = `zx jamkill.mjs --${args.flag} --name=${args.name} --root=${currIP}`
             else
-                toExecute = `zx jamkill.mjs --${args.flag} --name=${args.name} --${args.pause} --root=${currIP}`
+                toExecute = `zx jamkill.mjs --${args.flag} --name=${args.name} --pause --root=${currIP}`
         }
         console.log(toExecute)
+
         const command=`${pathExport} && ${changeDir} && ${toExecute}`
         await executeScript(client, command);
     }
