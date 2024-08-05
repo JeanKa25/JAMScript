@@ -341,7 +341,13 @@ async function clean(){
         }
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
         for(let dir of dirs){
-            const isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) !== "false") ? true : false
+            let isPaused;
+            try{
+                 isPaused = ((fs.readFileSync(`${appFolder}/${dir}/${port}/paused`).toString().trim()) !== "false") ? true : false
+            }
+            catch(error){
+                
+            }
             if(isPaused){
                 continue;
             }

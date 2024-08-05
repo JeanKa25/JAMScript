@@ -705,7 +705,8 @@ async function main(){
             process.exit(1)
         }
         else{
-            throw error
+            show_usage()
+            process.exit(1)
         }
     }
     let folder;
