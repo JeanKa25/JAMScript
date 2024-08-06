@@ -720,7 +720,7 @@ async function main(){
                 console.log(`this machine is not the root for any running app`);
                 process.exit(0);
             }
-            if(!fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}`)){
+            if(!fs.existsSync(`${jamfolder}/remote/${config.host}_${config.port}/${port}`)){
                 console.log(`this machine is not the root for any running app on ${config.host}_${config.port}`);
                 process.exit(0);
             }
