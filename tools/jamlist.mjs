@@ -128,11 +128,6 @@ function watch(filters) {
                 await main(true)
             }
 
-     
-
-
-
-
             if (filtered.length + NODESINFO.length === 0) {
                 console.log("---------");
 

@@ -700,14 +700,7 @@ async function main(){
    
    
     catch(error){
-        if(error.type === "ShowUsage"){
-            show_usage()
-            process.exit(1)
-        }
-        else{
-            show_usage()
-            process.exit(1)
-        }
+            throw(error)
     }
     let folder;
     let ifile;
@@ -731,7 +724,7 @@ async function main(){
                 console.log(`this machine is not the root for any running app on ${config.host}_${config.port}`);
                 process.exit(0);
             }
-            const remoteApps = fs.readFileSync(`${jamfolder}/remote/${config.host}_${config.port}`).toString().trim().split("\n")
+            const remoteApps = fs.readFileSync(`${jamfolder}/remote/${config.host}_${config.port}/${port}`).toString().trim().split("\n")
             if(!remoteApps.includes(`${fileNoext}_${app}`)){
                 console.log(`this machine is not the root for any running ${fileNoext}_${app}`);
                 process.exit(0)
