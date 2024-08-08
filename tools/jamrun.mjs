@@ -198,7 +198,7 @@ function show_usage(){
     
     The jamrun command creates a run state in the $HOME/.jamruns folder.
     `;
-    return usageMessage;
+    console.log(usageMessage)
     
 }
 
@@ -613,6 +613,7 @@ async function main(){
    
    
     catch(error){
+            console.log('got here')
             show_usage()
             throw(error)
     }
