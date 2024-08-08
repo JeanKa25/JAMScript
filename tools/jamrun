@@ -467,7 +467,7 @@ async function waitforredis(port){
             }
         }
         catch(error){
-            console.log(error)
+
         }
         if (!NOVERBOSE) {
           console.log("Trying to find Redis server...");
@@ -826,7 +826,6 @@ async function main(){
     if(!fs.existsSync(`${folder}/${iport}`,{ recursive: true })){
         fs.mkdirSync(`${folder}/${iport}`)
     }
-    console.log(`MY PORT IS:${removablePort}`)
     if(isDevice)
         await runDevice(iport,dport,group)
         
