@@ -197,7 +197,7 @@ function SetJamrunVar(options){
 
 export function jamrunParsArg(argv){
     
-    const arg = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun.mjs')))
+    const arg = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamrun')))
     
     const file = checkJXEfile(arg)
    
@@ -258,7 +258,7 @@ export function getJargs(argObject){
 }
 
 export function getJamListArgs(argv){
-    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlist.mjs')))
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlist')))
     let options
     try{
         options = commandLineArgs(jamlistOptionDefinition, {argv: args});
@@ -305,7 +305,7 @@ export function getJamListArgs(argv){
 
 
 export function getKilltArgs(argv){
-    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamkill.mjs')))
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamkill')))
     let options
     
     try{
@@ -382,7 +382,7 @@ export function getRemoteArgs(argObject){
     return args.join(" ")
 }
 export function getLogArgs(argv){
-    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlog.mjs') ))
+    const args = argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamlog') ))
     let options
     let file;
     let flag;

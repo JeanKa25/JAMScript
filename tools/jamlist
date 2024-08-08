@@ -1,225 +1,506 @@
-#!/bin/bash
+#!/usr/bin/env node --input-type=module
 
-# Edit the following locations to provide the correct location if needed
-TMUX=`which tmux`
-if [ -z $TMUX ]; then
-    TMUX=/usr/local/bin/tmux
-fi
+import { getJamListArgs } from "./parser.mjs";
+import {getAppFolder,getJamFolder} from "./fileDirectory.mjs"
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { Client } from 'ssh2';
 
-# No need to edit below this line unless you find a bug!
-
-die() {
-    printf '%s\n' "$1" >&2
-    exit 1
-}
-
-show_usage() {
-    cat << EOF
-Usage: jamlist [--app=appl_name]
-
-Lists details about all activated instances of JAMScript programs. Use the --app=X
-option to limit the listing to programs that match the given name (i.e., X).
-
-EOF
-}
-
-checkprocess() {
-
-    if [ -e $1/processId ]; then
-        local pid=`cat $1/processId`
-        if [ $pid == "new" ]; then
-            running="new"
-        else
-            local present=`ps -p $pid | grep node | wc -l | tr -d '[:space:]'`
-            if [ $present == "1" ]; then
-                running="ps"
-            else
-                running="none"
-            fi
-        fi
-    elif [ -e $1/dockerId ]; then
-        local didp=`cat $1/dockerId`
-        local appid=`cat $1/appid`
-        if [ -z $didp ] || [ $didp == "-" ]; then
-            running="none"
-        else
-            local present=`docker ps --filter id=$didp | grep $didp | wc -l | tr -d '[:space:]'`
-            if [ $present == "1" ]; then
-                local present=`docker exec -it $didp jamlist | grep $appid | wc -l | tr -d '[:space:]'`
-                if [ $present == "1" ]; then
-                    running="docker"
-                else
-                    running="none"
-                fi
-            else
-                running="none"
-            fi
-        fi
-    else
-        running="none"
-    fi
+const { debounce } = require('lodash');
+const chokidar = require('chokidar');
+const jamFolder = getJamFolder()
+let watcher;
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename);
+const jamcleanPath = resolve(__dirname, 'jamclean');
+let NODESINFO = []
+let currIP ;
+if (os.platform() === 'win32') {
+currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
+} else if (os.platform() === 'darwin') {
+currIP = (await $`ipconfig getifaddr en0`.catch(() => '')).toString().trim();
+} else if (os.platform() === 'linux') {
+currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
 }
 
 
-# save information in global varibales
-# appl=
-# prog=
-saveapplinfo() {
-
-    prog=`echo $1 | awk '{split($0,a,"_"); print a[1]}'`
-    appl=`echo $1 | awk '{split($0,a,"_"); split(a[2],b, "/"); print b[1]}'`
+export function getRunningDirs(){
+    const jamFolder = getJamFolder()
+    const appToPort = new Map()
+    let activePorts
+    try{
+        activePorts = fs.readdirSync(`${jamFolder}/ports`)
+    }
+    catch(error){
+        return appToPort
+    }
+    for(let port of activePorts){
+        let apps;
+        try{
+            apps = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n");
+        }
+        catch(error){
+            continue
+        }
+        for(let app of apps){
+            if(appToPort.has(app)){
+                const portList = appToPort.get(app);
+                portList.push(port)
+                appToPort.set(app,portList)
+            }
+            else{
+                appToPort.set(app,[port])
+            }
+        }
+    }
+    return appToPort;
 }
+function getWatchList(filters){
+    const watchList = []
+    const appFolder = getAppFolder()
+    watchList.push(`${jamFolder}/ports`)
+    if(filters.remote){
+        watchList.push(`${jamFolder}/remote`)
 
-printnodeinfo() {
-    local port=$1
-    if [ -e $2/machType ]; then
-        local mtype=`cat $2/machType`
-    else
-        local mtype="-"
-    fi
-    if [ -e $2/appid ]; then 
-        local appid=`cat $2/appid`
-    else 
-        local appid="-"
-    fi 
-    if [ -e $2/dataStore ]; then
-        local dstore=`cat $2/dataStore`
-    else 
-        local dstore="-"
-    fi
-    if [ -e $2/tmuxid ]; then
-        local tmuxid=`cat $2/tmuxid`
-    else
-        local tmuxid="-"
-    fi
-    if [ -e $2/parentId ]; then
-        local parid=`cat $2/parentId`
-    else
-        local parid='-'
-    fi
+    }
+    const dirs = getRunningDirs()
+    for(let dir of dirs.keys()){
+        for(let port of dirs.get(dir)){
+            watchList.push(`${appFolder}/${dir}/${port}/numCnodes`)
+            watchList.push(`${appFolder}/${dir}/${port}/paused`)
+        }
+    }
+    return watchList
 
-    if [ $mtype == "device" ]; then
-        local cdevs=0
-        for pidf in `ls $2/cdevProcessId.*`; do
-            local pid=`cat $pidf`
-            local pidok=`ps -p $pid | grep a.out | wc -l | tr -d '[:space:]'`
-            if [ $pidok == 1 ]; then
-                ((cdevs++))
-            fi
-        done
-        printf "%6s %12s %12s %12s %12s %15s %10s %7s %10s\n" "$appid" "$appl" "$prog" "Local:$port" "$parid" "$dstore" "$mtype" "$cdevs" "$tmuxid"
-    else
-        printf "%6s %12s %12s %12s %12s %15s %10s %7s %10s\n" "$appid" "$appl" "$prog" "Local:$port" "$parid" "$dstore" "$mtype" "--" "$tmuxid"
-    fi
-}
-
-
-printdockerinfo() {
-    local port=$1
-    local mtype=`cat $2/machType`
-    local appid=`cat $2/appid`
-    local dstore=`cat $2/dataStore`
-    if [ -e $2/tmuxid ]; then
-        local tmuxid=`cat $2/tmuxid`
-    else
-        local tmuxid="-"
-    fi
-    if [ -e $2/tmuxid_c ]; then
-        local tmuxid_c=`cat $2/tmuxid_c`
-    else
-        local tmuxid_c="-"
-    fi
-
-
-    local dockerid=`cat $2/dockerId`
-
-    tmux has-session -t $tmuxid 2>/dev/null
-    local res=$?
-    if [ $res == "1" ]; then
-        tmuxid="-"
-    fi
-
-    if [ $mtype == "device" ]; then
-#        local cdevs=`docker exec $dockerid jamquery $appid cdevs`
-        cdevs=`cat $2/cdevs`
-        printf "%6s %12s %12s %12s %12s %15s %10s %7s %10s\n" "$appid" "$appl" "$prog" "$dockerid" "" "$dstore" "$mtype" "$cdevs" "$tmuxid,$tmuxid_c"
-    else
-        printf "%6s %12s %12s %12s %12s %15s %10s %7s %10s\n" "$appid" "$appl" "$prog" "$dockerid" "" "$dstore" "$mtype" "--" "$tmuxid"
-    fi
 }
 
 
 
-printheader() {
-    printf "\n%6s %12s %12s %12s %12s %15s %10s %7s %10s\n" "ID" "NAME" "PROGRAM" "HOST" "PARENT" "D-STORE" "TYPE" "C-NODES" "TMUX-ID"
+function watch(filters) {
+    setInterval(async () => {
+        await $`zx ${jamcleanPath}`
+    }, 1000);
+    function updateWatchList(watchList){
+
+        const newWatchList = getWatchList(filters);
+        for(let item of newWatchList){
+            if(!watchList.includes(item)){
+                watcher.add(item)
+            }
+        }
+        for(let item of watchList){
+            if(!newWatchList.includes(item)){
+                watcher.unwatch(item)
+            }
+        }
+        return newWatchList;
+    }
+    const updateInfo = debounce(async () => {
+        await sleep(500); 
+        if (!filters || filters.all === true || Object.keys(filters).length === 0) {
+            const info = getNodeInfo();
+            if(filters.remote){
+                NODESINFO = []
+                await main(true)
+            }
+
+
+
+            if (info.length + NODESINFO.length === 0) {
+                console.log("---------");
+
+                console.log("There is no program running");
+            } else {
+                console.log("---------");
+
+                printHeader();
+                printNodeInfo(info);
+                if(filters.remote){
+                    printNodeInfo(NODESINFO);
+                }
+            }
+        } else {
+            const nodeinfo = getNodeInfo();
+            let keysToRemove = ["root","remote","help","all" ];
+            let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+            const filtered = filter(nodeinfo, filteredObj);
+
+            if(filters.remote){
+                NODESINFO = []
+                await main(true)
+            }
+
+            if (filtered.length + NODESINFO.length === 0) {
+                console.log("---------");
+
+                console.log("There is no such program running");
+            } else {
+                console.log("---------");
+  
+                printHeader();
+                printNodeInfo(filtered);
+            if(filters.remote){
+                printNodeInfo(NODESINFO);
+            }
+
+            }
+        }
+    }, 500); 
+    let watchList = getWatchList(filters)
+    watcher = chokidar.watch(watchList, { persistent: true, ignoreInitial: true }).on('all', (event, path) => {
+
+        watchList = updateWatchList(watchList)
+        updateInfo();
+    });
 }
 
-app=
+export function dirNameToAppName(dirName){
+    const dir = dirName.split('_')
+    if(dir.length > 2){
+        return (dir.filter((_,index) => index !== 0)).join("_")
+    }
+    else{
+        return dir[1];
+    }
+    
+}
+export function dirNameToProgramName(dirName){
+    return (dirName.split('_'))[0]
+    
+}
+
+function getNodeInfo(root=null){
+    const appToPortMap = getRunningDirs()
+    const jamfolder = getJamFolder()
+    const appfolder  = getAppFolder();
+    const nodeInfo =[]
+    if( (!fs.existsSync(`${jamfolder}/ports`)) || (!fs.existsSync(`${jamfolder}/apps`)) ){
+        return []
+    }
+
+    for(let app of appToPortMap.keys()){
+        const appName = dirNameToAppName(app)
+        const programName = dirNameToProgramName(app)
+        for(let port of appToPortMap.get(app)){
+            if(root){
+                if(fs.existsSync(`${appfolder}/${app}/${port}/root`)){
+                    const rootIP = fs.readFileSync(`${appfolder}/${app}/${port}/root`).toString().trim();
+                    if(rootIP === root){
+                        const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-"}
+                        const dirPath = `${appfolder}/${app}/${port}`
+                        if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
+                            throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
+                        }
+                        for(let fileName of Object.keys(fileNames)){
+                            if(fs.existsSync(`${dirPath}/${fileName}`)){
+                                const data = fs.readFileSync(`${dirPath}/${fileName}`).toString().trim();
+                                fileNames[fileName] = data;
+                            }
+                        }
+                        fileNames["portNum"] = String(port)
+                        fileNames["appName"] = appName
+                        fileNames["programName"] = programName
+                        if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
+                            fileNames["status"] = "paused"
+                        }
+                        else{
+                            fileNames["status"] = "running"
+                            
+                        }
+                        
+                        fileNames["host"] = currIP
+                        
+                    
+            
+                        nodeInfo.push(fileNames)
+                    
+                    }
+                }
+            }
+            else{
+                const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-" }
+                const dirPath = `${appfolder}/${app}/${port}`
+                if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
+                    throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
+                }
+                for(let fileName of Object.keys(fileNames)){
+                    if(fs.existsSync(`${dirPath}/${fileName}`)){
+                        const data = fs.readFileSync(`${dirPath}/${fileName}`).toString().trim();
+                        fileNames[fileName] = data;
+                    }
+                }
+                fileNames["portNum"] = String(port)
+                fileNames["appName"] = appName
+                fileNames["programName"] = programName
+                if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
+                    fileNames["status"] = "paused"
+                }
+                else{
+                    fileNames["status"] = "running"
+                    
+                }
+                fileNames["host"] = "localHost"
+
+    
+                nodeInfo.push(fileNames)
+            }
+
+        }
+    }
+
+    return nodeInfo;
+}
+
+function printNodeInfo(info){
+   
+    for (let row of info){
+        if(row["host"] === currIP){
+            row["host"] = "localHost"
+        }
+        const headerString = `   ${row["appName"].padEnd(10)} ${row["programName"].padEnd(10)} ${("Local:"+row["portNum"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)} ${row["host"].padEnd(10)}`;
+        console.log(headerString)
+    }
+}
 
 
-while :; do
-    case $1 in
-        -h|-\?|--help)
-            show_usage      # Display a usage synopsis.
-            exit
-            ;;
-        -a|--app)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                app=$2
-                shift
-            else
-                die 'ERROR: "--app" requires a non-empty option argument.'
-            fi
-            ;;
-        --app=?*)
-            app=${1#*=}     # Delete everything up to "=" and assign the remainder.
-            ;;
-        --app=)            # Handle the case of an empty
-            die 'ERROR: "--app" requires a non-empty option argument.'
-            ;;
-        --)              # End of all options.
-            shift
-            break
-        ;;
-        -?*)
-            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
-            ;;
-        *)               # Default case: No more options, so break out of the loop.
-            break
-    esac
+function printHeader(){
+    const headerString = `   ${"NAME".padEnd(10)} ${"PROGRAM".padEnd(10)} ${"HOST".padEnd(10)} ${"PARENT".padEnd(10)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(10)} ${"C-NODES".padEnd(10)} ${"TMUX-ID".padEnd(10)} ${"STATUS".padEnd(10)} ${"HOST".padEnd(10)}`;
+    console.log(headerString)
+}
 
-    shift
-done
+function filter(nodeinfo, filters){
+    const filteredInfo =[];
+    for(let info of nodeinfo){
+        let isPassing = true
+        for(let filter of Object.keys(filters)){
+            if(!(filters[filter] === info[filter])){
+                isPassing = false
+                break;
+            }
+        }
+        if(isPassing){
+            filteredInfo.push(info)
+        }
+    }
+    return filteredInfo;
+}
+
+function getRemoteMachines(){
+    const jamfolder = getJamFolder()
+    if(!fs.existsSync(`${jamfolder}/remote`)){
+        return []
+    }
+    return (fs.readdirSync(`${jamfolder}/remote`))
+
+}
+
+async function makeConnection(config){
+    return await new Promise((resolve, reject) => {
+        const client = new Client();
+        client.on('ready', () => {
+            resolve(client);
+        });
+
+        client.on('error', (error) => {
+            reject(error);
+        });
+
+        client.connect(config);
+    });
+}
+
+async function executeScript(client, command){
+    return (await new Promise((resolve, reject) =>{
+        client.exec(command, (err,stream) =>{
+            if (err) console.log(error);
+            stream.on("close", () => {
+                resolve("closed")
+            })
+            stream.on("data" , (data) =>{
+                if(data.includes("NODEINFO##")){
+                    let JSONrow = data.toString().trim().split("##")[1]
+                    let row;
+                    try{
+                        row = JSON.parse(JSONrow)
+                    }
+                    catch(error){
+                        console.log(error)
+                    }
+
+         
 
 
-appsfolder=$HOME"/.jamruns/apps"
-if [ ! -d $appsfolder ]; then
-    echo "No running instances of JAMScript."
-    exit 0
-fi
+                    NODESINFO.push(row)
+                }
+            })
+        })
+    }))
+}
 
-if [ "$(ls -A $appsfolder)" ]; then
+async function main(update=null){
+    NODESINFO = []
 
-    cd $appsfolder
+    let args;
+    try{
+        args = getJamListArgs(process.argv)
+    }
+    catch(error){
+        console.log(error)
+       
+        if(error.type = "ShowUsage"){
+            console.log(
 
-    printheader
-    for jruns in */; do
-        if [ $jruns != "*/" ]; then
-            saveapplinfo $jruns
-            for jexs in `ls $appsfolder/$jruns`; do
-                dir=$appsfolder/$jruns$jexs
-                if [ -d $dir ]; then
-                    checkprocess $dir
-                    if [ $running == "ps" ] || [ $running == "new" ]; then
-                        printnodeinfo $jexs $dir
-                    elif [ $running == "docker" ]; then
-                        printdockerinfo $jexs $dir
-                    fi
-                fi
-            done
-        fi
-    done
-else
-    echo "No running instances of JAMScript."
-    exit 0
-fi
+                `
+
+                Usage: 
+                jamlist --help: show this usage msg.
+                
+                jamlist has two made modes. the default is just printing the list of requested programs but if it's required to monitor the apps and update upon changes,
+                the --monitor should be used. it prints the list of requested programs, and keeps montoring them, if there is any change it will be updated.
+
+                by default jamlist only monitors or prints out locally running programs yet if it's required to monitor or list none local programs as well, --remote
+                flag should be used.
+
+                by passing the --all flag jamlist is going to list all the running apps. if there is certain restriction needs to be applied the following filters can be used:
+                [type=<type> | dataStore=<dataStore> | tmuxid=<tmux> | portNum=<portNum> | appName=<appName> | programName=<programName> ]
+                NOTE: all the abouve arguments can be used togeather but using --all will dissable them all and removes all the filters 
+
+
+                `
+                
+            )
+        process.exit(1);
+        }
+        console.log(error)
+        throw error;
+    }
+    const filters = args.filters;
+    const monitor = args.monitor;
+
+    const jamfolder = getJamFolder()
+    if(filters.remote || update){
+
+
+        const map = getRemoteMachines();
+
+        for(let machines of map){
+
+            const [host,port] =  machines.split("_");
+            const config = {
+                host: host,
+                port: port,
+                username: 'admin',
+                password: 'admin' 
+            };
+            const client = await makeConnection(config);
+            const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
+            const changeDir= "cd JAMScript/tools"
+            let args= ""
+            for(let filter of Object.keys(filters)){
+                if(filter === "remote"){
+                    continue
+                }
+                if(filter === "all" || filter === "help"  ){
+                    if(filters.filter)
+                        {
+                            args = args + `--${filter} `
+
+                        }
+                        continue
+       
+                }
+                  args = args + `--${filter}=${filters[filter]} `
+            } 
+            args =args.trim() 
+
+
+            const script = `zx jamlist ${args} --root=${currIP}`
+            await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
+   
+        }  
+    }
+
+    if(filters.root){
+
+
+        if(filters.all){
+
+            await $`zx ${jamcleanPath}`
+
+
+            const info = getNodeInfo(filters.root);
+
+
+
+            for(let row of info){
+
+                const jsonRow = JSON.stringify(row)
+
+                await sleep(50)
+            }
+        }
+        else{
+
+            await $`zx ${jamcleanPath}`
+            const nodeinfo = getNodeInfo(filters.root)
+
+
+            let keysToRemove = ["root","remote","help","all" ];
+            let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+
+            const filtered = filter(nodeinfo, filteredObj)
+
+            if(filtered.length === 0 ){
+                process.exit(0)  
+            }
+            for(let row of filtered){
+                const jsonRow = JSON.stringify(row)
+                console.log(`NODEINFO##${jsonRow}`)
+                await sleep(50)
+            }
+        }
+    }
+    else if(!update){
+
+        if(filters.all){
+            await $`zx ${jamcleanPath}`
+            const info = getNodeInfo();
+            if(info.length + NODESINFO.length === 0 ){
+
+                if(!monitor){
+                    process.exit(0)
+                }
+            }
+            printHeader();
+            printNodeInfo(info);
+            printNodeInfo(NODESINFO)
+        }
+
+        else{
+            
+            await $`zx ${jamcleanPath}`
+            const nodeinfo = getNodeInfo()
+            let keysToRemove = ["root","remote","help","all" ];
+            let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+
+            const filtered = filter(nodeinfo, filteredObj)
+            if(filtered.length + NODESINFO.length === 0 ){
+                console.log("there is No such program running")
+                if(!monitor){
+                    process.exit(0)
+                }
+            }
+            printHeader();
+            printNodeInfo(filtered);
+            printNodeInfo(NODESINFO)
+        }
+        if(monitor){
+            watch(filters);
+        }
+    }
+
+}
+
+(async () => { 
+     await main()
+})();
