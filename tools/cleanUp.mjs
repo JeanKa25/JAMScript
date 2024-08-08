@@ -30,7 +30,6 @@ function killtmux(PortNumber,appName , programName){
 }
 
 function stalePort(removablePort,app,programName){
-    console.log("PORT STALE CLEANING PORT")
     const jamfolder = getJamFolder()
     if(!removablePort){
         return false;
@@ -41,39 +40,30 @@ function stalePort(removablePort,app,programName){
    
     const appNames = fs.readFileSync(`${jamfolder}/ports/${removablePort}`).toString().trim().split("\n");
     const dirName = (programName.split(".")[0])+"_"+app
-    console.log(dirName, "DIR NAME")
-    console.log("PROGRAM NAME", programName)
+
+
     if(appNames.includes(dirName)){
         if(appNames.length === 1){
-            console.log("RETERNING TURE")
+
             fs.rmSync(`${jamfolder}/ports/${removablePort}`, { recursive: true, force: true });
             return true;
 
         }
         else{
-            console.log("RETERNING false 1")
+
             const newAppNames =  appNames.filter((appName) => appName !== dirName)
             fs.writeFileSync(`${jamfolder}/ports/${removablePort}`, newAppNames.join("\n"))
             return false;
         }
     }
     else{
-        console.log("RETERNING false 2")
+
         return false;
     }
 }
 
 function killMosquitto(removablePort){
-    // console.log("CLOSING THE MOSQUITTO")
-    // const result = spawnSync('lsof', ['-i', `tcp:${Number(removablePort)}`, '-sTCP:LISTEN', '-t']);
-    // console.log("GOT THE RESULT")
-    // if(result.error){
-    //     console.log("THERE IS AN ERROR")
-    //     console.log(error)
-    //     return
-    // }
-    // const pid = result.stdout.toString().trim();
-    // console.log("PID WE NEED", pid)
+
     const jamfolder = getJamFolder()
     if(fs.existsSync(`${jamfolder}/mqttpid/${removablePort}`)){
         const pid = fs.readFileSync(`${jamfolder}/mqttpid/${removablePort}`).toString().trim()
@@ -94,7 +84,7 @@ function killRedis(removablePort){
 
 function cleanPort(removablePort,app,programName){
     const isPortStale = stalePort(removablePort,app,programName);
-    console.log("THIS IS THE PORT", isPortStale)
+
     if(isPortStale){
         killMosquitto(removablePort);
         killRedis(removablePort);
@@ -106,7 +96,7 @@ function cleanPort(removablePort,app,programName){
 }
 function ArchiveLog(removablePort, appName, programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName)
-    console.log(folder)
+
     if(fs.existsSync(`${folder}/${removablePort}`)){
         process.chdir(`${folder}/${removablePort}`);
         const logs = fs.readdirSync('.').filter( (entry) => entry.includes("log"))
@@ -161,7 +151,7 @@ function markPause(PortNumber,appName ,programName){
 // }
 
 export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
-    console.log("killing port ")
+
 
     if(!programName || !appName || !PortNumber){
         if(!NOVERBOSE)
@@ -169,11 +159,11 @@ export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=tr
         return;
     }
 
-    console.log("LOGS ARE ARCHIVED");
+
     const tmuxIds = killtmux(PortNumber,appName ,programName);
     if(!NOVERBOSE &&  tmuxIds)
         console.log("Killed :", tmuxIds)
-    console.log("PRE CLEANING THE CLEAN PORT")
+
     const isPortCleaned = cleanPort(PortNumber,appName,programName);
     if(!NOVERBOSE && isPortCleaned ){
         console.log("Redis and mosquitto on port ",PortNumber, "are removed" )
@@ -186,11 +176,11 @@ export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=tr
     if(!NOVERBOSE && isDirCleaned ){
         console.log(`port ${PortNumber} is cleaned for ${programName.split(".")[0]}_${appName}`)
     }
-    console.log("CLEANED UP OVER")
+
 };
 
 export function pauseByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
-    console.log("pausing port")
+
     if(!programName || !appName || !PortNumber){
         if(!NOVERBOSE)
             console.log("NO NEED FOR CLEANING")

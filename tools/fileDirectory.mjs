@@ -3,8 +3,6 @@
 let HOME = os.homedir();
 
 export function fileDirectorySetUp(file,app){
-    console.log(file)
-    console.log(app)
     const jamfolder=`${HOME}/.jamruns`
     if(!fs.existsSync(jamfolder,{ recursive: true })){
         fs.mkdirSync(jamfolder)

@@ -111,7 +111,7 @@ async function executeScript(client, command){
             stream.on("data" , async (data) =>{
                 if(data.includes("MY PORT IS:"))
                     {
-                        console.log(data.toString())
+
                         result = data.toString().trim().split(":")[1]
                     }  
                 if(data.includes("EXIT BG")){
@@ -223,7 +223,7 @@ async function startmqtt(port, cFile){
             detached: true,
         };
         const mqttProcesse =  spawn(command, args, options);
-        console.log(mqttProcesse.pid)
+
         fs.writeFileSync(`${jamfolder}/mqttpid/${port}`,`${mqttProcesse.pid}` )
         mqttProcesse.unref();
             
@@ -316,7 +316,7 @@ async function dojamout_p2_fg(pnum, floc,jappid, group=null){
         };
         const child = spawn(command, args, options);
         child.on('exit', () => {
-            console.log("sending sig term")
+
             process.kill(process.pid, 'SIGTERM');
         });
     }
@@ -383,7 +383,7 @@ async function doaout(num,port,group,datap,myf,jappid){
                 "-o": datap,
             }
             let cargs = getCargs(argObject)
-            console.log("this is my cargs",cargs )
+
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
             if (!log){
 
@@ -451,10 +451,10 @@ function setuptmux(path, appfolder) {
 async function startredis(port) {
     try{
         const p = $`redis-server --port ${port}`.stdio('ignore', 'ignore', 'inherit').nothrow().quiet();
-        console.log(p)
+
     }
     catch(error){
-        console.log(error)
+
     }
 }
 
@@ -534,7 +534,8 @@ async function unpack(file,folder){
                 const ontime = Number(p2.stdout.toString().trim());
                 if(ntime > ontime){
                     try{
-                        console.log("outdated, unzippping again")
+                        if(!NOVERBOSE)
+                            console.log("outdated, unzippping again")
                         await $`cd ${folder} && unzip -oq ${file}`.quiet()
                     }
                     catch(error){
