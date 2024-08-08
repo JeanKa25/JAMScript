@@ -1,4 +1,4 @@
-#!/usr/bin/env node --input-type=module
+#!/usr/bin/env zx
 
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 const { spawnSync } = require('child_process');

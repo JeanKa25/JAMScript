@@ -1,10 +1,10 @@
-#!/usr/bin/env node --input-type=module
+#!/usr/bin/env zx
+
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import {getKilltArgs} from "./parser.mjs"
 import { cleanByPortNumber , pauseByPortNumber} from "./cleanUp.mjs";
 import { Client } from 'ssh2';
-import { transport } from "pino";
-//can't specify what port ti jukk exactly
+
 let currIP;
 if (os.platform() === 'win32') {
     currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
@@ -531,7 +531,9 @@ async function main(){
     NOTE: only one of --app && --program && --dir && --portDir && --port can be used.
     `
         )
-    throw error
+        console.log(error.message);
+        process.exit(1);
+
   }
   const jamfolder = getJamFolder();
   const appfolder = getAppFolder();

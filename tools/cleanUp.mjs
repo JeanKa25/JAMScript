@@ -1,4 +1,5 @@
 #!/usr/bin/env zx
+
 import {getJamFolder,getAppFolder, getPaths} from './fileDirectory.mjs'
 const { spawnSync } = require('child_process');
 const p = spawnSync('which', ['tmux']);

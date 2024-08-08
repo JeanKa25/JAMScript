@@ -1,4 +1,4 @@
-#!/usr/bin/env node --input-type=module
+#!/usr/bin/env zx
 
 import { getJamListArgs } from "./parser.mjs";
 import {getAppFolder,getJamFolder} from "./fileDirectory.mjs"
@@ -345,9 +345,8 @@ async function main(update=null){
         args = getJamListArgs(process.argv)
     }
     catch(error){
-        console.log(error)
        
-        if(error.type = "ShowUsage"){
+
             console.log(
 
                 `
@@ -369,10 +368,9 @@ async function main(update=null){
                 `
                 
             )
+        console.log(error.message);
         process.exit(1);
-        }
-        console.log(error)
-        throw error;
+
     }
     const filters = args.filters;
     const monitor = args.monitor;

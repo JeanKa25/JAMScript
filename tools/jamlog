@@ -1,4 +1,4 @@
-#!/usr/bin/env node --input-type=module
+#!/usr/bin/env zx
 
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import { getLogArgs } from "./parser.mjs";
@@ -109,7 +109,7 @@ async function main(){
         arg = getLogArgs(process.argv)
     }
     catch(error){
-        if(error.type = "ShowUsage"){
+        
             console.log(
 
                 `
@@ -123,8 +123,11 @@ async function main(){
                 `
                 
             )
+        console.log(error.message);
         process.exit(1);
-        }
+        
+
+        
     }
     const flag = arg.flag;
     const port =Number(arg.file.split("/")[ arg.file.split("/").length-1]);

@@ -1,4 +1,5 @@
-#!/usr/bin/env node --input-type=module
+#!/usr/bin/env zx
+
 import {jamrunParsArg , getCargs, getJargs, getRemoteArgs} from './parser.mjs'
 import { fileURLToPath } from 'url';
 import { cleanByPortNumber, pauseByPortNumber } from './cleanUp.mjs';
@@ -199,6 +200,7 @@ function show_usage(){
     The jamrun command creates a run state in the $HOME/.jamruns folder.
     `;
     console.log(usageMessage)
+ 
     
 }
 
@@ -613,9 +615,10 @@ async function main(){
    
    
     catch(error){
-            console.log('got here')
-            show_usage()
-            throw(error)
+        show_usage()
+        console.log(error.message)
+        process.exit(1);
+
     }
     let folder;
     let ifile;
