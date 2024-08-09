@@ -12,7 +12,7 @@ const jamFolder = getJamFolder()
 let watcher;
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
-const jamcleanPath = resolve(__dirname, 'jamclean');
+const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
 let NODESINFO = []
 let currIP ;
 if (os.platform() === 'win32') {
@@ -412,7 +412,7 @@ async function main(update=null){
             args =args.trim() 
 
 
-            const script = `zx jamlist ${args} --root=${currIP}`
+            const script = `zx jamlist.mjs ${args} --root=${currIP}`
             await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
    
         }  

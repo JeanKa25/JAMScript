@@ -672,7 +672,7 @@ async function main(){
         } else if (os.platform() === 'linux') {
           currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
         }
-        const myPort = await executeScript(client, `${changeDir} && zx jamrun ${remoteArgs} --root=${currIP}`)
+        const myPort = await executeScript(client, `${changeDir} && zx jamrun.mjs ${remoteArgs} --root=${currIP}`)
 
         if(!resume){
             const jamfolder = getJamFolder()
@@ -835,7 +835,7 @@ async function main(){
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
-const jamcleanPath = resolve(__dirname, 'jamclean');
+const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
 await $`zx ${jamcleanPath}`
 await main()
 

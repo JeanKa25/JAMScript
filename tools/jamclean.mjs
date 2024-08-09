@@ -12,7 +12,7 @@ import { Client } from 'ssh2';
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
-const jamcKillPath = resolve(__dirname, 'jamkill');
+const jamcKillPath = resolve(__dirname, 'jamkill.mjs');
 
 const p = spawnSync('which', ['mosquitto_pub']);
 const MOSQUITTO_PUB = p.stdout.toString().trim()
@@ -214,7 +214,6 @@ function cleanPorts(AppToRemove){
 }
 
 async function clean(){
-    //port --> dir 
     const AppToRemove = new Map();
     const jamFolder = getJamFolder()
     const portsDir = `${jamFolder}/ports`
@@ -375,7 +374,7 @@ async function cleanRemote(toRemove){
 }
 
 (async () =>{
-    const arg = process.argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean')));
+    const arg = process.argv.filter((entry) => (!entry.includes('node') && !entry.includes('zx') && !entry.includes('jamclean.mjs')));
     const appfolder = getAppFolder();
     const jamFolder = getJamFolder();
     if(arg.length === 0){
@@ -411,7 +410,7 @@ async function cleanRemote(toRemove){
 
                 const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
                 const changeDir= "cd JAMScript/tools"
-                const script = `zx jamclean --root=${currIP} --hash=${arg}`
+                const script = `zx jamclean.mjs --root=${currIP} --hash=${arg}`
                 const result = await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
                 const toRemove = result.trim().split("\n");
                 if(toRemove.length !==0 && toRemove[0] !== ''){

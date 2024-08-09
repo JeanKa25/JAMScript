@@ -565,20 +565,20 @@ async function main(){
         let toExecute;
 
         if(args.flag == "reset"){
-                toExecute = `zx jamkill --reset --root=${currIP}`
+                toExecute = `zx jamkill.mjs --reset --root=${currIP}`
         }
        
         else if(args.flag == "all"){
             if(!args.pause)
-                toExecute = `zx jamkill --${args.flag} --root=${currIP}`
+                toExecute = `zx jamkill.mjs --${args.flag} --root=${currIP}`
             else
-                toExecute = `zx jamkill --${args.flag} --pause --root=${currIP}`
+                toExecute = `zx jamkill.mjs --${args.flag} --pause --root=${currIP}`
         }
         else{
             if(!args.pause)
-                toExecute = `zx jamkill --${args.flag} --name=${args.name} --root=${currIP}`
+                toExecute = `zx jamkill.mjs --${args.flag} --name=${args.name} --root=${currIP}`
             else
-                toExecute = `zx jamkill --${args.flag} --name=${args.name} --pause --root=${currIP}`
+                toExecute = `zx jamkill.mjs --${args.flag} --name=${args.name} --pause --root=${currIP}`
         }
 
 
