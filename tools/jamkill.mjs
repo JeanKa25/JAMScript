@@ -28,11 +28,11 @@ function show_usage(){
                 [--reset]
                 [--help]
                 [--all]
-                [--remote = ${body_sec(`IPAddress`)}]
+                [--remote=${body_sec(`IPAddress`)}]
                 [--pause]
-                [--appName = ${body_sec(`appName`)}]
-                [--programName = ${body_sec(`programName`)}]
-                [--portNum = ${body_sec(`portNum`)}]
+                [--app==${body_sec(`appName`)}]
+                [--prog==${body_sec(`programName`)}]
+                [--port==${body_sec(`portNum`)}]
 
     ${header_1(`DESCRIPTION`)}
 
@@ -52,7 +52,7 @@ function show_usage(){
     ${body_2(`Use this flag to kill all the running apps.`)}
     ${body_2_bold(`NOTE: 
     1) if using --all next to the --reset flag. --all will be dissabled. 
-    2) if using --all flag --appName, --programName, --appName will be dissabled.`)}
+    2) if using --all flag --app, --prog, --port will be dissabled.`)}
 
     --- jamkill [--pause]
     ${body_2(`Use this flag to pause the running programs instead of killing them.`)}
@@ -62,20 +62,22 @@ function show_usage(){
     ${body_2_bold(`NOTE: 
     jamkill --remote is only allowed to kill the remote programs which are started by thesame local machine which is running the jamkill.`)}
 
-    --- jamkill [--appName=X]
+    --- jamkill [--app==X]
     ${body_2(`Use this flag to kill or pause a program with a scpecific appName.`)}
 
-    --- jamkill [--programName=X]
+    --- jamkill [--prog==X]
     ${body_2(`Use this flag to kill or pause a program with a specific programName.`)}
 
-    --- jamkill [--portNum=X]
+    --- jamkill [--port=3]
     ${body_2(`Use this flag to kill or pause a program with running on a certain port.`)}
     
     NOTE: 
-    ${body_2(`--appName & --programName & --portNumber can be used all togeather or two by two to select the programs to be killed or paused.`)}
+    ${body_2(`1) --app & --prog & --port can be used all togeather or two by two to select the programs to be killed or paused.`)}
+    ${body_2(`2) To set --app , --prog and --port options two equal signs has to be used.`)}
+
 
     RESTRICTIONS: 
-    ${body_2(`can't use multiple --appName , --programName and --portNumber flags hoping to kill apps with different appNames, 
+    ${body_2(`can't use multiple --app , --prog and --port flags hoping to kill apps with different appNames, 
     programNames and portNumbers in one shot.`)}
 
 
@@ -251,14 +253,14 @@ async function jamKill(args)
     }
     else{
         let Filter ={}
-        if(args.programName){
-            Filter["programName"] = `${args.programName}.jxe`
+        if(args.prog){
+            Filter["programName"] = `${args.prog}.jxe`
         }
-        if(args.appName){
-            Filter["appName"] = args.appName
+        if(args.app){
+            Filter["appName"] = args.app
         }
-        if(args.portNum){
-            Filter["portNumber"] =  args.portNum
+        if(args.port){
+            Filter["portNumber"] =  args.port
         }
         
         toKill = filter(jamData,Filter )
@@ -355,6 +357,7 @@ async function main(){
   catch(error){
   
         show_usage()
+        error.message === "SHOW USAGE"?null:console.log(error.message)
         process.exit(1);
 
   }
@@ -387,14 +390,14 @@ async function main(){
         const changeDir= "cd JAMScript/tools"
         let toExecute;
         let filters =``;
-        if(args.programName){
-            filters = filters+`--programName=${programName} `
+        if(args.prog){
+            filters = filters+`--prog==${args.prog} `
         }
-        if(args.appName){
-            filters = filters+`--appName=${appName} `
+        if(args.app){
+            filters = filters+`--app==${args.app} `
         }
-        if(args.portNum){
-            filters = filters+`--portNum=${portNum} `
+        if(args.port){
+            filters = filters+`--port==${args.port} `
         }
         filters = filters.trim()
 

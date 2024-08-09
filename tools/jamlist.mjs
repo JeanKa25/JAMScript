@@ -197,9 +197,9 @@ function getNodeInfo(root=null){
                                 fileNames[fileName] = data;
                             }
                         }
-                        fileNames["portNum"] = String(port)
-                        fileNames["appName"] = appName
-                        fileNames["programName"] = programName
+                        fileNames["port"] = String(port)
+                        fileNames["app"] = appName
+                        fileNames["prog"] = programName
                         if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
                             fileNames["status"] = "paused"
                         }
@@ -229,9 +229,9 @@ function getNodeInfo(root=null){
                         fileNames[fileName] = data;
                     }
                 }
-                fileNames["portNum"] = String(port)
-                fileNames["appName"] = appName
-                fileNames["programName"] = programName
+                fileNames["port"] = String(port)
+                fileNames["app"] = appName
+                fileNames["prog"] = programName
                 if(fs.readFileSync(`${appfolder}/${app}/${port}/paused`).toString().trim() !== "false"){
                     fileNames["status"] = "paused"
                 }
@@ -257,7 +257,7 @@ function printNodeInfo(info){
         if(row["host"] === currIP){
             row["host"] = "localHost"
         }
-        const headerString = `   ${row["appName"].padEnd(10)} ${row["programName"].padEnd(10)} ${("Local:"+row["portNum"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)} ${row["host"].padEnd(10)}`;
+        const headerString = `   ${row["app"].padEnd(10)} ${row["prog"].padEnd(10)} ${("Local:"+row["port"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)} ${row["host"].padEnd(10)}`;
         console.log(headerString)
     }
 }
@@ -445,6 +445,9 @@ async function main(update=null){
 
             let keysToRemove = ["root","remote","help","all" ];
             let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
+            if(filteredObj["prog"]){
+                filteredObj["prog"]
+            }
 
             const filtered = filter(nodeinfo, filteredObj)
 

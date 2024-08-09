@@ -1,5 +1,6 @@
 #!/usr/bin/env zx
 import commandLineArgs from 'command-line-args';
+import { error } from 'console';
 import { type } from 'os';
 import { string } from 'random-js';
 import { fs } from 'zx';
@@ -54,9 +55,9 @@ const jamlistOptionDefinition = [
         {name : 'type', type: String , defaultValue: undefined },
         {name : 'dataStore', type: String , defaultValue: undefined },
         {name : 'tmuxid', type: String , defaultValue: undefined },
-        {name : 'portNum', type: String , defaultValue: undefined },
-        {name : 'appName', type: String , defaultValue: undefined },
-        {name : 'programName', type: String , defaultValue: undefined },
+        {name : 'port', type: String , defaultValue: undefined },
+        {name : 'app', type: String , defaultValue: undefined },
+        {name : 'prog', type: String , defaultValue: undefined },
         {name: "remote", type:Boolean, defaultValue: false},//the IP ADDRESS YOU WANT TO CONNECT TO
         {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
 
@@ -66,9 +67,9 @@ const jamkillOptionDefinition = [
     {name : 'help', type: Boolean, defaultValue : false },
     {name : 'all', type: Boolean , defaultValue: false },
     {name : 'reset', type: Boolean , defaultValue: false },
-    {name : 'appName', type: String , defaultValue: false },
-    {name : 'programName', type: String , defaultValue: false },
-    {name : 'portNum', type: String , defaultValue: false },
+    {name : 'app', type: String , defaultValue: false },
+    {name : 'prog', type: String , defaultValue: false },
+    {name : 'port', type: String , defaultValue: false },
     {name: "pause", type: Boolean, defaultValue: false },
     {name: "remote", type:Boolean, defaultValue: false},//the IP ADDRESS YOU WANT TO CONNECT TO
     {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
@@ -262,7 +263,7 @@ export function getJamListArgs(argv){
     catch(error){
     }
 
-    if(options?.help || !options){
+    if(options.help || !options){
 
         const error = new Error("SHOW USAGE")
         error.type = "ShowUsage"
@@ -286,8 +287,16 @@ export function getJamListArgs(argv){
 
         }
         else{
-            filters[key] = options[key]
-
+            console.log(options[key], key, options)
+            if(key === "prog" || key === "app" || key === "port"){
+                if(options[key].includes("="))
+                    filters[key]=(((options[key].split("=")).slice(1)).map((entry)=>{ if(entry === ''){return '='} else{return entry}})).join('')
+                else
+                    throw new Error(`${key} is missing '='`)
+            }
+            else{
+                filters[key] = options[key]
+            }
         }
 
     }
@@ -316,10 +325,35 @@ export function getKilltArgs(argv){
         error.type = "ShowUsage"
         throw error;
     }
-
-
-   
-
+    if(options["app"]){
+        if(options["app"].includes("=")){
+            let newOption = (((options["app"].split("=")).slice(1)).map((entry)=>{ if(entry === ''){return '='} else{return entry}})).join('')
+            console.log(newOption)
+            options["app"] = newOption
+        }
+        else{
+            throw new Error("app argument missing '=' ")
+        }
+    }
+    if(options["prog"]){
+        if(options["prog"].includes("=")){
+            let newOption = (((options["prog"].split("=")).slice(1)).map((entry)=>{ if(entry === ''){return '='} else{return entry}})).join('')
+            options["prog"] = newOption
+        }
+        else{
+            throw new Error("program argument missing '=' ")
+        }
+    }
+    if(options["port"]){
+        if(options["port"].includes("=")){
+            let newOption = (((options["port"].split("=")).slice(1)).map((entry)=>{ if(entry === ''){return '='} else{return entry}})).join('')
+            options["port"] = newOption
+        }
+        else{
+            throw new Error("port argument missing '=' ")
+        }
+    }
+    console.log(options)
     return options
     
 }
