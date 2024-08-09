@@ -132,13 +132,19 @@ export function fileDirectoryMqtt(folder, iport,jamfolder,app){
     fs.appendFileSync(`${folder}/${iport}/mqtt.conf`, `listener  ${iport}\n`);
     const dirName = folder.split("/").pop()
     if(fs.existsSync(`${jamfolder}/ports/${iport}`)){
+        console.log("exists")
         const dirNames = fs.readFileSync(`${jamfolder}/ports/${iport}`).toString().trim().split("\n")
         if(!dirNames.includes(dirName)){
-            fs.appendFileSync(`${jamfolder}/ports/${iport}`, `${dirName}\n`)
+            console.log("append")
+            console.log("dirName",dirName )
+            console.log("filePath",`${jamfolder}/ports/${iport}`)
+            fs.appendFileSync(`${jamfolder}/ports/${iport}`, `\n${dirName}\n`)
         }
 
     }
     else{
+        console.log("new ")
+
         fs.writeFileSync(`${jamfolder}/ports/${iport}`, `${dirName}\n`)
     }
     

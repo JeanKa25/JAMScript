@@ -202,7 +202,14 @@ function cleanPorts(AppToRemove){
         const oldApss = fs.readFileSync(`${jamFolder}/ports/${port}`).toString().trim().split("\n")
         const toRemove = AppToRemove.get(port)
         const newApps = oldApss.filter((entry) => !toRemove.includes(entry))
-        fs.writeFileSync(`${jamFolder}/ports/${port}`, newApps.join("\n"))
+        if(newApps.length === 1){
+            fs.writeFileSync(`${jamFolder}/ports/${port}`, `${newApps[0]}\n`)
+        }
+        else{
+            console.log(`${newApps.join("\n")}\n`)
+            fs.writeFileSync(`${jamFolder}/ports/${port}`, `${newApps.join("\n")}`)
+        }
+
     }
 }
 
