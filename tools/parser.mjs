@@ -57,23 +57,19 @@ const jamlistOptionDefinition = [
         {name : 'portNum', type: String , defaultValue: undefined },
         {name : 'appName', type: String , defaultValue: undefined },
         {name : 'programName', type: String , defaultValue: undefined },
-        {name : 'hostIP', type: String , defaultValue: undefined },
         {name: "remote", type:Boolean, defaultValue: false},//the IP ADDRESS YOU WANT TO CONNECT TO
         {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
 
   ];
   
 const jamkillOptionDefinition = [
-    {name : "help", type: Boolean, defaultValue : false },
+    {name : 'help', type: Boolean, defaultValue : false },
     {name : 'all', type: Boolean , defaultValue: false },
     {name : 'reset', type: Boolean , defaultValue: false },
-    {name : 'app', type: Boolean , defaultValue: false },
-    {name : 'program', type: Boolean , defaultValue: false },
-    {name : 'dir', type: Boolean , defaultValue: false },
-    {name : 'port', type: Boolean , defaultValue: false },
-    {name: "portDir", type: Boolean, defaultValue: false },
+    {name : 'appName', type: String , defaultValue: false },
+    {name : 'programName', type: String , defaultValue: false },
+    {name : 'portNum', type: String , defaultValue: false },
     {name: "pause", type: Boolean, defaultValue: false },
-    {name : 'name',  type: String , defaultValue: undefined },
     {name: "remote", type:Boolean, defaultValue: false},//the IP ADDRESS YOU WANT TO CONNECT TO
     {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
 
@@ -320,42 +316,11 @@ export function getKilltArgs(argv){
         error.type = "ShowUsage"
         throw error;
     }
-    const flagCheck = ((options.all?1:0) + (options.app?1:0) + (options.dir?1:0) + (options.program?1:0) + (options.port? 1: 0) + (options.portDir? 1: 0) + (options.reset? 1: 0));
-    if( flagCheck !== 1 ){
-        const error = new Error("SHOW USAGE")
-        error.type = "ShowUsage"
-        throw error;
-    }
-    let flag;
-    if(!options.name && !options.all && !options.reset){
-        const error = new Error("SHOW USAGE")
-        error.type = "ShowUsage"
-        throw error;
-    }
 
-    if(options.all){
-        flag = "all";
-    }
-    else if(options.app){
-        flag = "app";
-    }
-    else if(options.dir){
-        flag = "dir";
-    }
-    else if(options.port){
-        flag = "port"
-    }
-    else if(options.portDir){
-        flag = "portDir"
-    }
-    else if(options.reset){
-        flag = "reset"
-    }
-    else{
-        flag = "program";
-    }
 
-    return {"flag": flag, "name" : options.name, "pause": options.pause , "remote": options.remote , "root":options.root}
+   
+
+    return options
     
 }
 

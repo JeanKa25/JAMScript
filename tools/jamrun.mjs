@@ -7,7 +7,7 @@ import { dirname, resolve } from 'path';
 import {fileDirectorySetUp, isValidExecutable, fileDirectoryMqtt, getPaths, getappid, getFolder , cleanExecutables, getJamFolder, getFileNoext} from './fileDirectory.mjs'
 const { spawn,spawnSync } = require('child_process');
 import { Client } from 'ssh2';
-
+import { body_1, header_1 ,header_2, body_sec, keyWord, bodyBold, body_2 , body_2_bold , body_2_line} from './chalk.mjs';
 
 let app, tmux, num, edge, data, local_registry, bg, NOVERBOSE, log, old, local, valgrind, long, lat, Type, tags, file, resume, port, remote, root;
 const tmuxIds = [];
@@ -125,79 +125,109 @@ async function executeScript(client, command){
 function show_usage(){
     const usageMessage = 
     `
-    jamrun program.jxe
-    Runs J and C node, one each, of a device with program.jxe
-    under a app name X, use the --app=X option. It is mandatory to set the app name.
-    
-    jamrun program.jxe --fog
-    Runs a fog node (only J node) with program.jxe. Similarly, the --cloud
-    flag runs a cloud node.
-    
-    By default, jamrun uses a Redis server running at 127.0.0.1:(20000+porttaken) as the
-    data store. To use a different Redis server use the --data option.
-    
-    jamrun program.jxe --data=127.0.0.1:7000
-    Runs program.jxe and connects it to an already running Redis server at
-    port 7000 of the local host. Redis server can run outside the
-    local host (Redis needs to the configured to accept outside
-    connections).
-    
-    To start more than one C node at a device use the following command.
-    jamrun program.jxe --num=4.
-    
-    To provide a set of tags to the program, use the following command.
-    jamrun program.jxe --tag="param1, param2"
-    
-    Use the --bg option to run a command in the background. the --bg is mandatory for the cases
-    that program is running on a remote machine.
-    
-    Use the --old option to run the previous version in .jamruns folder.
-    You can edit that version and rerun a custom version of a file.
-    
-    Use the --log option to turn on logging. This is useful for programs where
-    the C side is crashing at the startup. The tmux console would not run when
-    the program crash at startup. So the --log option allows us to see the
-    program error messages.
-    
-    Use the --verb option to turn on verbose messaging.
-    
-    Use --valgrind to run the cside with valgrind for leak checking.
-    
-    Use --local to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.
-    
-    Use --resume to resume the paused program. Using resume will dissable [--old | --data | --num | --fog|--cloud|--device ] flags.
-    the program can be resumed only if it was pased before.
-    --resume tag have to be used with --port tag to specify exactly which program shoukd be resumed.
-    
-    to start the c nodes and j files on a remote machine the --remote is used. 
-    the value assinge to --remote is IP addrress of the remote machine to make the connection.
+    ${header_1(`JAMTools 2.0`)}
 
-    by default the location assigned to a program has random long and lat values. to set a specific
-    location for the progam the --loc is used.
-    value passsed to the loc contains long and lat with a ',' seperator between them.
+    ${header_2(`jamrun`)}${body_1(` --  a tool to run JXE files with a given name`)}
 
+    ${header_1(`SYNOPSIS`)}
 
     Usage: jamrun file.jxe
-                    [--app=appl_name]
-                    [--fog|--cloud|--device]
-                    [--num=num_c_devs]
-                    [--data=data-url]
-                    [--tags=quoted_list_of_tags]
-                    [--bg]
-                    [--old]
-                    [--log]
-                    [--verb]
-                    [--loc=long,lat]
-                    [--edge=num_edge_connections]
-                    [--valgrind]
-                    [--local]
-                    [--resume && port=<portNumber>]
-                    [--remote=<IPAdress>]
-                    
-                    
 
+                --app = ${body_sec(`app_name`)}
+                [--help]
+                [--fog | --cloud | --device]
+                [--num = ${body_sec(`num_c_devs`)}]
+                [--dat = ${body_sec(`data-url`)}]
+                [--tags = ${body_sec(`quoted_list_of_tags`)}]
+                [--bg]
+                [--old]
+                [--log]
+                [--verb]
+                [--loc = ${body_sec(`long,lat`)}]
+                [--edge= ${body_sec(`num_edge_connections`)}]
+                [--valgrind]
+                [--local]
+                [--resume && --port = ${body_sec(`portNum`)}]
+                [--remote = ${body_sec(`IPAddress`)}]
+
+    ${header_1(`DESCRIPTION`)}
+
+    --- ${keyWord('jamrun')} Runs J node and C nodes, one each, of a device with ${keyWord('program.jxe')}
+    under a app name X, use the ${keyWord('--app')}=${keyWord(`X`)} option. ${bodyBold(`It is mandatory to set the app name.`)}.
     
-    The jamrun command creates a run state in the $HOME/.jamruns folder.
+    --- jamrun --help
+    ${body_2('--help : use this flag to display this usage message.')}
+
+    --- jamrun program.jxe --app=X [ --fog || --device || --cloud ]
+    ${body_2_bold(`Among the flags above only one of them can be used`)}
+    ${body_2_bold(`If none of the flags are set the program will run as device by default`)}
+    ${body_2('--fog : runs a fog node (only J node) with program.jxe.')}
+    ${body_2('--cloud : runs a cloud node (only J node). ')}
+    ${body_2('--device : runs a device node (J node and C node).')}
+    
+    --- jamrun program.jxe --app=X [ --data=127.0.0.1:7000 ]
+    ${body_2_bold(`By default, jamrun uses a Redis server running at 127.0.0.1:(20000+porttaken) as the
+    data store. To use a different Redis server use the --data option.`)}
+    ${body_2(`--data: Runs program.jxe and connects it to an already running Redis server at
+    port 7000 of the local host. Redis server can run outside the
+    local host (Redis needs to the configured to accept outside
+    connections).`)}
+    
+    --- jamrun program.jxe --app=X [ --num=4 ]
+    ${body_2_bold(`By default, jamrun runs one c node.`)}
+    ${body_2(`--num: use this option to start more than one C node at a device.
+    the command abouve starts the program with 4 C nodes`)}
+    
+    --- jamrun program.jxe --app=X [ --tag="param1, param2" ]
+    ${body_2_bold(`By default, no tag is assigned.`)}
+    ${body_2(`--tag: use this option to provide a set of tags to the program.`)}
+
+    --- jamrun program.jxe --app=X [ --bg ]
+    ${body_2_bold(`By default, the program is running on the foreground.`)}
+    ${body_2(`--bg: use this flag to run a command in the background. the --bg is mandatory for the cases
+    that program is running on a remote machine.`)}
+   
+    --- jamrun program.jxe --app=X [ --old ]
+    ${body_2_bold(`By default, the program is using the latest version in .jamruns folder.`)}
+    ${body_2(`--old: use this flag to run the previous version in .jamruns folder.
+    You can edit that version and rerun a custom version of a file.`)}
+
+    --- jamrun program.jxe --app=X [ --log ]
+    ${body_2_bold(`By default, the C node output is never stored and J node output stored only when
+    the program is running in the background.`)}
+    ${body_2(`--log: use this flag to turn on logging, capturing the output of C file and J file and
+    adding them to the archive when the program stops running.
+    This is useful for programs where the C side is crashing at the startup. 
+    The tmux console would not run when the program crash at startup.
+    So the --log option allows us to see the program error messages.`)}
+  
+    --- jamrun program.jxe --app=X [ --verb ]
+    ${body_2(`--verb : use this flag to turn on verbose messaging.`)}
+    
+    --- jamrun program.jxe --app=X [ --valgrind ]
+    ${body_2(`--verb : use this flag to run the cside with valgrind for leak checking.`)}
+
+    --- jamrun program.jxe --app=X [ --local ]
+    ${body_2(`--verb : use this flag to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.`)}
+
+    --- jamrun program.jxe --app=X [ --resume ] [ --port=portNumber ]
+    ${body_2_bold(`the --resume flag and --port option  should be always used together`)}
+    ${body_2_bold(`--port flag will be dissabled if used alone`)}
+    ${body_2_bold(`--resume flag will throw an error if used alone`)}
+    ${body_2_bold(`Using resume will dissable [--old | --data | --num | --fog|--cloud|--device ] flags`)}
+    ${body_2(`--resume : use this flag to resume the paused program with app name X program name program.jxe and
+    app on port --port`)}
+
+    --- jamrun program.jxe --app=X [ --remote=IPAddress ] [ --bg ]
+    ${body_2_bold(`the --remote and --bg flag should always be used together. 
+    remote programs can only run on the background`)}
+    ${body_2(`--remote: use this option to run the program on remote machine and in the background`)}
+
+    --- jamrun program.jxe --app=X [ --loc=long,lat ]
+    ${body_2_bold(`By default, a random long and lat will be assigned to the running program`)}
+    ${body_2(`--loc: use this option to run the program with and specific long and lat value`)}
+    
+    ${header_2(`The jamrun command creates a run state in the $HOME/.jamruns folder.`)}
     `;
     console.log(usageMessage)
  
@@ -617,7 +647,7 @@ async function main(){
    
     catch(error){
         show_usage()
-        console.log(error.message)
+        error.message ===  "SHOW USAGE" ? null : console.log(error.message)
         process.exit(1);
 
     }

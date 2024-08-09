@@ -4,6 +4,60 @@ import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import { getLogArgs } from "./parser.mjs";
 const readline = require('readline');
 import { Client } from 'ssh2';
+import { header_1,header_2 , body_1, body_sec, keyWord, body_2,body_2_bold } from "./chalk.mjs";
+
+
+function show_usage(){
+    const usageMessage = 
+    `
+    ${header_1(`JAMTools 2.0`)}
+
+    ${header_2(`jamlog`)}${body_1(` --  a tool to display archived or live,  J node and C node log files.`)}
+
+    ${header_1(`SYNOPSIS`)}
+
+    Usage: jamlog 
+                --program = ${body_sec(`programName`)} && --app = ${body_sec(`appName`)} && --port = ${body_sec(`portNum`)}
+                [--help]
+                [--all]
+                [--remote = ${body_sec(`IPAddress`)}]
+                [--tail = ${body_sec('num')}]
+                [--c] 
+                [--j]
+
+
+
+    ${header_1(`DESCRIPTION`)}
+
+    --- ${keyWord('jamlog')} can't be used without arguments.
+
+    --- jamlog --help
+    ${body_2(`Usethis flag to display the usage msg.`)}
+
+    --- jamlog --program=jt2 --app=xxx2 --port=1883
+    ${body_2(`Use this three options to get the specific log file of an app which runs a program on a certain port.
+    The command above prints the log for xxx2 app running a jt2 program on port 1883.`)}
+    ${body_2_bold(`NOTE: 
+    1) All three of these options are mandatory for jamlog to work.
+    2) If there is a program currently running with the above info jamlog will print the running program log,
+       otherwise jamlog will print the archive log on that port if exists.`)}
+    
+
+    --- jamlog --program=jt2 --app=xxx2 --port=1883 [--remote=<IPaddress>]
+    ${body_2(`Use --remote option to print the log of the running program on a remote machine with a given IPaddress.`)}
+
+    --- jamlog --program=jt2 --app=xxx2 --port=1883 [--c] [--j]
+    ${body_2(`Use either or both --c flag and --j flag to get either or both C node and J node log files for the given program.`)}
+    ${body_2_bold(`NOTE: By default jamlog will print both C node and J node log files.`)}
+
+    --- jamlog --program=jt2 --app=xxx2 --port=1883 [--tail=4]
+    ${body_2(`Use the tail flag to only get last few lines of log files. 
+    the command above displays the last 4 lines of log files.
+    Useful for finding the error and avoid over populating the console `)}
+
+    `;
+    console.log(usageMessage)
+}
 
 
 
@@ -109,20 +163,7 @@ async function main(){
         arg = getLogArgs(process.argv)
     }
     catch(error){
-        
-            console.log(
-
-                `
-        [--help] is used to show usage
-        [--program=<programName> && --app=<appName> && --port=<portNumber> && --remote=<IPadress>] all used togeather to indicate what log we want to get (THESE ARE MANDATORY but IPAddress)
-        NOTE:  --remote is optional.
-        [--c] is a flag used to only show the c file
-        [--j] is a flagused to only show the j file
-        [--tail=<num>] shows the last n lines of the log
-        [--remote=<IPadress>]
-                `
-                
-            )
+        show_usage()
         console.log(error.message);
         process.exit(1);
         
