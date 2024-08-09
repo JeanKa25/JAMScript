@@ -5,6 +5,8 @@ import {getAppFolder,getJamFolder} from "./fileDirectory.mjs"
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { Client } from 'ssh2';
+import { header_1,header_2 , body_1, body_sec, keyWord, body_2,body_2_bold } from "./chalk.mjs";
+
 
 const { debounce } = require('lodash');
 const chokidar = require('chokidar');
@@ -21,6 +23,97 @@ currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.c
 currIP = (await $`ipconfig getifaddr en0`.catch(() => '')).toString().trim();
 } else if (os.platform() === 'linux') {
 currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
+}
+
+function show_usage(){
+
+    const usageMessage = 
+    `
+    ${header_1(`JAMTools 2.0`)}
+
+    ${header_2(`jamlist`)}${body_1(` --  a tool to display the active programs and their attributes.`)}
+
+    ${header_1(`SYNOPSIS`)}
+
+    Usage: jamlist 
+                [--help]
+                [--all]
+                [--monitor]
+                [--type==${body_sec(`program type`)}]
+                [--dataStore==${body_sec(`dataStore address`)}]
+                [--tmuxid==${body_sec(`tmuxid`)}]
+                [--port==${body_sec(`portNum`)}]
+                [--app==${body_sec(`appName`)}]
+                [--prog==${body_sec(`programName`)}]
+                [--remote]
+
+
+
+
+    ${header_1(`DESCRIPTION`)}
+
+    ${keyWord('Note: By default jamlist lists all the active local programs and print it before terminating.')} 
+
+    --- ${keyWord('jamlist displays the folloing attribute of the running apps:')} 
+
+        1) NAME: ${body_2("program's app name.")}
+        2) PROGRAM: ${body_2("program's program name.")}
+        3) PORT: ${body_2("the MQTT port used by program.")}
+        4) D-STORE: ${body_2("the dataStore used by the program.")}
+        5) TYPE: ${body_2("either one of fog, device or cloud depending on the program's type.")}
+        7) TMUX-ID: ${body_2("the generic tmux ID used by the program (not including the tag).")}
+        8) STATUS: ${body_2("either running or paused based on the program status.")}
+        9) HOST: ${body_2("localHost if program is running locally or IPAddress of the remote machine running the program.")}
+        10) UP-TIME: ${body_2("the duration of the program running in the format of hour-minute-sec.")}
+
+
+    --- jamlist [--help]
+    ${body_2("use this flag to dispaly this usage msg.")}
+
+    --- jamlist [--all]
+    ${body_2("use this flag to dispaly all the Active programs.")}
+    ${body_2_bold(`NOTE:
+    1) This is same as using jamlist with no option and flags.
+    2) Using --all disable all the filtering flags (the ones with "==").`)}
+    
+    --- jamlist [--monitor]
+    ${body_2(`monitor flag keeps the jamlist alive after priniting the list of programs.
+    as the program stays alive it re-paints the console with new info on any chnages.`)}
+
+    --- jamlist [--remote]
+    ${body_2(`Use this flag to include the remote active apps started by the local machine running the jamlist.`)}
+
+    --- jamlist [--type==fog]
+    ${body_2(`Use --type to list only active programs with a certain type. 
+    The command above lists all the fog programs. 
+    The valid values for type are:`)}
+    ${body_2_bold(`1) device
+    2) cloud
+    3) fog`)}
+
+    --- jamlist [--dataStore==127.0.0.1:21883]
+    ${body_2(`used --dataStore option to list all the active apps with the given dataStore address.`)}
+
+    --- jamlist [--tmuxid==tg-25165]
+    ${body_2(`used ---tmuxid option to list all the active apps with the given tmuxid.`)}
+
+    --- jamlist [--port=3]
+    ${body_2(`used --port option to list all the active apps running on the given port.`)}
+    
+    --- jamlist [--app==XX3]
+    ${body_2(`used --app option to list all the active apps with the given app name.`)}
+
+    --- jamlist [--prog==X]
+    ${body_2(`used --prog option to list all the active apps with the given program name.`)}
+    
+    NOTE:
+    --type, --dataStore, --tmuxid, --port, --app and --prog are filters and can be used together.
+
+    `;
+   
+    console.log(usageMessage)
+ 
+    
 }
 
 
@@ -347,27 +440,7 @@ async function main(update=null){
     catch(error){
        
 
-            console.log(
-
-                `
-
-                Usage: 
-                jamlist --help: show this usage msg.
-                
-                jamlist has two made modes. the default is just printing the list of requested programs but if it's required to monitor the apps and update upon changes,
-                the --monitor should be used. it prints the list of requested programs, and keeps montoring them, if there is any change it will be updated.
-
-                by default jamlist only monitors or prints out locally running programs yet if it's required to monitor or list none local programs as well, --remote
-                flag should be used.
-
-                by passing the --all flag jamlist is going to list all the running apps. if there is certain restriction needs to be applied the following filters can be used:
-                [type=<type> | dataStore=<dataStore> | tmuxid=<tmux> | portNum=<portNum> | appName=<appName> | programName=<programName> ]
-                NOTE: all the abouve arguments can be used togeather but using --all will dissable them all and removes all the filters 
-
-
-                `
-                
-            )
+        show_usage()
         console.log(error.message);
         process.exit(1);
 
@@ -445,10 +518,6 @@ async function main(update=null){
 
             let keysToRemove = ["root","remote","help","all" ];
             let filteredObj = Object.keys(filters).filter(key => !keysToRemove.includes(key)).reduce((acc, key) => {acc[key] = filters[key]; return acc;}, {});
-            if(filteredObj["prog"]){
-                filteredObj["prog"]
-            }
-
             const filtered = filter(nodeinfo, filteredObj)
 
             if(filtered.length === 0 ){

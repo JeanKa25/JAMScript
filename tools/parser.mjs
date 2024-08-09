@@ -288,7 +288,7 @@ export function getJamListArgs(argv){
         }
         else{
             console.log(options[key], key, options)
-            if(key === "prog" || key === "app" || key === "port"){
+            if(key === "prog" || key === "app" || key === "port" || key === "type" || key === "tmuxid" || key === "dataStore"){
                 if(options[key].includes("="))
                     filters[key]=(((options[key].split("=")).slice(1)).map((entry)=>{ if(entry === ''){return '='} else{return entry}})).join('')
                 else
