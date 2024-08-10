@@ -259,7 +259,7 @@ async function clean(){
                     AppToRemove.set(port,dummy)
                 }
                 else{
-                    AppToRemove.set(port,dir)
+                    AppToRemove.set(port,[dir])
                 }
             }
             //It's running and files are uptodate, update Cnum and clean cdevs
