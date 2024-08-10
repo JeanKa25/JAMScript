@@ -137,7 +137,7 @@ function show_usage(){
                 [--help]
                 [--fog | --cloud | --device]
                 [--num = ${body_sec(`num_c_devs`)}]
-                [--dat = ${body_sec(`data-url`)}]
+                [--data = ${body_sec(`data-url`)}]
                 [--tags = ${body_sec(`quoted_list_of_tags`)}]
                 [--bg]
                 [--old]
@@ -277,6 +277,8 @@ async function dojamout_p1(pnum ,floc) {
     fs.writeFileSync(`${floc}/${pnum}/paused`, "false\n");
     fs.writeFileSync(`${floc}/${pnum}/shellpid`,SHELLPID.toString()+"\n" );
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new"+"\n");
+    fs.writeFileSync(`${floc}/${pnum}/startStamp`, `${Date.now()}`+"\n");
+
     if(Type === "device"){
         fs.writeFileSync(`${floc}/${pnum}/numCnodes`, `${num}`); 
     }

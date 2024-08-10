@@ -6,6 +6,7 @@ import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { Client } from 'ssh2';
 import { header_1,header_2 , body_1, body_sec, keyWord, body_2,body_2_bold } from "./chalk.mjs";
+import { chalk } from "zx";
 
 
 const { debounce } = require('lodash');
@@ -16,6 +17,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
 const jamcleanPath = resolve(__dirname, 'jamclean.mjs');
 let NODESINFO = []
+let cachedInfo = []
 let currIP ;
 if (os.platform() === 'win32') {
 currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
@@ -116,6 +118,32 @@ function show_usage(){
     
 }
 
+function getUpTime(startStamp){
+    const now = Date.now();
+    const Diff = now - startStamp;
+    const hours = Math.floor(Diff / (1000 * 60 * 60));
+    const minutes = Math.floor((Diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((Diff % (1000 * 60)) / 1000);
+    
+    let result = '';
+    
+    if (hours !== 0) {
+        result = result + `${hours}h `;
+    }
+    if (minutes !== 0) {
+        result = result + `${minutes}min `;
+    }
+    if (seconds !== 0) {
+        result = result + `${seconds}sec`;
+    }
+    if (result === '') {
+        result = Diff + "ms";
+    }
+    
+    return result;
+
+
+}
 
 export function getRunningDirs(){
     const jamFolder = getJamFolder()
@@ -169,9 +197,15 @@ function getWatchList(filters){
 
 
 
+
 function watch(filters) {
     setInterval(async () => {
         await $`zx ${jamcleanPath}`
+        if(cachedInfo){
+            console.clear()
+            printHeader();
+            printNodeInfo(cachedInfo);
+        }
     }, 1000);
     function updateWatchList(watchList){
 
@@ -200,17 +234,18 @@ function watch(filters) {
 
 
             if (info.length + NODESINFO.length === 0) {
-                console.log("---------");
 
+                console.clear()
                 console.log("There is no program running");
             } else {
-                console.log("---------");
 
+                console.clear()
                 printHeader();
                 printNodeInfo(info);
                 if(filters.remote){
                     printNodeInfo(NODESINFO);
                 }
+                cachedInfo = info.concat(NODESINFO)
             }
         } else {
             const nodeinfo = getNodeInfo();
@@ -224,16 +259,15 @@ function watch(filters) {
             }
 
             if (filtered.length + NODESINFO.length === 0) {
-                console.log("---------");
-
+                console.clear()
                 console.log("There is no such program running");
             } else {
-                console.log("---------");
-  
+                console.clear()
                 printHeader();
                 printNodeInfo(filtered);
             if(filters.remote){
                 printNodeInfo(NODESINFO);
+                cachedInfo = filtered.concat(NODESINFO)
             }
 
             }
@@ -279,7 +313,7 @@ function getNodeInfo(root=null){
                 if(fs.existsSync(`${appfolder}/${app}/${port}/root`)){
                     const rootIP = fs.readFileSync(`${appfolder}/${app}/${port}/root`).toString().trim();
                     if(rootIP === root){
-                        const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-"}
+                        const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-", "startStamp": '-'}
                         const dirPath = `${appfolder}/${app}/${port}`
                         if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
                             throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
@@ -311,7 +345,7 @@ function getNodeInfo(root=null){
                 }
             }
             else{
-                const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-" }
+                const fileNames ={"machType": "-", "dataStore": "-" ,"tmuxid": "-", "parentId":"-", "numCnodes": "-" , "startStamp": "-"}
                 const dirPath = `${appfolder}/${app}/${port}`
                 if(!fs.existsSync( `${appfolder}/${app}/${port}`)){
                     throw new Error("FileDirectory is corrupted. TAKE REQUIRED ACTION")
@@ -350,15 +384,29 @@ function printNodeInfo(info){
         if(row["host"] === currIP){
             row["host"] = "localHost"
         }
-        const headerString = `   ${row["app"].padEnd(10)} ${row["prog"].padEnd(10)} ${("Local:"+row["port"]).padEnd(10)} ${row["parentId"].padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)} ${row["host"].padEnd(10)}`;
+
+        let UPTIME;
+        if(row["status"]!=="paused"){
+             UPTIME = getUpTime(row["startStamp"])
+        }
+        else{
+            UPTIME = "-"
+        }
+        const headerString = `   ${row["app"].padEnd(10)} ${row["prog"].padEnd(10)} ${("Local:"+row["port"]).padEnd(10)} ${row["dataStore"].padEnd(20)} ${row["machType"].padEnd(10)} ${row["numCnodes"].padEnd(10)} ${row["tmuxid"].padEnd(10)} ${row["status"].padEnd(10)} ${row["host"].padEnd(10)} ${UPTIME.padEnd(10)}`;
         console.log(headerString)
     }
 }
 
 
 function printHeader(){
-    const headerString = `   ${"NAME".padEnd(10)} ${"PROGRAM".padEnd(10)} ${"HOST".padEnd(10)} ${"PARENT".padEnd(10)} ${"D-STORE".padEnd(20)} ${"TYPE".padEnd(10)} ${"C-NODES".padEnd(10)} ${"TMUX-ID".padEnd(10)} ${"STATUS".padEnd(10)} ${"HOST".padEnd(10)}`;
+    const headerString = `   ${chalk.bold.italic("NAME".padEnd(10))} ${chalk.bold.italic("PROGRAM".padEnd(10))} ${chalk.bold.italic("PORT".padEnd(10))} ${chalk.bold.italic("D-STORE".padEnd(20))} ${chalk.bold.italic("TYPE".padEnd(10))} ${chalk.bold.italic("C-NODES".padEnd(10))} ${chalk.bold.italic("TMUX-ID".padEnd(10))} ${chalk.bold.italic("STATUS".padEnd(10))} ${chalk.bold.italic("HOST".padEnd(10))} ${chalk.bold.italic("UP-TIME".padEnd(10))}`;
     console.log(headerString)
+    // console.log(`${chalk.black.cyan("--------------------------------------------------------------------------------------------------------------")}`)
+    console.log(`${chalk.cyan("=========================================================================================================================")}`)
+
+
+
+
 }
 
 function filter(nodeinfo, filters){
@@ -541,9 +589,11 @@ async function main(update=null){
                     process.exit(0)
                 }
             }
+            console.clear();
             printHeader();
             printNodeInfo(info);
             printNodeInfo(NODESINFO)
+            cachedInfo = info.concat(NODESINFO)
         }
 
         else{
@@ -560,9 +610,11 @@ async function main(update=null){
                     process.exit(0)
                 }
             }
+            console.clear();
             printHeader();
             printNodeInfo(filtered);
             printNodeInfo(NODESINFO)
+            cachedInfo = filtered.concat(NODESINFO)
         }
         if(monitor){
             watch(filters);
