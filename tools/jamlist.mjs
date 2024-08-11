@@ -507,9 +507,9 @@ async function main(update=null){
             const [host,port] =  machines.split("_");
             const config = {
                 host: host,
-                port: port,
-                username: 'admin',
-                password: 'admin' 
+                port: 22,
+                username: 'maheswar',
+                password: 'pass4des' 
             };
             const client = await makeConnection(config);
             const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
@@ -533,7 +533,7 @@ async function main(update=null){
             args =args.trim() 
 
 
-            const script = `zx jamlist.mjs ${args} --root=${currIP}`
+            const script = `jamlist.mjs ${args} --root=${currIP}`
             await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
    
         }  

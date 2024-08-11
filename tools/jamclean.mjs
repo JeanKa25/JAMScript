@@ -410,7 +410,7 @@ async function cleanRemote(toRemove){
 
                 const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
                 const changeDir= "cd JAMScript/tools"
-                const script = `zx jamclean.mjs --root=${currIP} --hash=${arg}`
+                const script = `jamclean.mjs --root=${currIP} --hash=${arg}`
                 const result = await executeScript(client,`${pathExport} && ${changeDir} && ${script}`)
                 const toRemove = result.trim().split("\n");
                 if(toRemove.length !==0 && toRemove[0] !== ''){

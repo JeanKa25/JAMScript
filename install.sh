@@ -149,7 +149,7 @@ cd $SCRIPT_DIR
 git submodule update --init --recursive lib/
 
 #install tinycbor
-cd $SCRIPT_DIR/deps/tinycbor
+cd $SCRIPT_DIR/deps
 git clone https://github.com/intel/tinycbor
 cd tinycbor
 make

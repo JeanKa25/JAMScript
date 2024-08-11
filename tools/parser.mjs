@@ -43,7 +43,7 @@ const jamrunOptionDefinitions = [
   {name : 'disable_stdout_redirect', type: Boolean, defaultValue: false},
   {name: 'resume', type: Boolean, defaultValue: false},
   {name: "port", type: Number, defaultValue: undefined},
-  {name: "remote", type:Number, defaultValue: undefined},//the IP ADDRESS YOU WANT TO CONNECT TO
+  {name: "remote", type:String, defaultValue: undefined},//the IP ADDRESS YOU WANT TO CONNECT TO
   {name: "root", type:String, defaultValue: undefined}//THE IP ADRRESS OF THE MACHINE making the remote call
 
 ];

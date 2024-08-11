@@ -99,19 +99,24 @@ const [MOSQUITTO, MOSQUITTO_PUB, TMUX] = await Promise.all(
 
 async function executeScript(client, command){
 
+    console.log("Execute Script cmd ", command );
+    command = "echo $PATH";
+
     return (await new Promise((resolve, reject) =>{
-        client.exec(command, (err,stream) =>{
+        client.exec(command, (err,stream) => {
             if (err){
+                console.log("Rejected....");
                 reject(err);
             } 
             let result;
             stream.on("close", () => {
+                console.log("Closing...");
                 resolve(result)
             })
             stream.on("data" , async (data) =>{
+                console.log("hi --------------- ", data.toString());
                 if(data.includes("MY PORT IS:"))
                     {
-
                         result = data.toString().trim().split(":")[1]
                     }  
                 if(data.includes("EXIT BG")){
@@ -657,12 +662,15 @@ async function main(){
     let ifile;
     let jdata;
     let client;
+
+    console.log("Remote ..", remote);
+
     if(remote){
         const config = {
-            host: 'localhost',
-            port: remote,
-            username: 'admin',
-            password: 'admin' 
+            host: remote,
+            port: 22,
+            username: 'maheswar',
+            password: 'pass4des' 
           };    
         if(resume){
             const jamfolder = getJamFolder()
@@ -691,6 +699,7 @@ async function main(){
                 reject(error);
             });
 
+            console.log("Initiating connection to ....", config);
             client.connect(config);
         });
         const remoteArgs = getRemoteArgs(jamrunParsArg(process.argv))
@@ -704,7 +713,9 @@ async function main(){
         } else if (os.platform() === 'linux') {
           currIP = (await $`hostname -I`.catch(() => '')).toString().trim();
         }
-        const myPort = await executeScript(client, `${changeDir} && zx jamrun.mjs ${remoteArgs} --root=${currIP}`)
+        const myPort = await executeScript(client, `${changeDir} && jamrun.mjs ${remoteArgs} --root=${currIP}`)
+
+        console.log("IP ", currIP, " port ", myPort);
 
         if(!resume){
             const jamfolder = getJamFolder()

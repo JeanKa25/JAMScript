@@ -402,21 +402,21 @@ async function main(){
         filters = filters.trim()
 
         if(args.flag == "reset"){
-                toExecute = `zx jamkill.mjs --reset --root=${currIP}`
+                toExecute = `jamkill.mjs --reset --root=${currIP}`
         }
         
        
         else if(args.flag == "all"){
             if(!args.pause)
-                toExecute = `zx jamkill.mjs ${filters} --root=${currIP}`
+                toExecute = `jamkill.mjs ${filters} --root=${currIP}`
             else
-                toExecute = `zx jamkill.mjs ${filters} --pause --root=${currIP}`
+                toExecute = `jamkill.mjs ${filters} --pause --root=${currIP}`
         }
         else{
             if(!args.pause)
-                toExecute = `zx jamkill.mjs ${filters} --name=${args.name} --root=${currIP}`
+                toExecute = `jamkill.mjs ${filters} --name=${args.name} --root=${currIP}`
             else
-                toExecute = `zx jamkill.mjs ${filters} --name=${args.name} --pause --root=${currIP}`
+                toExecute = `jamkill.mjs ${filters} --name=${args.name} --pause --root=${currIP}`
         }
 
 

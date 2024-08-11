@@ -216,7 +216,7 @@ async function main(){
         }
         const finalArg = args.trim()
 
-        const command = `${pathExport} && ${changeDir} && zx jamlog.mjs ${finalArg}`
+        const command = `${pathExport} && ${changeDir} && jamlog.mjs ${finalArg}`
 
         await makeConnection(config)
         await executeScript(client, command)
