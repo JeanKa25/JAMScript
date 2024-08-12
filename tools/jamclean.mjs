@@ -234,8 +234,7 @@ async function clean(){
         for(let dir of dirs){
             //mosquitto not running kill 
             if(!await isMosquittoRunning(port)){
-
-                await $`zx ${jamcKillPath} --port --name=${port}`
+                await $`zx ${jamcKillPath} --port==${port}`
                 continue portLoop;
             }
             //jFile is not running. to remove fromport list
