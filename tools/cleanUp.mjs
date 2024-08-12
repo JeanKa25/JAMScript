@@ -122,9 +122,9 @@ function ArchiveLog(removablePort, appName, programName){
 
             }
         }
-
+        process.chdir(`..`);
     }
-    process.chdir(`..`);
+    
 }
 function cleanAppDir(removablePort,appName, programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName)
