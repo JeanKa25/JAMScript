@@ -2,25 +2,33 @@
 
 import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import {getKilltArgs} from "./parser.mjs"
-import { cleanByPortNumber , pauseByPortNumber} from "./cleanUp.mjs";
+import { cleanByPortNumber} from "./cleanUp.mjs";
 import { Client } from 'ssh2';
 import { header_1,header_2 , body_1, body_sec, keyWord, body_2,body_2_bold } from "./chalk.mjs";
 
 let currIP;
-if (os.platform() === 'win32') {
-    currIP = (await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(() => '')).toString().trim();
-  } else if (os.platform() === 'darwin') {
-    currIP = (await $`ipconfig getifaddr en0`.catch(() => '')).toString().trim();
-  } else if (os.platform() === 'linux') {
-    currIP =( await $`hostname -I`.catch(() => '')).toString().trim();
-  }
+if (os.platform() === "win32") {
+    currIP = (
+        await $`powershell (Get-NetIPAddress -AddressFamily IPv4).IPAddress`.catch(
+            () => ""
+        )
+    )
+        .toString()
+        .trim();
+} else if (os.platform() === "darwin") {
+    currIP = (await $`ipconfig getifaddr en0`.catch(() => ""))
+        .toString()
+        .trim();
+} else if (os.platform() === "linux") {
+    currIP = (await $`hostname -I`.catch(() => "")).toString().trim();
+}
 
 function show_usage(){
     const usageMessage = 
     `
     ${header_1(`JAMTools 2.0`)}
 
-    ${header_2(`jamkill`)}${body_1(` --  a tool to kill or pause the running JXE files.`)}
+    ${header_2(`jamkill`)}${body_1(` --  a tool to kill one or more running JXE files.`)}
 
     ${header_1(`SYNOPSIS`)}
 
@@ -29,7 +37,6 @@ function show_usage(){
                 [--help]
                 [--all]
                 [--remote=${body_sec(`IPAddress`)}]
-                [--pause]
                 [--app==${body_sec(`appName`)}]
                 [--prog==${body_sec(`programName`)}]
                 [--port==${body_sec(`portNum`)}]
@@ -43,7 +50,7 @@ function show_usage(){
     it's useful for the cases that either the file directory is corrupted or a fresh start is required.`)}
     ${body_2_bold(`NOTE: 
     The only usable flag is next to --reset flag is --remote otherwise,
-    --reset flag will dissable all the other flags and do a hard reset.`)}
+    --reset flag will disable all the other flags and do a hard reset.`)}
 
     --- jamkill [--help]
     ${body_2(`Use this flag to display this usage msg.`)}
@@ -51,42 +58,37 @@ function show_usage(){
     --- jamkill [--all]
     ${body_2(`Use this flag to kill all the running apps.`)}
     ${body_2_bold(`NOTE: 
-    1) if using --all next to the --reset flag. --all will be dissabled. 
-    2) if using --all flag --app, --prog, --port will be dissabled.`)}
-
-    --- jamkill [--pause]
-    ${body_2(`Use this flag to pause the running programs instead of killing them.`)}
+    1) If --all used next to the --reset flag. --all will be disabled. 
+    2) If --all used with --all flag --app, --prog, --port, they will be disabled.`)}
 
     --- jamkill [--remote]
-    ${body_2(`Use this flag to kill the remote files as well as local ones.`)}
+    ${body_2(`Use this flag to kill the executions as well as local ones.`)}
     ${body_2_bold(`NOTE: 
-    jamkill --remote is only allowed to kill the remote programs which are started by thesame local machine which is running the jamkill.`)}
+    jamkill --remote only kills the remote programs which are started by the local machine running jamkill.`)}
 
     --- jamkill [--app==X]
-    ${body_2(`Use this flag to kill or pause a program with a scpecific appName.`)}
+    ${body_2(`Use this flag to kill a program with a specific appName.`)}
 
     --- jamkill [--prog==X]
-    ${body_2(`Use this flag to kill or pause a program with a specific programName.`)}
+    ${body_2(`Use this flag to kill a program with a specific programName.`)}
 
     --- jamkill [--port=3]
-    ${body_2(`Use this flag to kill or pause a program with running on a certain port.`)}
+    ${body_2(`Use this flag to kill a program running on a certain port.`)}
     
     NOTE: 
-    ${body_2(`1) --app & --prog & --port can be used all togeather or two by two to select the programs to be killed or paused.`)}
+    ${body_2(`1) --app & --prog & --port can be used all together or two by two to select the programs to be killed.`)}
     ${body_2(`2) To set --app , --prog and --port options two equal signs has to be used.`)}
 
 
     RESTRICTIONS: 
-    ${body_2(`can't use multiple --app , --prog and --port flags hoping to kill apps with different appNames, 
+    ${body_2(`single command cannot have multiple --app , --prog and --port conditions to kill apps with different appNames, 
     programNames and portNumbers in one shot.`)}
-
 
     `;
    
     console.log(usageMessage)
- 
-    
 }
+
 export function getRunningDirs(){
     const jamFolder = getJamFolder()
     const appToPort = new Map()
@@ -129,6 +131,7 @@ export function dirNameToAppName(dirName){
     }
     
 }
+
 export function dirNameToProgramName(dirName){
     return (dirName.split('_'))[0]
     
@@ -216,10 +219,6 @@ async function killProcess(data){
     await killJFile(data);
 }
 
-async function pauseProcess(data){
-    await killJamRun(data);
-    await killJFile(data);
-}
 
 function filter(data, filters){
     console.log("filter", filters)
@@ -242,8 +241,6 @@ function filter(data, filters){
 
 async function jamKill(args)
 {   
-
-    let pause = args.pause
     let root = args.root
     let jamData = killDataForAll(root)
     console.log(jamData, "this is my jam data")
@@ -277,37 +274,15 @@ async function jamKill(args)
         
     }
 
-    if(pause){
-        for(let data of toKill){
-            let appfolder = getAppFolder()
-            const appName = data.appName;
-            const programName = data.programName
-            const portNumber = data.portNumber
-            try{
-                fs.existsSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/machType`)
-                if(fs.readFileSync(`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}/processId`).toString().trim() === "new"){
-                    console.log("CAN'T PAUSE",`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}. TRY LATER` )
-                }
-            }
-            catch(error){
-                console.log("CAN'T PAUSE",`${appfolder}/${programName.split(".")[0]}_${appName}/${portNumber}. TRY LATER` )
-            }
-            pauseByPortNumber(programName,appName,portNumber)
-            await pauseProcess(data);
-        }
-    }
-    else{
-        for(let data of toKill){
-            const appName = data.appName;
-            const programName = data.programName
-            const portNumber = data.portNumber
-            await killProcess(data);
-            cleanByPortNumber(programName,appName,portNumber)
-        }
+    for(let data of toKill){
+        const appName = data.appName;
+        const programName = data.programName
+        const portNumber = data.portNumber
+        await killProcess(data);
+        cleanByPortNumber(programName,appName,portNumber)
     }
     //keep this LOG
-    console.log("KILLING IS OVER")
-
+    console.log("Jobs terminated.");
 }
 
 async function jamKillBruteForce(){
@@ -346,109 +321,91 @@ async function executeScript(client, command){
     }))
 }
 
-async function main(){
+async function main() {
+    let args;
 
-  let args;
-
-  try{
-    args = getKilltArgs(process.argv)
-   
-  }
-  catch(error){
-  
-        show_usage()
-        error.message === "SHOW USAGE"?null:console.log(error.message)
+    try {
+        args = getKilltArgs(process.argv);
+    } catch (error) {
+        show_usage();
+        error.message === "SHOW USAGE" ? null : console.log(error.message);
         process.exit(1);
-
-  }
-  const jamfolder = getJamFolder();
-  const appfolder = getAppFolder();
-  if(fs.existsSync(`${jamfolder}/remote`) && args.remote && !args.root){
-    const remotes = fs.readdirSync(`${jamfolder}/remote`)
-    for(let remote of remotes){
-        const [host,port] =  remote.split("_");
-        const config = {
-            host: host,
-            port: port,
-            username: 'admin',
-            password: 'admin' 
-          };          
-        let client = await new Promise((resolve, reject) => {
-            const client = new Client();
-
-            client.on('ready', () => {
-                resolve(client);
-            });
-
-            client.on('error', (error) => {
-                reject(error);
-            });
-
-            client.connect(config);
-        });
-        const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
-        const changeDir= "cd JAMScript/tools"
-        let toExecute;
-        let filters =``;
-        if(args.prog){
-            filters = filters+`--prog==${args.prog} `
-        }
-        if(args.app){
-            filters = filters+`--app==${args.app} `
-        }
-        if(args.port){
-            filters = filters+`--port==${args.port} `
-        }
-        filters = filters.trim()
-
-        if(args.flag == "reset"){
-                toExecute = `jamkill.mjs --reset --root=${currIP}`
-        }
-        
-       
-        else if(args.flag == "all"){
-            if(!args.pause)
-                toExecute = `jamkill.mjs ${filters} --root=${currIP}`
-            else
-                toExecute = `jamkill.mjs ${filters} --pause --root=${currIP}`
-        }
-        else{
-            if(!args.pause)
-                toExecute = `jamkill.mjs ${filters} --name=${args.name} --root=${currIP}`
-            else
-                toExecute = `jamkill.mjs ${filters} --name=${args.name} --pause --root=${currIP}`
-        }
-
-
-        const command=`${pathExport} && ${changeDir} && ${toExecute}`
-        await executeScript(client, command);
-    }
-  }
-  if(args.reset){
-    if(args.root){
-        throw new Error("DOES NOT HAVE THE PERMISSION TO RESET A REMOTE MACHINE")
     }
 
-    await jamKillBruteForce()
-  }
-  else if( !fs.existsSync(jamfolder) ){
-    throw new Error('.jamruns folder missing. JAMScript tools not setup?')
-  }
-  else if( !fs.existsSync(appfolder) ){
-    throw new Error('.jamruns/apps folder missing. JAMScript tools not setup?')
-  }
-  else{
-    await jamKill(args);
-  }
+    const jamfolder = getJamFolder();
+    const appfolder = getAppFolder();
+    if (fs.existsSync(`${jamfolder}/remote`) && args.remote && !args.root) {
+        const remotes = fs.readdirSync(`${jamfolder}/remote`);
+        for (let remote of remotes) {
+            const [host, port] = remote.split("_");
+            const config = {
+                host: host,
+                port: port,
+                username: "admin",
+                password: "admin",
+            };
+            let client = await new Promise((resolve, reject) => {
+                const client = new Client();
 
+                client.on("ready", () => {
+                    resolve(client);
+                });
 
-  process.exit(0);
-  
+                client.on("error", (error) => {
+                    reject(error);
+                });
+
+                client.connect(config);
+            });
+            const pathExport =
+                "export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin";
+            const changeDir = "cd JAMScript/tools";
+            let toExecute;
+            let filters = ``;
+            if (args.prog) {
+                filters = filters + `--prog==${args.prog} `;
+            }
+            if (args.app) {
+                filters = filters + `--app==${args.app} `;
+            }
+            if (args.port) {
+                filters = filters + `--port==${args.port} `;
+            }
+            filters = filters.trim();
+
+            if (args.flag == "reset") {
+                toExecute = `jamkill.mjs --reset --root=${currIP}`;
+            } else if (args.flag == "all") {
+                toExecute = `jamkill.mjs ${filters} --root=${currIP}`;
+            } else {
+                toExecute = `jamkill.mjs ${filters} --name=${args.name} --root=${currIP}`;
+            }
+
+            const command = `${pathExport} && ${changeDir} && ${toExecute}`;
+            await executeScript(client, command);
+        }
+    }
+    if (args.reset) {
+        if (args.root) {
+            throw new Error(
+                "DOES NOT HAVE THE PERMISSION TO RESET A REMOTE MACHINE"
+            );
+        }
+
+        await jamKillBruteForce();
+    } else if (!fs.existsSync(jamfolder)) {
+        throw new Error(".jamruns folder missing. JAMScript tools not setup?");
+    } else if (!fs.existsSync(appfolder)) {
+        throw new Error(
+            ".jamruns/apps folder missing. JAMScript tools not setup?"
+        );
+    } else {
+        await jamKill(args);
+    }
+
+    process.exit(0);
 }
 
-
 (async() => {
-
     await main()
-
 })()

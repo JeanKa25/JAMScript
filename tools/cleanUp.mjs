@@ -138,17 +138,6 @@ function cleanAppDir(removablePort,appName, programName){
     return false;
 }
 
-function markPause(PortNumber,appName ,programName){
-    const appfolder = getAppFolder()
-    const pName = programName.split(".")[0]
-    fs.writeFileSync(`${appfolder}/${pName}_${appName}/${PortNumber}/paused`, `${PortNumber}`)
-}
-// export function cleanup(removablePort, tmuxIds,app,TMUX){
-//     cleanPort(removablePort,app);
-//     ArchiveLog(removablePort);
-//     cleanAppDir(removablePort);
-//     killtmux(tmuxIds,TMUX);
-// }
 
 export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
 
@@ -176,19 +165,5 @@ export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=tr
     if(!NOVERBOSE && isDirCleaned ){
         console.log(`port ${PortNumber} is cleaned for ${programName.split(".")[0]}_${appName}`)
     }
-
-};
-
-export function pauseByPortNumber(programName, appName, PortNumber, NOVERBOSE=true){
-
-    if(!programName || !appName || !PortNumber){
-        if(!NOVERBOSE)
-            console.log("NO NEED FOR CLEANING")
-        return;
-    }
-    const tmuxIds = killtmux(PortNumber,appName ,programName);
-    if(!NOVERBOSE &&  tmuxIds)
-        console.log("Killed :", tmuxIds)
-    markPause(PortNumber,appName ,programName)
 
 };
