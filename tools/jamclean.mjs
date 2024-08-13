@@ -233,7 +233,7 @@ async function clean(){
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
         for(let dir of dirs){
             //mosquitto not running kill 
-            if(!await isMosquittoRunning(port)){
+            if(!await isMosquittoRunning(port) && port){
                 await $`zx ${jamcKillPath} --port==${port}`
                 continue portLoop;
             }
