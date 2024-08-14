@@ -9,7 +9,6 @@ import { Client } from 'ssh2';
 
 
 
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
 const jamcKillPath = resolve(__dirname, 'jamkill.mjs');
@@ -203,7 +202,8 @@ function cleanPorts(AppToRemove){
         const toRemove = AppToRemove.get(port)
         const newApps = oldApss.filter((entry) => !toRemove.includes(entry))
         if(newApps.length === 1){
-            fs.writeFileSync(`${jamFolder}/ports/${port}`, `${newApps[0]}\n`)
+            fs.writeFileSync(`${jamFolder}/ports/${port}`, `${newApps[0]}`)
+            
         }
         else{
             console.log(`${newApps.join("\n")}\n`)
@@ -233,7 +233,7 @@ async function clean(){
         const dirs = fs.readFileSync(`${portsDir}/${port}`).toString().trim().split("\n")
         for(let dir of dirs){
             //mosquitto not running kill 
-            if(!await isMosquittoRunning(port)){
+            if(!await isMosquittoRunning(port) && port){
                 await $`zx ${jamcKillPath} --port==${port}`
                 continue portLoop;
             }

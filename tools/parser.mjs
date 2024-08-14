@@ -73,6 +73,18 @@ const jamkillOptionDefinition = [
     { name: "remote", type: Boolean, defaultValue: false }, //the IP ADDRESS YOU WANT TO CONNECT TO
     { name: "root", type: String, defaultValue: undefined }, //THE IP ADRRESS OF THE MACHINE making the remote call
 ];
+
+const jamtermOptionDefinition = [
+    { name: "help", type: Boolean, defaultValue: false },
+    { name: "all", type: Boolean, defaultValue: false },
+    { name: "reset", type: Boolean, defaultValue: false },
+    { name: "app", type: String, defaultValue: false },
+    { name: "prog", type: String, defaultValue: false },
+    { name: "port", type: String, defaultValue: false },
+    { name: "remote", type: Boolean, defaultValue: false }, //the IP ADDRESS YOU WANT TO CONNECT TO 
+    { name: "root", type: String, defaultValue: undefined }, //THE IP ADRRESS OF THE MACHINE making the remote call
+];
+
 const jamclogOptionDefinition = [
     { name: "help", type: Boolean, defaultValue: false },
     { name: "program", type: String, defaultValue: undefined },
@@ -315,6 +327,84 @@ export function getKilltArgs(argv) {
 
     try {
         options = commandLineArgs(jamkillOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    }
+    if (options["app"]) {
+        if (options["app"].includes("=")) {
+            let newOption = options["app"]
+                .split("=")
+                .slice(1)
+                .map((entry) => {
+                    if (entry === "") {
+                        return "=";
+                    } else {
+                        return entry;
+                    }
+                })
+                .join("");
+            console.log(newOption);
+            options["app"] = newOption;
+        } else {
+            throw new Error("app argument missing '=' ");
+        }
+    }
+    if (options["prog"]) {
+        if (options["prog"].includes("=")) {
+            let newOption = options["prog"]
+                .split("=")
+                .slice(1)
+                .map((entry) => {
+                    if (entry === "") {
+                        return "=";
+                    } else {
+                        return entry;
+                    }
+                })
+                .join("");
+            options["prog"] = newOption;
+        } else {
+            throw new Error("program argument missing '=' ");
+        }
+    }
+    if (options["port"]) {
+        if (options["port"].includes("=")) {
+            let newOption = options["port"]
+                .split("=")
+                .slice(1)
+                .map((entry) => {
+                    if (entry === "") {
+                        return "=";
+                    } else {
+                        return entry;
+                    }
+                })
+                .join("");
+            options["port"] = newOption;
+        } else {
+            throw new Error("port argument missing '=' ");
+        }
+    }
+    console.log(options);
+    return options;
+}
+
+
+export function getTermArgs(argv) {
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamterm.mjs")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamtermOptionDefinition, { argv: args });
     } catch (error) {}
 
     if (options === undefined || options.help) {

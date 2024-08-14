@@ -143,7 +143,6 @@ export function fileDirectoryMqtt(folder, iport,jamfolder,app){
 
     }
     else{
-        console.log("new ")
 
         fs.writeFileSync(`${jamfolder}/ports/${iport}`, `${dirName}\n`)
     }
