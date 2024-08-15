@@ -9,6 +9,71 @@ const MAX_TMUX_NUM = 16;
 const MAIN_SESH_NAME = "main"
 const p = spawnSync('which', ['tmux']);
 const MYTMUX = p.stdout.toString().trim()
+
+function show_usage(){
+    const usageMessage = 
+    `
+    ${header_1(`JAMTools 2.0`)}
+
+    ${header_2(`jamterm`)}${body_1(` --  a tool to display multiple C node outputs live`)}
+
+    ${header_1(`SYNOPSIS`)}
+
+    Usage: jamterm 
+                [--help]
+                [--all]
+                [--remote=${body_sec(`IPAddress`)}] //NOT IMPEMENTED YET
+                [--app==${body_sec(`appName`)}]
+                [--prog==${body_sec(`programName`)}]
+                [--port==${body_sec(`portNum`)}]
+
+    ${header_1(`DESCRIPTION`)}
+
+    --- ${keyWord('jamterm')} by default displays all the running C node outputs in the different tmux windows and panes.
+
+    ${keyWord('Tmux Format')}:
+    ${body_2(`1) Each running app will be displayed on a different Tmux window.`)}
+    ${body_2(`2) Each window will be splited to different panes in a grid format and each pane is showing a C node output.`)}
+
+    ${keyWord('restrictions')}:
+    ${body_2(`1) If an app has more than 16 C nodes, jamterm will skip that app.`)}
+    ${body_2(`2) various factors like the size of screen, terminal and resolution effects the number of
+    possible tmuxes to display.Maybe try a bigger screen `)}
+
+    --- jamterm [--help]
+    ${body_2(`Use this flag to display this usage msg.`)}
+    
+    --- jamterm [--all]
+    ${body_2(`Use this flag to display all running C nodes.`)}
+    ${body_2_bold(`NOTE: 
+    2) If --all used with --all flag --app, --prog, --port, they will be disabled.`)}
+
+    --- jamterm [--remote]
+    ${body_2(`NOT IMPLEMENTED YET`)}
+    
+    --- jamterm [--app==X]
+    ${body_2(`Use this flag to display C nodes of programs with a specific appName.`)}
+
+    --- jamterm [--prog==X]
+    ${body_2(`Use this flag to display C nodes of programs with a specific programName.`)}
+
+    --- jamterm [--port=3]
+    ${body_2(`Use this flag to display C nodes of programs running on a certain port.`)}
+    
+    NOTE: 
+    ${body_2(`1) --app & --prog & --port can be used all together or two by two to which programs to display. `)}
+    ${body_2(`2) To set --app , --prog and --port options two equal signs has to be used.`)}
+
+
+    RESTRICTIONS: 
+    ${body_2(`single command cannot have multiple --app , --prog and --port conditions to kill apps with different appNames, 
+    programNames and portNumbers in one shot.`)}
+
+    `;
+   
+    console.log(usageMessage)
+}
+
 function getRunningDirs(){
     const jamFolder = getJamFolder()
     const appToPort = new Map()
@@ -139,7 +204,6 @@ async function getTmuxSessions(filteredData){
 
 async function split(number,windowName) {
     const targetSesh = `${MAIN_SESH_NAME}:${windowName}`;
-    console.log(windowName)
     let counter=1;
     let splitDir = "-v"
     let currPane=0
@@ -150,17 +214,17 @@ async function split(number,windowName) {
                 currPane++;
                 NexFlag = false;
             }
-            console.log(currPane, "before adding PNUM")
-            console.log(counter, "before adding PNUM")
+
+
 
             let p = await $`${MYTMUX} split-window ${splitDir} -t ${targetSesh}.${currPane}`.quiet()
-            console.log("Panes state after operation:", p.stdout);
+
             counter++;
         }
         catch(error){
-            console.log(currPane, "error, PNUM")
-            console.log(error)
-            console.log(counter, "error, CNUM")
+
+
+
 
             if(error.stderr.toString().trim() === "no space for new pane"){
                 if(currPane >= counter){
@@ -171,8 +235,8 @@ async function split(number,windowName) {
                     splitDir = "-h"
                 }
                 else{
-                    console.log(currPane, "SETFLAG, PNUM")
-                    console.log(counter, "SETFLAG, CNUM")
+
+
                      splitDir = "-v"
                      NexFlag = true
                 }
@@ -180,12 +244,13 @@ async function split(number,windowName) {
             }
             else{
                 throw error;
+                break;
             }
 
         }
     }
 
-    await $`${MYTMUX} select-layout -t ${MAIN_SESH_NAME}:${windowName} tiled`;
+
 }
 
 
@@ -196,10 +261,10 @@ function parsArgs(){
     try {
         args = getTermArgs(process.argv);
     } catch (error) {
-        // show_usage();
-        // error.message === "SHOW USAGE" ? null : console.log(error.message);
-        // process.exit(1);
-        console.log(error)
+        show_usage();
+        error.message === "SHOW USAGE" ? null : console.log(error.message);
+        process.exit(1);
+
     }
     return args
 }
@@ -225,12 +290,18 @@ async function setUpTmux(sessionMap){
         const tmuxIDs = sessionMap.get(tag);
         const numPanes = tmuxIDs.length;
         await split(numPanes,tag)
+        const result = await $`tmux list-panes -t ${MAIN_SESH_NAME}:${tag} -F '#P'`;
+        const panes = result.stdout.trim().split('\n');
+        console.log('Available panes:', panes); 
+        await $`${MYTMUX} select-layout -t ${MAIN_SESH_NAME}:${tag} tiled`;
+    }
+
+    for(let tag of sessionMap.keys()){
+        const tmuxIDs = sessionMap.get(tag);
         for(let index = 0; index<tmuxIDs.length; index++){
-            console.log(`${tmuxIDs[index]}`)
             await $`${MYTMUX} select-pane -t ${MAIN_SESH_NAME}:${tag}.${index}`;
             await $`${MYTMUX} select-pane -T ${tmuxIDs[index]}`;
             await $`${MYTMUX} send-keys -t ${MAIN_SESH_NAME}:${tag}.${index} 'unset TMUX; ${MYTMUX} attach -t ${tmuxIDs[index]}' C-m`;
-            await sleep(200)
         }
     }
 }
@@ -238,11 +309,15 @@ async function setUpTmux(sessionMap){
 async function main(){
     const args = parsArgs()
     const data = getPrograms()
-    const filters= 
-    {
-        program: args.prog,
-        app: args.app,
-        port: args.port
+    let filters ={}
+    if(args.prog){
+        filters["programName"] = `${args.prog}.jxe`
+    }
+    if(args.app){
+        filters["appName"] = args.app
+    }
+    if(args.port){
+        filters["portNumber"] =  args.port
     }
     const filteredData= args.all ? data : filter(data,filters);
     if(filteredData.length === 0){

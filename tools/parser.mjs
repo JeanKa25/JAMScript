@@ -77,7 +77,6 @@ const jamkillOptionDefinition = [
 const jamtermOptionDefinition = [
     { name: "help", type: Boolean, defaultValue: false },
     { name: "all", type: Boolean, defaultValue: false },
-    { name: "reset", type: Boolean, defaultValue: false },
     { name: "app", type: String, defaultValue: false },
     { name: "prog", type: String, defaultValue: false },
     { name: "port", type: String, defaultValue: false },
@@ -389,7 +388,6 @@ export function getKilltArgs(argv) {
             throw new Error("port argument missing '=' ");
         }
     }
-    console.log(options);
     return options;
 }
 

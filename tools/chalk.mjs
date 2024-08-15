@@ -16,13 +16,13 @@ export function body_sec(txt){
 }
 
 export function body_2(txt){
-    return chalk.black(txt)
+    return chalk.dim(txt)
 }
 export function body_2_line(txt){
-    return chalk.black.underline(txt)
+    return chalk.dim.underline(txt)
 }
 export function body_2_bold(txt){
-    return chalk.black.bold(txt)
+    return chalk.dim.bold(txt)
 }
 
 export function keyWord(txt){
