@@ -310,7 +310,7 @@ async function main(){
     const data = getPrograms()
     let filters ={}
     if(args.prog){
-        filters["prog"] = `${args.prog}.jxe`
+        filters["prog"] = `${args.prog}`
     }
     if(args.app){
         filters["app"] = args.app
