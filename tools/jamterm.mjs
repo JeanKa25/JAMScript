@@ -133,7 +133,7 @@ function getPrograms(root=null){
                         const info = 
                         {
                             path: `${appfolder}/${dir}/${port}`,
-                            program : dirNameToProgramName(dir),
+                            prog : dirNameToProgramName(dir),
                             app : dirNameToAppName(dir),
                             port : port
                         }
@@ -148,7 +148,7 @@ function getPrograms(root=null){
                 const info = 
                 {
                     path: `${appfolder}/${dir}/${port}`,
-                    program : dirNameToProgramName(dir),
+                    prog : dirNameToProgramName(dir),
                     app : dirNameToAppName(dir),
                     port : port
 
@@ -244,7 +244,6 @@ async function split(number,windowName) {
             }
             else{
                 throw error;
-                break;
             }
 
         }
@@ -311,13 +310,13 @@ async function main(){
     const data = getPrograms()
     let filters ={}
     if(args.prog){
-        filters["programName"] = `${args.prog}.jxe`
+        filters["prog"] = `${args.prog}.jxe`
     }
     if(args.app){
-        filters["appName"] = args.app
+        filters["app"] = args.app
     }
     if(args.port){
-        filters["portNumber"] =  args.port
+        filters["port"] =  args.port
     }
     const filteredData= args.all ? data : filter(data,filters);
     if(filteredData.length === 0){
