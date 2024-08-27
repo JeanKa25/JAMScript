@@ -5,7 +5,6 @@ import { Client } from 'ssh2';
 import { getTermArgs } from "./parser.mjs";
 import { header_1,header_2 , body_1, body_sec, keyWord, body_2,body_2_bold } from "./chalk.mjs";
 const { spawnSync } = require('child_process');
-const MAX_TMUX_NUM = 16;
 const MAIN_SESH_NAME = "main"
 const p = spawnSync('which', ['tmux']);
 const MYTMUX = p.stdout.toString().trim()
@@ -26,17 +25,16 @@ function show_usage(){
                 [--app==${body_sec(`appName`)}]
                 [--prog==${body_sec(`programName`)}]
                 [--port==${body_sec(`portNum`)}]
+                [--pane]=${body_sec(`maxNumPane`)}]
+
 
     ${header_1(`DESCRIPTION`)}
 
-    --- ${keyWord('jamterm')} by default displays all the running C node outputs in the different tmux windows and panes.
+    --- ${keyWord('jamterm')} by default displays all the running C node and J nodes outputs in the different panes.
 
-    ${keyWord('Tmux Format')}:
-    ${body_2(`1) Each running app will be displayed on a different Tmux window.`)}
-    ${body_2(`2) Each window will be splited to different panes in a grid format and each pane is showing a C node output.`)}
 
     ${keyWord('restrictions')}:
-    ${body_2(`1) If an app has more than 16 C nodes, jamterm will skip that app.`)}
+
     ${body_2(`2) various factors like the size of screen, terminal and resolution effects the number of
     possible tmuxes to display.Maybe try a bigger screen `)}
 
@@ -59,6 +57,9 @@ function show_usage(){
 
     --- jamterm [--port=3]
     ${body_2(`Use this flag to display C nodes of programs running on a certain port.`)}
+
+    --- jamterm [--pane=3]
+
     
     NOTE: 
     ${body_2(`1) --app & --prog & --port can be used all together or two by two to which programs to display. `)}
@@ -190,20 +191,19 @@ async function getTmuxSessions(filteredData){
             continue;
         }
         const tmuxSessions = (p.stdout.toString().trim().split("\n")).map((entry) => entry.split(":")[0])
-        const tag  = data.program+"_"+data.app+"_"+data.port;
-        if(tmuxSessions.length > MAX_TMUX_NUM){
-            console.log("too many Tmuxm,this app will not be displayed")
-            continue;
+
+        for(let tmuxSession of tmuxSessions){
+            const tag  = data.prog+"_"+data.app+"_"+data.port+"_"+tmuxSession;
+            tmux_sesh.set(tag, tmuxSession)
         }
-        tmux_sesh.set(tag, tmuxSessions)
-
-
     }
     return tmux_sesh
 }
 
-async function split(number,windowName) {
-    const targetSesh = `${MAIN_SESH_NAME}:${windowName}`;
+
+async function split(number) {
+    console.log(number)
+    const targetSesh = `${MAIN_SESH_NAME}`;
     let counter=1;
     let splitDir = "-v"
     let currPane=0
@@ -217,7 +217,7 @@ async function split(number,windowName) {
 
 
 
-            let p = await $`${MYTMUX} split-window ${splitDir} -t ${targetSesh}.${currPane}`.quiet()
+            await $`${MYTMUX} split-window ${splitDir} -t ${targetSesh}.${currPane}`.quiet()
 
             counter++;
         }
@@ -283,25 +283,51 @@ async function creatMainSesh(){
     await $`${MYTMUX} new-session -d -s ${MAIN_SESH_NAME}`;
 }
 
-async function setUpTmux(sessionMap){
-    for(let tag of sessionMap.keys()){
-        await $`${MYTMUX} new-window -t ${MAIN_SESH_NAME} -n ${tag}`;
-        const tmuxIDs = sessionMap.get(tag);
-        const numPanes = tmuxIDs.length;
-        await split(numPanes,tag)
-        const result = await $`tmux list-panes -t ${MAIN_SESH_NAME}:${tag} -F '#P'`;
-        const panes = result.stdout.trim().split('\n');
-        console.log('Available panes:', panes); 
-        await $`${MYTMUX} select-layout -t ${MAIN_SESH_NAME}:${tag} tiled`;
-    }
+async function setUpTmux(sessionMap, number){
+
+    await split(number)
+    await $`${MYTMUX} select-layout -t ${MAIN_SESH_NAME} tiled`;
+    let counter = 0
+
+
 
     for(let tag of sessionMap.keys()){
-        const tmuxIDs = sessionMap.get(tag);
-        for(let index = 0; index<tmuxIDs.length; index++){
-            await $`${MYTMUX} select-pane -t ${MAIN_SESH_NAME}:${tag}.${index}`;
-            await $`${MYTMUX} select-pane -T ${tmuxIDs[index]}`;
-            await $`${MYTMUX} send-keys -t ${MAIN_SESH_NAME}:${tag}.${index} 'unset TMUX; ${MYTMUX} attach -t ${tmuxIDs[index]}' C-m`;
+        if(counter === number){
+            break;
         }
+
+        console.log("current pane Index:", counter)
+        await $`unset TMUX;${MYTMUX} select-pane -t ${MAIN_SESH_NAME}.${counter}`;
+        await $`${MYTMUX} select-pane -T ${tag}`;
+        counter++;
+        
+    }
+
+
+
+    counter = 0;
+  
+    for(let tag of sessionMap.keys()){
+
+        const tmuxID = sessionMap.get(tag)
+        const myTag = `${tag}`
+        console.log(myTag)
+        await $`${MYTMUX} select-pane -t ${tmuxID}:0 -T ${myTag}`;
+        counter++;
+        
+    }
+
+    counter = 0;
+
+
+    for(let tag of sessionMap.keys()){
+        if(counter === number){
+            break;
+        }
+        const tmuxID = sessionMap.get(tag)
+        await $`${MYTMUX} send-keys -t ${MAIN_SESH_NAME}.${counter} 'unset TMUX; ${MYTMUX} attach -t ${tmuxID}' C-m`;
+        counter++;
+        
     }
 }
 
@@ -328,8 +354,10 @@ async function main(){
         console.log("NO TMUX TO DISPLAY")
         process.exit(0)
     }
+
+    const MAX_TMUX_NUM = args.pane > sessionMap.size ? sessionMap.size : args.pane;
     await creatMainSesh();
-    await setUpTmux(sessionMap);
+    await setUpTmux(sessionMap,MAX_TMUX_NUM );
     await $`${MYTMUX} a -t ${MAIN_SESH_NAME}`;
 }
 

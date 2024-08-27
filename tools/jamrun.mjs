@@ -233,12 +233,12 @@ function show_usage() {
     
     --- jamrun program.jxe --app=X [ --valgrind ]
     ${body_2(
-        `--verb : use this flag to run the cside with valgrind for leak checking.`
+        `--valgrind : use this flag to run the cside with valgrind for leak checking.`
     )}
 
     --- jamrun program.jxe --app=X [ --local ]
     ${body_2(
-        `--verb : use this flag to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.`
+        `--local : use this flag to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.`
     )}
 
     --- jamrun program.jxe --app=X [ --remote=IPAddress ] [ --bg ]
@@ -317,7 +317,7 @@ async function dojamout_p2(iport, folder, jappid, group = null) {
     if (!bg) {
         await dojamout_p2_fg(iport, folder, jappid, group);
     } else {
-        dojamout_p2_bg(iport, folder, jappid, group);
+        await dojamout_p2_bg(iport, folder, jappid, group);
     }
 }
 
@@ -374,7 +374,7 @@ async function dojamout_p2_fg(pnum, floc, jappid, group = null) {
     }
 }
 
-function dojamout_p2_bg(pnum, floc, jappid, group = null) {
+async function dojamout_p2_bg(pnum, floc, jappid, group = null) {
     let argObject = {
         "--app": jappid,
         "--port": pnum,
@@ -388,24 +388,16 @@ function dojamout_p2_bg(pnum, floc, jappid, group = null) {
         "--type": Type,
     };
     let jargs = getJargs(argObject);
-
     const logFile = fs.openSync(`${floc}/${pnum}/log.j`, "a");
+    console.log(tmux)
+    await $`${TMUX} new-session -s ${tmux}-j -c ${floc} -d`;
 
-    const command = "node";
-    const args = ["jstart.js", ...jargs];
-    const options = {
-        cwd: floc,
-        stdio: ["ignore", logFile, logFile],
-        detached: true,
-    };
-
-    const p = spawn(command, args, options);
-    p.unref();
-
-    if (!NOVERBOSE) {
-        console.log("Started the J node in background");
+    if (!log) {
+            await $`${TMUX} send-keys -t ${tmux}-j "node jstart.js ${jargs}" C-m`;
+    } else {
+            await $`${TMUX} send-keys -t ${tmux}-j "script -a -t 1 ${floc}/${pnum}/log.j node jstart.js ${jargs}" C-m`;
     }
-    //keep this log file
+
     console.log("EXIT BG");
     process.exit(0);
 }
@@ -806,6 +798,11 @@ async function main() {
     }
     if (isDevice) await runDevice(iport, dport, group);
     else await runNoneDevice(iport);
+    if(bg){
+        console.log("got here")
+        process.exit(0)
+    }
+
 }
 
 const __filename = fileURLToPath(import.meta.url);

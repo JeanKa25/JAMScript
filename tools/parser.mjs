@@ -43,7 +43,6 @@ const jamrunOptionDefinitions = [
     { name: "old", type: Boolean, defaultValue: false },
     { name: "local", type: Boolean, defaultValue: false },
     { name: "valgrind", type: Boolean, defaultValue: false },
-    { name: "disable_stdout_redirect", type: Boolean, defaultValue: false },
     { name: "port", type: Number, defaultValue: undefined },
     { name: "remote", type: String, defaultValue: undefined }, //the IP ADDRESS YOU WANT TO CONNECT TO
     { name: "root", type: String, defaultValue: undefined }, //THE IP ADRRESS OF THE MACHINE making the remote call
@@ -80,6 +79,8 @@ const jamtermOptionDefinition = [
     { name: "app", type: String, defaultValue: false },
     { name: "prog", type: String, defaultValue: false },
     { name: "port", type: String, defaultValue: false },
+    { name: "pane", type: Number, defaultValue: 16 },
+    { name: "separate", type: Boolean, defaultValue: false },
     { name: "remote", type: Boolean, defaultValue: false }, //the IP ADDRESS YOU WANT TO CONNECT TO 
     { name: "root", type: String, defaultValue: undefined }, //THE IP ADRRESS OF THE MACHINE making the remote call
 ];
@@ -93,6 +94,23 @@ const jamclogOptionDefinition = [
     { name: "c", type: Boolean, defaultValue: false },
     { name: "tail", type: Number, defaultValue: undefined },
     { name: "remote", type: String, defaultValue: undefined },
+];
+
+const jamBatchOptionDefinition = [
+    { name: "fog", type: String, defaultValue: undefined },
+    { name: "cloud", type: String, defaultValue: undefined },
+    { name: "device", type: String, defaultValue: undefined },
+    { name: "dFile", type: String, defaultValue: undefined },
+    { name: "cFile", type: String, defaultValue: undefined },
+    { name: "fFile", type: String, defaultValue: undefined },
+    { name: "num", type: String, defaultValue: undefined },
+    { name: "cLoc",  type: String, defaultValue: undefined},
+    { name: "fLoc",  type: String, defaultValue: undefined},
+    { name: "dLoc",  type: String, defaultValue: undefined},
+    { name: "dEdge",  type: String, defaultValue: undefined},
+    { name: "cEdge",  type: String, defaultValue: undefined},
+    { name: "fEdge",  type: String, defaultValue: undefined},
+
 ];
 
 function retrieveType(device, fog, cloud) {
@@ -497,6 +515,8 @@ export function getRemoteArgs(argObject) {
     args.push(`--${argObject["Type"]}`);
     return args.join(" ");
 }
+
+
 export function getLogArgs(argv) {
     const args = argv.filter(
         (entry) =>
@@ -536,4 +556,107 @@ export function getLogArgs(argv) {
         tail: options.tail,
         remote: options.remote,
     };
+}
+
+
+function getJobs(names, files, locs, edges, type, cNums=null){
+    const appNames = []
+    const fileNames = []
+    let Cnum = []
+    let loc = []
+    let edge = []
+    const jobs = []
+
+
+    for( let dev of names.split(",")){
+        const Cnum = dev.split("-")[0];
+        const appName = dev.split("-")[1];
+        for(let num = 0 ; num<Cnum; num++ ){
+            appNames.push(appName)
+        }
+    }
+
+    for( let file of files.split(",")){
+        const fileNum = file.split("-")[0];
+        const fileName = file.split("-")[1];
+        for(let num = 0 ; num<fileNum; num++ ){
+            fileNames.push(fileName)
+        }
+    }
+
+    if(appNames.length !== fileNames.length){
+        throw new Error(`FILE and APP missmatch, having ${appNames.length} appNames and ${fileNames.length}`)
+    }
+    if(cNums){
+        Cnum = cNums.split(",");
+    }
+
+    if(locs){
+        loc =  locs.split('-'); 
+    }
+ 
+    if(edges){
+        edge =  edges.split(",")
+    }
+
+
+    for( let i = 0 ; i <appNames.length; i++){
+        const job = []
+        job.push(`${fileNames[i]}`);
+        job.push(`--app=${appNames[i]}`);
+        if(i < Cnum.length){
+            job.push(`--num=${Cnum[i]}`);
+        }
+        if(i< loc.length){
+            job.push(`--loc=${loc[i]}`);
+        }
+        if(i< edge.length){
+            job.push(`--edge=${loc[i]}`);
+        }
+        job.push("--bg");
+        job.push(`--${type}`);
+        job.push("--log");
+        jobs.push(job)
+    }
+    return jobs;
+}
+
+export function getBatchArgs(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jambatch.mjs")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamBatchOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    }
+    let deviceJobs = [];
+    let fogJobs = [];
+    let cloudJobs = [];
+
+    if(!options.device && !options.fog && !options.cloud){
+        throw new Error("TYPE IS NOT DEFINED")
+    }
+    if(options.device){
+        deviceJobs = getJobs(options.device, options.dFile, options.dLoc, options.dEdge, "device" ,options.num);
+    }
+    if(options.fog){
+        fogJobs = getJobs(options.fog, options.fFile,options.fLoc,options.fEdge,"fog");
+    }
+    if(options.cloud){
+        cloudJobs = getJobs(options.cloud, options.cFile,options.cLoc,options.cEdge,"cloud")
+    }
+    
+    return (deviceJobs.concat(fogJobs)).concat(cloudJobs);
+
+
 }
