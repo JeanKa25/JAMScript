@@ -1,0 +1,30 @@
+{
+    "jobs": [
+      {
+        "name":"XX",
+        "file":"jt2.jxe",
+        "type":"device",
+        "num":"2",
+        "loc":"300,400",
+        "edge":"1",
+        "verb": true
+
+      },
+      {
+        "name":"XXX",
+        "file":"jt2.jxe",
+        "type":"fog",
+        "loc":"100,100",
+        "edge":"1",
+        "verb": true
+      },
+      {
+        "name":"X",
+        "file":"jt2.jxe",
+        "type":"cloud",
+        "loc":"300,400",
+        "edge":"1"
+
+      }
+    ]
+  }

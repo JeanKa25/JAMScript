@@ -1,6 +1,8 @@
 #!/usr/bin/env zx
 import {getBatchArgs} from './parser.mjs'
 import { spawnSync } from 'child_process';
+
+
 import {
     body_1,
     header_1,
@@ -91,10 +93,58 @@ try {
     error.message === "SHOW USAGE" ? null : console.log(error);
     process.exit(1);
 }
+if(args.config){
+
+    const jsonString = fs.readFileSync(args.config);
+    const jobs = JSON.parse(jsonString).jobs;
+    let spawnPipe = 'inherit'
+    console.log(args.verb)
+    if(!args.verb){
+        spawnPipe = ['ignore', 'ignore', 'inherit']
+
+    }
+    for(let i = 0 ; i < jobs.length ; i++){
+        if(!jobs[i].name){
+            console.log(`job number ${i+1} is missing name, it will be skipped`)
+            continue;
+        }
+        if(!jobs[i].file){
+            console.log(`job number ${i+1} is missing file name, it will be skipped`)
+            continue;
+        }
+        if(!jobs[i].type){
+            console.log(`job type missing, it will be skipped`)
+            continue;
+        }
+
+        const exec = `jamrun.mjs ${jobs[i].file} --app=${jobs[i].name} --bg --log --${jobs[i].type}`
+        console.log(jobs.verb)
+        if(jobs.num)
+            exec + ` --num=${jobs.num}`  
+        if(jobs.loc)
+            exec + ` --num=${jobs.loc}`  
+        if(jobs.edge)
+            exec + ` --num=${jobs.edge}`  
+        if(jobs.verb)
+            exec + ` --verb`  
+            
+
+        if(args.verb){
+            console.log(`${body_sec(`Starting job number: ${i+1} - ${exec}`)}`)
+        }
+        spawnSync('zx', [exec], {
+            stdio: spawnPipe, 
+            shell: true       
+        });
+    }
+    process.exit(0)
+}
 for(let arg of args){
-   
+    if(args.verb){
+        console.log(`${body_sec(`Starting new job number: jamrun.mjs ${arg}`)}`)
+    }
     spawnSync('zx', ['jamrun.mjs'].concat(arg), {
-        stdio: 'inherit', 
+        stdio: spawnPipe, 
         shell: true       
     });
 }

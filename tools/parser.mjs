@@ -110,6 +110,9 @@ const jamBatchOptionDefinition = [
     { name: "dEdge",  type: String, defaultValue: undefined},
     { name: "cEdge",  type: String, defaultValue: undefined},
     { name: "fEdge",  type: String, defaultValue: undefined},
+    { name: "config",  type: String, defaultValue: undefined},
+    {name: "verb", type:Boolean, defaultValur: false}
+
 
 ];
 
@@ -638,11 +641,13 @@ export function getBatchArgs(argv){
         const error = new Error("SHOW USAGE");
         error.type = "ShowUsage";
         throw error;
+    };
+    if(options.config){
+        return {"config":options.config , "verb" : options.verb}
     }
     let deviceJobs = [];
     let fogJobs = [];
     let cloudJobs = [];
-
     if(!options.device && !options.fog && !options.cloud){
         throw new Error("TYPE IS NOT DEFINED")
     }
@@ -656,7 +661,7 @@ export function getBatchArgs(argv){
         cloudJobs = getJobs(options.cloud, options.cFile,options.cLoc,options.cEdge,"cloud")
     }
     
-    return (deviceJobs.concat(fogJobs)).concat(cloudJobs);
+    return ((deviceJobs.concat(fogJobs)).concat(cloudJobs)).concat([options.verb]);
 
 
 }
