@@ -14,6 +14,9 @@ export function body_1(txt){
 export function body_sec(txt){
     return chalk.dim.italic(txt)
 }
+export function body_sec_warning(txt){
+    return chalk.dim.yellow.italic(txt)
+}
 
 export function body_2(txt){
     return chalk.dim(txt)

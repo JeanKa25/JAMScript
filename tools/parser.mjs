@@ -69,6 +69,7 @@ const jamkillOptionDefinition = [
     { name: "app", type: String, defaultValue: false },
     { name: "prog", type: String, defaultValue: false },
     { name: "port", type: String, defaultValue: false },
+    { name: "verb", type: Boolean, defaultValue: false},
     { name: "remote", type: Boolean, defaultValue: false }, //the IP ADDRESS YOU WANT TO CONNECT TO
     { name: "root", type: String, defaultValue: undefined }, //THE IP ADRRESS OF THE MACHINE making the remote call
 ];
@@ -367,7 +368,7 @@ export function getKilltArgs(argv) {
                     }
                 })
                 .join("");
-            console.log(newOption);
+
             options["app"] = newOption;
         } else {
             throw new Error("app argument missing '=' ");

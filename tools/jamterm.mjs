@@ -180,6 +180,7 @@ function filter(data, filters){
 }
 async function getTmuxSessions(filteredData){
     const tmux_sesh = new Map()
+
     for(let data of filteredData){
         if(!fs.existsSync(`${data.path}/tmuxid`)){
             continue;
@@ -191,10 +192,11 @@ async function getTmuxSessions(filteredData){
             continue;
         }
         const tmuxSessions = (p.stdout.toString().trim().split("\n")).map((entry) => entry.split(":")[0])
-
+        let counter = 1;
         for(let tmuxSession of tmuxSessions){
-            const tag  = data.prog+"_"+data.app+"_"+data.port+"_"+tmuxSession;
+            const tag  = data.prog+"_"+data.app+"_"+data.port+"_"+(tmuxSession.includes("j") ? "J" : `C.${counter}`);
             tmux_sesh.set(tag, tmuxSession)
+            counter++
         }
     }
     return tmux_sesh
@@ -202,7 +204,7 @@ async function getTmuxSessions(filteredData){
 
 
 async function split(number) {
-    console.log(number)
+
     const targetSesh = `${MAIN_SESH_NAME}`;
     let counter=1;
     let splitDir = "-v"
@@ -296,8 +298,9 @@ async function setUpTmux(sessionMap, number){
             break;
         }
 
-        console.log("current pane Index:", counter)
+
         await $`unset TMUX;${MYTMUX} select-pane -t ${MAIN_SESH_NAME}.${counter}`;
+
         await $`${MYTMUX} select-pane -T ${tag}`;
         counter++;
         
@@ -311,7 +314,7 @@ async function setUpTmux(sessionMap, number){
 
         const tmuxID = sessionMap.get(tag)
         const myTag = `${tag}`
-        console.log(myTag)
+
         await $`${MYTMUX} select-pane -t ${tmuxID}:0 -T ${myTag}`;
         counter++;
         

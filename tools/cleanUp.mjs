@@ -95,13 +95,18 @@ function cleanPort(removablePort,app,programName){
 
 }
 function ArchiveLog(removablePort, appName, programName){
-    const [jamfolder,appfolder,folder] = getPaths(programName,appName)
 
-    if(fs.existsSync(`${folder}/${removablePort}`)){
+    const [jamfolder,appfolder,folder] = getPaths(programName,appName)
+  
+
+
+    if(fs.existsSync(`${folder}/${removablePort}`)){ 
+
         process.chdir(`${folder}/${removablePort}`);
         const logs = fs.readdirSync('.').filter( (entry) => entry.includes("log"))
 
         if(!logs || logs.length === 0 ){
+            process.chdir(`..`);
             return
         }     
         if(!fs.existsSync(`${folder}/log/${removablePort}`,{recursive: true})){
@@ -122,13 +127,17 @@ function ArchiveLog(removablePort, appName, programName){
 
             }
         }
+
         process.chdir(`..`);
+
+        
     }
     
 }
 function cleanAppDir(removablePort,appName, programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName)
     if(fs.existsSync(`${folder}/${removablePort}`)){
+
         try {
             fs.rmSync(`${folder}/${removablePort}`, { recursive: true, force: true });
         } catch (error) {

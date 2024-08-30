@@ -118,7 +118,6 @@ if(args.config){
         }
 
         const exec = `jamrun.mjs ${jobs[i].file} --app=${jobs[i].name} --bg --log --${jobs[i].type}`
-        console.log(jobs.verb)
         if(jobs.num)
             exec + ` --num=${jobs.num}`  
         if(jobs.loc)
@@ -132,6 +131,10 @@ if(args.config){
         if(args.verb){
             console.log(`${body_sec(`Starting job number: ${i+1} - ${exec}`)}`)
         }
+        if(args.verb){
+            console.log(`${body_sec(`Starting new job: ${exec}}`)}`)
+        }
+
         spawnSync('zx', [exec], {
             stdio: spawnPipe, 
             shell: true       
@@ -141,7 +144,7 @@ if(args.config){
 }
 for(let arg of args){
     if(args.verb){
-        console.log(`${body_sec(`Starting new job number: jamrun.mjs ${arg}`)}`)
+        console.log(`${body_sec(`Starting new job: jamrun.mjs ${arg}`)}`)
     }
     spawnSync('zx', ['jamrun.mjs'].concat(arg), {
         stdio: spawnPipe, 

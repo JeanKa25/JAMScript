@@ -4,7 +4,7 @@ import { getAppFolder, getJamFolder } from "./fileDirectory.mjs";
 import {getKilltArgs} from "./parser.mjs"
 import { cleanByPortNumber} from "./cleanUp.mjs";
 import { Client } from 'ssh2';
-import { header_1,header_2 , body_1, body_sec, keyWord, body_2,body_2_bold } from "./chalk.mjs";
+import { header_1,header_2 , body_2_line , body_1, body_sec, keyWord, body_2,body_2_bold, body_sec_warning } from "./chalk.mjs";
 
 let currIP;
 if (os.platform() === "win32") {
@@ -221,8 +221,7 @@ async function killProcess(data){
 
 
 function filter(data, filters){
-    console.log("filter", filters)
-    console.log("data", data)
+
     const filteredInfo =[];
     for(let info of data){
         let isPassing = true
@@ -243,11 +242,15 @@ async function jamKill(args)
 {   
     let root = args.root
     let jamData = killDataForAll(root)
-    console.log(jamData, "this is my jam data")
     let toKill;
     if(args.all){
         toKill = jamData
+
+        if(toKill.length != 0 && args.verb){
+            console.log(`${body_sec_warning(`Warning: no filter specified `)}`)
+        }
     }
+    
     else{
         let Filter ={}
         if(args.prog){
@@ -259,30 +262,40 @@ async function jamKill(args)
         if(args.port){
             Filter["portNumber"] =  args.port
         }
-        
-        toKill = filter(jamData,Filter )
-    }
-    console.log(toKill, "this is my to kill")
 
-    if(toKill.length === 0 ){
-        if(args.all){
-            console.log("no running app on local")
+        toKill = filter(jamData,Filter)
+        if(args.verb){
+            console.log(`${body_sec(`Filter: ${args.prog ? ` programName -- ${body_2_line(`${args.prog}.jxe`)}`: ""}${args.app ? ` appName -- ${body_2_line(args.app)}`: ""}${args.port ? ` port -- ${body_2_line(args.port)}` : ""}`)}`)
+
+        }
+
+    }
+
+    if(toKill.length === 0 && args.verb){
+        if(args.all ){
+            console.log(`${body_sec_warning(`Warning: no active local job available.`)}`)
         }
         else{
-            console.log("no such running app on local")
-        }
-        
+            console.log(`${body_sec_warning(`Warning: no active local job available${args.port ? ` on port -- ${body_2_line(args.port)}` : ""}${args.prog ? ` with programName -- ${body_2_line(`${args.prog}.jxe`)}`: ""}${args.app ? ` and with appName -- ${body_2_line(args.app)}`: ""} `)}`)
+        } 
     }
 
     for(let data of toKill){
+    
         const appName = data.appName;
         const programName = data.programName
         const portNumber = data.portNumber
+
         await killProcess(data);
+        if(args.verb){
+            console.log(`${body_sec(`${body_2_line(appName)} executing ${body_2_line(programName)} on port ${body_2_line(portNumber)} successfully terminated.`)}`)
+        }
         cleanByPortNumber(programName,appName,portNumber)
     }
-    //keep this LOG
-    console.log("Jobs terminated.");
+    if(root){
+        console.log("Jobs terminated.");
+    }
+
 }
 
 async function jamKillBruteForce(){

@@ -15,7 +15,7 @@ import {
     getJamFolder,
     getFileNoext,
 } from "./fileDirectory.mjs";
-const { spawn, spawnSync } = require("child_process");
+const { spawn } = require("child_process");
 import { Client } from "ssh2";
 import {
     body_1,
@@ -26,7 +26,7 @@ import {
     bodyBold,
     body_2,
     body_2_bold,
-    body_2_line,
+    body_sec_warning,
 } from "./chalk.mjs";
 
 let app,
@@ -270,9 +270,9 @@ async function startmqtt(port, cFile) {
         await $`${MOSQUITTO_PUB} -p ${port} -t "test" -m "hello"`.quiet();
     } catch (error) {
         if (!NOVERBOSE) {
-            console.log(
-                `MQTT is not running at ${port}\nAttempting to start MQTT at ${port}`
-            );
+            console.log(`${body_sec(
+                `MQTT is not running at ${port}... Attempting to start MQTT at ${port}`
+            )}`);
         }
         const command = MOSQUITTO;
         const args = ["-c", cFile];
@@ -281,7 +281,11 @@ async function startmqtt(port, cFile) {
             detached: true,
         };
         const mqttProcesse = spawn(command, args, options);
-
+        if (!NOVERBOSE) {
+            console.log(`${body_sec(
+                `MQTT succesfully running on port ${port}`
+            )}`);
+        }
         fs.writeFileSync(`${jamfolder}/mqttpid/${port}`, `${mqttProcesse.pid}`);
         mqttProcesse.unref();
 
@@ -337,10 +341,16 @@ async function dojamout_p2_fg(pnum, floc, jappid, group = null) {
     };
 
     let jargs = getJargs(argObject);
+    if (!NOVERBOSE) {
+       console.log(`${ body_sec(
+            `J Node arg:\n${jargs}`
+        )}`);
+    }
     const command = "node";
     const args = ["jstart.js", ...jargs];
 
     if (log) {
+
         const options = {
             cwd: floc,
             stdio: ["pipe", "pipe", "pipe"],
@@ -363,6 +373,7 @@ async function dojamout_p2_fg(pnum, floc, jappid, group = null) {
             process.kill(process.pid, "SIGTERM");
         });
     } else {
+
         const options = {
             cwd: floc,
             stdio: "inherit",
@@ -388,17 +399,27 @@ async function dojamout_p2_bg(pnum, floc, jappid, group = null) {
         "--type": Type,
     };
     let jargs = getJargs(argObject);
-    const logFile = fs.openSync(`${floc}/${pnum}/log.j`, "a");
-    console.log(tmux)
+    if (!NOVERBOSE) {
+        console.log(`${ body_sec(
+             `J Node arg:\n${jargs}`
+         )}`);
+     }
     await $`${TMUX} new-session -s ${tmux}-j -c ${floc} -d`;
 
     if (!log) {
+
             await $`${TMUX} send-keys -t ${tmux}-j "node jstart.js ${jargs}" C-m`;
     } else {
+
             await $`${TMUX} send-keys -t ${tmux}-j "script -a -t 1 ${floc}/${pnum}/log.j node jstart.js ${jargs}" C-m`;
     }
 
-    console.log("EXIT BG");
+    if (root) {
+        body_sec(
+            `EXIT BG"`
+        );
+    }
+
     process.exit(0);
 }
 
@@ -418,7 +439,11 @@ async function doaout(num, port, group, datap, myf, jappid) {
                 "-o": datap,
             };
             let cargs = getCargs(argObject);
-
+            if (!NOVERBOSE) {
+                console.log(`${body_sec(
+                    `C node args:\n${cargs}`
+                )}`);
+            }
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
             if (!log) {
                 if (valgrind)
@@ -428,7 +453,6 @@ async function doaout(num, port, group, datap, myf, jappid) {
             } else {
                 if (valgrind)
                     await $`${TMUX} send-keys -t ${tmux}-${counter} ${valgrind} ./a.out ${cargs} -f log C-m`;
-                //TMUX DOES NOT WORK FOR DOCKER CONTAINER(SCRIPT IS THE ISSUE)
                 else
                     await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 ${myf}/${port}/log.${counter} ./a.out" ${cargs} C-m`;
             }
@@ -436,7 +460,7 @@ async function doaout(num, port, group, datap, myf, jappid) {
         tmuxIds.push(`${tmux}-${counter}`);
         counter++;
     }
-    if (!NOVERBOSE) console.log("Started a C node");
+
 }
 
 async function portavailable(folder, port) {
@@ -495,13 +519,13 @@ async function waitforredis(port) {
             }
         } catch (error) {}
         if (!NOVERBOSE) {
-            console.log("Trying to find Redis server...");
+            console.log(`${body_sec("Trying to find Redis server...")}`);
         }
         await sleep(1000);
     }
 
     if (!NOVERBOSE) {
-        console.log(`Redis running at port: ${port}`);
+        console.log(`${body_sec(`Redis running at port: ${port}`)}`);
     }
 }
 
@@ -509,10 +533,6 @@ async function setupredis(port) {
     await $`cat ${REDISFUNCS} | redis-cli -p ${port} -x FUNCTION LOAD REPLACE > /dev/null`;
     await $`echo "set protected-mode no" | redis-cli -p ${port} > /dev/null`;
     await $`echo 'config set save "" protected-mode no' | redis-cli -p ${port} > /dev/null`;
-    //IMPORTANT: flushing redis
-    //USE FLUSH DB TO ONLY FLUSH THE CURRENT DB FOR THE APP
-    //DB NUMBER
-    //FOR NOW KEEP AS IT IS
     await $`redis-cli -p ${port} FLUSHALL`;
 }
 
@@ -550,7 +570,7 @@ async function unpack(file, folder) {
                 if (ntime > ontime) {
                     try {
                         if (!NOVERBOSE)
-                            console.log("outdated, unzippping again");
+                            console.log(`${body_sec_warning(`warning: outdated, unzippping again`)}`);
                         await $`cd ${folder} && unzip -oq ${file}`.quiet();
                     } catch (error) {
                         throw new Error(
@@ -569,7 +589,7 @@ async function unpack(file, folder) {
         }
     } else {
         if (!NOVERBOSE) {
-            console.log("WARNING: Unziped files might be outdated");
+            console.log(`${body_sec_warning("WARNING: Unziped files might be outdated")}`);
         }
         isValidExecutable();
     }
@@ -636,9 +656,14 @@ async function main() {
     let ifile;
     let jdata;
     let client;
+    if(!NOVERBOSE){
+        if(remote)
+            console.log(`${body_sec(`remote job on: ${remote}`)}`)
+        else{
+            console.log(`${body_sec(`local job`)}`)
+        }
 
-    console.log("Remote ..", remote);
-
+    }
     if (remote) {
         const config = {
             host: remote,
@@ -657,12 +682,12 @@ async function main() {
             client.on("error", (error) => {
                 reject(error);
             });
-
-            console.log("Initiating connection to ....", config);
+            if(!NOVERBOSE){
+                console.log("Initiating connection to ....", config);
+            }
             client.connect(config);
         });
         const remoteArgs = getRemoteArgs(jamrunParsArg(process.argv));
-        // const pathExport ="export PATH=$PATH:/home/admin/JAMScript/node_modules/.bin"
         const changeDir = "cd JAMScript/tools";
         let currIP;
         if (os.platform() === "win32") {
@@ -684,9 +709,9 @@ async function main() {
             client,
             `${changeDir} && jamrun.mjs ${remoteArgs} --root=${currIP}`
         );
-
-        console.log("IP ", currIP, " port ", myPort);
-
+        if(!NOVERBOSE){
+            console.log("IP ", currIP, " port ", myPort);
+        }
         const jamfolder = getJamFolder();
         const fileNoext = getFileNoext(file);
         if (!fs.existsSync(`${jamfolder}/remote`)) {
@@ -734,6 +759,9 @@ async function main() {
     process.chdir(folder);
     await unpack(ifile, folder);
     isValidExecutable();
+    if(!NOVERBOSE){
+        console.log(`${body_sec("JXE FILE SUCCESSFULLY UNZIPED")}`)
+    }
     jdata = await getjdata(folder);
 
     let isDevice;
@@ -767,6 +795,7 @@ async function main() {
                 iport++;
             }
             removablePort = iport;
+
             break;
 
         case "device":
@@ -783,6 +812,7 @@ async function main() {
                 iport++;
             }
             removablePort = iport;
+
             if (!local) {
                 group = iport - 1882;
             } else group = 0;
@@ -790,6 +820,7 @@ async function main() {
 
     if (jdata.toLowerCase() === "true") {
         dport = iport + 20000;
+
         await resolvedata(`127.0.0.1:${dport}`);
     }
 
@@ -799,7 +830,6 @@ async function main() {
     if (isDevice) await runDevice(iport, dport, group);
     else await runNoneDevice(iport);
     if(bg){
-        console.log("got here")
         process.exit(0)
     }
 
