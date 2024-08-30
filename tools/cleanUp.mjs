@@ -3,6 +3,10 @@
 import {getJamFolder,getAppFolder, getPaths} from './fileDirectory.mjs'
 const { spawnSync } = require('child_process');
 const p = spawnSync('which', ['tmux']);
+import {
+    body_sec_warning,
+} from "./chalk.mjs";
+
 const TMUX = p.stdout.toString().trim()
 
 function getTmuxIds(PortNumber,appName , programName){
@@ -71,7 +75,7 @@ function killMosquitto(removablePort){
         spawnSync('kill', ['-9' ,pid]);
     }
     else{
-        console.log("corrupted file directory ,pid can't be found ")
+        console.log(body_sec_warning(`corrupted file directory,${removablePort} does not exist.`))
     }
     
 

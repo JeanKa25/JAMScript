@@ -9,6 +9,7 @@ import {
     header_2,
     body_sec,
     body_2,
+    body_sec_warning,
     body_2_bold,
 } from "./chalk.mjs";
 let args;
@@ -93,27 +94,33 @@ try {
     error.message === "SHOW USAGE" ? null : console.log(error);
     process.exit(1);
 }
+let spawnPipe = 'inherit'
 if(args.config){
 
     const jsonString = fs.readFileSync(args.config);
     const jobs = JSON.parse(jsonString).jobs;
-    let spawnPipe = 'inherit'
-    console.log(args.verb)
+
     if(!args.verb){
         spawnPipe = ['ignore', 'ignore', 'inherit']
 
     }
     for(let i = 0 ; i < jobs.length ; i++){
         if(!jobs[i].name){
-            console.log(`job number ${i+1} is missing name, it will be skipped`)
+            if(args.verb){
+                console.log(body_sec_warning(`Warning: job number ${i+1} is missing name, it will be skipped`))
+            }
             continue;
         }
         if(!jobs[i].file){
-            console.log(`job number ${i+1} is missing file name, it will be skipped`)
+            if(args.verb){
+                console.log(body_sec_warning(`Warning: job number ${i+1} is missing file name, it will be skipped`))
+            }
             continue;
         }
         if(!jobs[i].type){
-            console.log(`job type missing, it will be skipped`)
+            if(args.verb){
+                console.log(body_sec_warning(`Warning: job type missing, it will be skipped`))
+            }
             continue;
         }
 
@@ -131,9 +138,6 @@ if(args.config){
         if(args.verb){
             console.log(`${body_sec(`Starting job number: ${i+1} - ${exec}`)}`)
         }
-        if(args.verb){
-            console.log(`${body_sec(`Starting new job: ${exec}}`)}`)
-        }
 
         spawnSync('zx', [exec], {
             stdio: spawnPipe, 
@@ -142,8 +146,11 @@ if(args.config){
     }
     process.exit(0)
 }
+
+const verb = args.pop()
+
 for(let arg of args){
-    if(args.verb){
+    if(verb){
         console.log(`${body_sec(`Starting new job: jamrun.mjs ${arg}`)}`)
     }
     spawnSync('zx', ['jamrun.mjs'].concat(arg), {
