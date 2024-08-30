@@ -306,7 +306,7 @@ export function getJamListArgs(argv) {
             }
             filters["machType"] = deviceType;
         } else {
-            console.log(options[key], key, options);
+
             if (
                 key === "prog" ||
                 key === "app" ||
@@ -445,7 +445,7 @@ export function getTermArgs(argv) {
                     }
                 })
                 .join("");
-            console.log(newOption);
+
             options["app"] = newOption;
         } else {
             throw new Error("app argument missing '=' ");
@@ -487,7 +487,7 @@ export function getTermArgs(argv) {
             throw new Error("port argument missing '=' ");
         }
     }
-    console.log(options);
+
     return options;
 }
 

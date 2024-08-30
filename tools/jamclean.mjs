@@ -206,7 +206,6 @@ function cleanPorts(AppToRemove){
             
         }
         else{
-            console.log(`${newApps.join("\n")}\n`)
             fs.writeFileSync(`${jamFolder}/ports/${port}`, `${newApps.join("\n")}`)
         }
 
