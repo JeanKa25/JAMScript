@@ -2,17 +2,16 @@
 
 import {getJamFolder,getAppFolder, getPaths} from './fileDirectory.mjs'
 const { spawnSync } = require('child_process');
-const p = spawnSync('which', ['tmux']);
+const p2 = spawnSync('which', ['tmux']);
 import {
     body_sec_warning,
 } from "./chalk.mjs";
 
-const TMUX = p.stdout.toString().trim()
+const TMUX = p2.stdout.toString().trim()
 
 function getTmuxIds(PortNumber,appName , programName){
     const [jamfolder,appfolder,folder] = getPaths(programName,appName);
     if(fs.existsSync(`${folder}/${PortNumber}/tmuxid`)){
-
         const tmuxID = fs.readFileSync(`${folder}/${PortNumber}/tmuxid`).toString().trim();
         const p = spawnSync(TMUX, ['ls', '-F', '#S']);
         const runningTMUXS = p.stdout.toString().trim().split("\n");
@@ -30,6 +29,7 @@ function killtmux(PortNumber,appName , programName){
     for(let id of tmuxIds){
         spawnSync(TMUX, ['kill-session', '-t', id]);
     }
+
     return tmuxIds
 }
 
@@ -180,3 +180,5 @@ export function cleanByPortNumber(programName, appName, PortNumber, NOVERBOSE=tr
     }
 
 };
+
+cleanByPortNumber("jt2", "shahin23",1885 )

@@ -8,7 +8,8 @@ import { fileURLToPath } from 'url';
 import { Client } from 'ssh2';
 
 
-
+const p1 = spawnSync('which', ['tmux']);
+const TMUX = p1.stdout.toString().trim()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename);
 const jamcKillPath = resolve(__dirname, 'jamkill.mjs');
@@ -169,21 +170,24 @@ async function getRunningCfiles(Dir,port){
        if(await isCfileRunning(appDir,portNum,cfileNum)){
             runningCfiles.push(`${cfileNum}`)
        }
+
     }
     return runningCfiles;
 }
 
 function cleanCfiles(portDir, currCfile){
     const oldCdevs = (fs.readdirSync(portDir)).filter((entry) => entry.includes("cdev"))
+    const genericTag = fs.readFileSync(`${portDir}/tmuxid`).toString().trim()
     if( (oldCdevs.length)*2 === currCfile.length){
         return;
     }
     for(let oldCdev of oldCdevs){
         const cNum = oldCdev.split(".")[1];
         if(!currCfile.includes(cNum)){
+            const id = genericTag+`-${cNum}`
             try{
                 fs.unlinkSync(`${portDir}/${oldCdev}`);
-
+                spawnSync(TMUX, ['kill-session', '-t', id]); 
             }
             catch(error){
                 
@@ -251,7 +255,7 @@ async function clean(){
                 }
             }
             //It's running and files are uptodate, update Cnum and clean cdevs
-            if( (await isJfileRunning(dir,port)) && (await isDevice(dir,port))){
+            if((await isJfileRunning(dir,port)) && (await isDevice(dir,port))){
                 const Cfiles = await getRunningCfiles(dir,port);
                 const numCnodes = Cfiles.length
                 if(!fs.existsSync(`${appFolder}/${dir}/${port}/numCnodes`)){

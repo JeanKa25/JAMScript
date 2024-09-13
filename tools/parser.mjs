@@ -113,7 +113,18 @@ const jamBatchOptionDefinition = [
     { name: "fEdge",  type: String, defaultValue: undefined},
     { name: "config",  type: String, defaultValue: undefined},
     {name: "verb", type:Boolean, defaultValur: false}
-
+];
+//no extention for the prog name ex) jt2
+const jamWorkerOptionDefinition = [
+    { name: "help", type: Boolean, defaultValue: false },
+    {name: "add", type: Number, defaultValue: undefined },
+    {name: "removeBatch", type: Number , defaultValue: undefined},
+    {name: "remove", type: String , defaultValue: undefined},
+    {name: "port", type:Number , defaultValue: undefined},
+    {name: "prog", type:String, defaultValue: undefined},
+    {name: "app", type:String, defaultValue: undefined},
+    {name: "verb", type:Boolean, defaultValur: false},
+    {name:"log",type:Boolean, defaultValur: false}
 
 ];
 
@@ -534,7 +545,7 @@ export function getLogArgs(argv) {
     try {
         options = commandLineArgs(jamclogOptionDefinition, { argv: args });
     } catch (error) {
-        console.log(error);
+
     }
 
     if (options === undefined || options.help) {
@@ -661,8 +672,37 @@ export function getBatchArgs(argv){
     if(options.cloud){
         cloudJobs = getJobs(options.cloud, options.cFile,options.cLoc,options.cEdge,"cloud")
     }
-    
     return ((deviceJobs.concat(fogJobs)).concat(cloudJobs)).concat([options.verb]);
+}
+
+export function getWorkerArgs(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamworker.mjs")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamWorkerOptionDefinition, { argv: args });
+    } catch (error) {}
+    const rawMode = [options?.remove ? "remove" : undefined , options?.add ? "add" : undefined, options?.removeBatch ? "removeBatch" : undefined]
+    const mode = rawMode.filter((entry) => entry !== undefined)
+    if (options === undefined || options.help) {
+        throw new Error("SHOW USAGE");
+    };
+    if((!options?.app || !options?.prog || !options?.port) && mode[0] !=="remove"){
+        throw new Error("appName, programName and portNumber should be defined");
+    }
+    if(mode.length !== 1){
+        throw new Error("the mode should be either one of remove, add, removeBatch");
+    };
+    options["mode"] = mode[0]
+    return options
+
+
+    
 
 
 }

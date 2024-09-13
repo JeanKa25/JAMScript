@@ -49,7 +49,6 @@ let app,
     port,
     remote,
     root;
-const tmuxIds = [];
 let removablePort;
 
 process.on("SIGINT", () => {
@@ -299,7 +298,7 @@ async function dojamout(iport, folder, jappid) {
 }
 
 //tested.working
-async function dojamout_p1(pnum, floc) {
+async function dojamout_p1(pnum, floc, group=null) {
     await startmqtt(pnum, `${floc}/${pnum}/mqtt.conf`, data);
     if (data) {
         fs.writeFileSync(`${floc}/${pnum}/dataStore`, `${data}\n`);
@@ -308,6 +307,11 @@ async function dojamout_p1(pnum, floc) {
     fs.writeFileSync(`${floc}/${pnum}/shellpid`, SHELLPID.toString() + "\n");
     fs.writeFileSync(`${floc}/${pnum}/processId`, "new" + "\n");
     fs.writeFileSync(`${floc}/${pnum}/startStamp`, `${Date.now()}` + "\n");
+    if(group){
+        fs.writeFileSync(`${floc}/${pnum}/group`, `${group}` + "\n");
+    }
+
+
 
     if (Type === "device") {
         fs.writeFileSync(`${floc}/${pnum}/numCnodes`, `${num}`);
@@ -423,7 +427,7 @@ async function dojamout_p2_bg(pnum, floc, jappid, group = null) {
     process.exit(0);
 }
 
-async function doaout(num, port, group, datap, myf, jappid) {
+ export async function doaout(num, port, group, datap, myf, jappid) {
     let counter = 1;
     if (fs.existsSync("a.out")) {
         await $`cd ${myf} && chmod +x a.out`;
@@ -441,7 +445,7 @@ async function doaout(num, port, group, datap, myf, jappid) {
             let cargs = getCargs(argObject);
             if (!NOVERBOSE) {
                 console.log(`${body_sec(
-                    `C node args:\n${cargs}`
+                    `C node args: ${cargs}`
                 )}`);
             }
             await $`${TMUX} new-session -s ${tmux}-${counter} -c ${myf} -d`;
@@ -457,7 +461,6 @@ async function doaout(num, port, group, datap, myf, jappid) {
                     await $`${TMUX} send-keys -t ${tmux}-${counter} "script -a -t 1 ${myf}/${port}/log.${counter} ./a.out" ${cargs} C-m`;
             }
         }
-        tmuxIds.push(`${tmux}-${counter}`);
         counter++;
     }
 
@@ -614,7 +617,7 @@ async function runDevice(iport, dport, group) {
     const [jamfolder, appfolder, folder] = getPaths(file, app);
     fileDirectoryMqtt(folder, iport, jamfolder, app);
     const jappid = getappid(jamfolder, `${folder}/${iport}`, app, appfolder);
-    await dojamout_p1(iport, folder);
+    await dojamout_p1(iport, folder,group);
     setuptmux(`${folder}/${iport}`, appfolder);
     await doaout(num, iport, group, dport, folder, jappid);
     await dojamout_p2(iport, folder, jappid, group);
@@ -816,6 +819,7 @@ async function main() {
             if (!local) {
                 group = iport - 1882;
             } else group = 0;
+
     }
 
     if (jdata.toLowerCase() === "true") {

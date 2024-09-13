@@ -202,6 +202,8 @@ async function killJFile(data){
     const appfolder = getAppFolder()
     try{
         const pid = fs.readFileSync(`${appfolder}/${dirName}/${portNumber}/processId`).toString().trim();
+        const tmuxID = fs.readFileSync(`${appfolder}/${dirName}/${portNumber}/tmuxid`).toString().trim();
+        spawnSync(TMUX, ['kill-session', '-t', `${tmuxID}-j`]);
         const p = await $`ps -p ${pid} | grep node | wc -l | tr -d '[:space:]'`
         const exists = Number(p.stdout.toString().trim());
         if(exists){
