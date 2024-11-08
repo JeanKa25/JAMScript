@@ -68,7 +68,7 @@ app.post('/jamrun', (req, res) => {
   // Set headers to keep the connection open for streaming
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Transfer-Encoding', 'chunked');
-
+ 
   // Stream stdout data to the client
   childProcess.stdout.on('data', (data) => {
     res.write(data); // Send chunks of data as they are produced
@@ -89,6 +89,163 @@ app.post('/jamrun', (req, res) => {
     res.end(`\nFailed to start process: ${error.message}`);
   });
 });
+
+// Define the /jambatch endpoint with dynamic command construction
+app.get('/jambatch', (req, res) => {
+  const {
+    fog,
+    device,
+    cloud,
+    cFile,
+    fFile,
+    dFile,
+    num,
+    cLoc,
+    fLoc,
+    dLoc,
+    cEdge,
+    fEdge,
+    dEdge
+  } = req.body;
+
+
+  // Construct the base command
+  let command = `zx jambatch.mjs program.jxe`;
+
+  // Optional flags based on request fields
+  if (fog) command += ` --fog=${fog}`;
+  if (device) command += ` --device=${device}`;
+  if (cloud) command += ` --cloud=${cloud}`;
+  if (cFile) command += `--cFile=${cFile}`;
+  if (fFile) command += `--fFile=${fFile}`;
+  if (dFile) command += `--dFile=${dFile}`;
+  if (num) command += `--num=${num}`;
+  if (cLoc) command += `--cLoc=${cLoc}`;
+  if (fLoc) command += `--fLoc=${fLoc}`;
+  if (dLoc) command += `--dLoc=${dLoc}`;
+  if(cEdge) command += `--cEdge=${cEdge}`;
+  if(fEdge) command += `--fEdge=${fEdge}`;
+  if(dEdge) command += `--dEdge=${dEdge}`;
+
+  console.log(`Executing command: ${command}`);
+
+  // Execute the constructed command
+  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
+
+  // Set headers to keep the connection open for streaming
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Transfer-Encoding', 'chunked');
+ 
+});
+
+// Define the /jamlog endpoint with dynamic command construction
+app.get('/jamlog', (req, res) => {
+  const {
+    program,
+    app,
+    port,
+    remote,
+    tail,
+    c,
+    j,
+  } = req.body;
+
+  // Check mandatory field `remote`
+  if (!remote) {
+    return res.status(400).json({ error: 'The "remote" field is required.' });
+  }
+
+  // Check mandatory field `tail`
+  if (!tail) {
+    return res.status(400).json({ error: 'The "tail" field is required.' });
+  }
+
+
+  // Construct the base command
+  let command = `zx jamlog.mjs --program=jt2 --app-xxx2, --port=1883`;
+
+  // Optional flags based on request fields
+  if (remote) command += ` --remote=${remote}`;
+  if (tail) command += ` --tail=${tail}`;
+
+  console.log(`Executing command: ${command}`);
+
+  // Execute the constructed command
+  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
+
+  // Set headers to keep the connection open for streaming
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Transfer-Encoding', 'chunked');
+ 
+});
+
+// Define the /jamlist endpoint with dynamic command construction
+app.get('/jamlist', (req, res) => {
+  const {
+    monitor,
+    type,
+    dataStore,
+    tmuxid,
+    port,
+    app,
+    prog,
+    remote
+  } = req.body;
+
+  // Check mandatory field `type`
+  if (!type) {
+    return res.status(400).json({ error: 'The "type" field is required.' });
+  }
+
+  // Check mandatory field `type`
+  if (!dataStore) {
+    return res.status(400).json({ error: 'The "dataStore" field is required.' });
+  }
+
+  // Check mandatory field `tmuxid`
+  if (!tmuxid) {
+    return res.status(400).json({ error: 'The "tmuxid" field is required.' });
+  }
+
+  // Check mandatory field `port`
+  if (!port) {
+    return res.status(400).json({ error: 'The "port" field is required.' });
+  }
+
+  // Check mandatory field `app`
+  if (!port) {
+    return res.status(400).json({ error: 'The "app" field is required.' });
+  }
+
+  // Check mandatory field `app`
+  if (!port) {
+    return res.status(400).json({ error: 'The "prog" field is required.' });
+  }
+
+
+  // Construct the base command
+  let command = `zx jamlist.mjs`;
+
+  // Optional flags based on request fields
+  if (type) command += ` --type=${type}`;
+  if (dataStore) command += ` --dataStore=${dataStore}`;
+  if (tmuxid) command += ` --tmuxid=${tmuxid}`;
+  if (port) command += ` --port=${port}`;
+  if (app) command += ` --app=${app}`;
+  if (prog) command += ` --prog=${prog}`;
+
+
+  console.log(`Executing command: ${command}`);
+
+  // Execute the constructed command
+  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
+
+  // Set headers to keep the connection open for streaming
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Transfer-Encoding', 'chunked');
+ 
+});
+
 
 // Start the server
 app.listen(port, host, () => {
