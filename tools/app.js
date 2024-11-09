@@ -247,6 +247,40 @@ app.get('/jamlist', (req, res) => {
 });
 
 
+//Define the /jamkill endpoint
+app.post('/jamkill', (req, res) => {
+  const {
+    reset,
+    all,
+    remote,
+    app,
+    prog,
+    port
+  } = req.body;
+
+//No mandatory fields, by default kills local apps only
+
+//Construct base command
+let command = 'zx jamkill.mjs';
+
+//Optional flags
+if (reset) command += ' --reset';
+if (all) command += ' --all'
+if (remote) command += ' --remote';
+if (app) command += ' --app==${app}';
+if (prog) command += ' --prog==${prog}';
+if (port) command += ' --port=${port}';
+
+console.log('Executing command: ${command}');
+
+//Execute the command
+const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/'});
+
+//Set headers 
+res.setHeader('Content-Type', 'text/plain');
+res.setHeader('Transfer-Encoding', 'chunked');
+});
+
 // Start the server
 app.listen(port, host, () => {
   console.log(`Server is running on http://${host}:${port}`);
