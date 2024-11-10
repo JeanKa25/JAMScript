@@ -91,7 +91,7 @@ app.post('/jamrun', (req, res) => {
 });
 
 // Define the /jambatch endpoint with dynamic command construction
-app.get('/jambatch', (req, res) => {
+app.post('/jambatch', (req, res) => {
   const {
     fog,
     device,
@@ -139,7 +139,7 @@ app.get('/jambatch', (req, res) => {
 });
 
 // Define the /jamlog endpoint with dynamic command construction
-app.get('/jamlog', (req, res) => {
+app.post('/jamlog', (req, res) => {
   const {
     program,
     app,
@@ -180,7 +180,7 @@ app.get('/jamlog', (req, res) => {
 });
 
 // Define the /jamlist endpoint with dynamic command construction
-app.get('/jamlist', (req, res) => {
+app.post('/jamlist', (req, res) => {
   const {
     monitor,
     type,
