@@ -281,6 +281,53 @@ res.setHeader('Content-Type', 'text/plain');
 res.setHeader('Transfer-Encoding', 'chunked');
 });
 
+
+// Define the /jamterm endpoint with dynamic command construction
+app.post ("/jamterm", (req, res)=>{
+  const { all, app, prog, port, pane } = req.body;
+
+  // Construct the base command
+  let command = `zx jamterm.mjs`;
+
+  // Add optional flags
+  if (all) command += ' --all';
+  if (app) command += ` --app=${app}`;
+  if (prog) command += ` --prog=${prog}`;
+  if (port) command += ` --port=${port}`;
+  if (pane) command += ` --pane=${pane}`;
+
+  console.log(`Executing command: ${command}`);
+
+  // Execute the constructed command
+  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/', shell: true});
+
+  // Set headers to keep the connection open for streaming
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  // Stream stdout data to the client
+  childProcess.stdout.on('data', (data) => {
+    res.write(data); // Send chunks of data as they are produced
+  });
+
+  // Stream stderr data to the client (for debugging or error messages)
+  childProcess.stderr.on('data', (data) => {
+    res.write(`Error: ${data}`);
+  });
+
+  // When the process completes, close the response
+  childProcess.on('close', (code) => {
+    res.end(`\nProcess completed with code ${code}`);
+  });
+
+  // Handle any execution errors
+  childProcess.on('error', (error) => {
+    res.end(`\nFailed to start process: ${error.message}`);
+  });
+})
+
+
+
 // Start the server
 app.listen(port, host, () => {
   console.log(`Server is running on http://${host}:${port}`);

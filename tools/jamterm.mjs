@@ -361,7 +361,8 @@ async function main(){
     const MAX_TMUX_NUM = args.pane > sessionMap.size ? sessionMap.size : args.pane;
     await creatMainSesh();
     await setUpTmux(sessionMap,MAX_TMUX_NUM );
-    await $`${MYTMUX} a -t ${MAIN_SESH_NAME}`;
+    // await $`${MYTMUX} a -t ${MAIN_SESH_NAME}`;
+    console.log(`Session '${MAIN_SESH_NAME}' created and running in detached mode.`);
 }
 
 (async()=>{main()})()
