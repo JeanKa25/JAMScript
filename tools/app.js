@@ -13,7 +13,45 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the API' });
 });
 
-// Define the /jamrun endpoint with dynamic command construction
+// Utility function to handle command execution and streaming response
+function executeCommand(req, res, command, cwd = '/root/capstone/JAMScript/tools/') {
+  console.log(`Executing command: ${command}`);
+  const childProcess = exec(command, { cwd });
+
+  // Set headers to keep the connection open for streaming
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  // Stream stdout data to the client
+  childProcess.stdout.on('data', (data) => {
+    res.write(data);
+  });
+
+  // Stream stderr data to the client (for debugging or error messages)
+  childProcess.stderr.on('data', (data) => {
+    res.write(`Error: ${data}`);
+  });
+
+  // When the process completes, close the response
+  childProcess.on('close', (code) => {
+    res.end(`\nProcess completed with code ${code}`);
+  });
+
+  // Handle any execution errors
+  childProcess.on('error', (error) => {
+    res.end(`\nFailed to start process: ${error.message}`);
+  });
+
+  // If the client disconnects, terminate the child process
+  req.on('close', () => {
+    if (childProcess.exitCode === null) { // If process is still running
+      console.log('Client disconnected, terminating process');
+      childProcess.kill(); // Terminate the process
+    }
+  });
+}
+
+// Define the /jamrun endpoint
 app.post('/jamrun', (req, res) => {
   const {
     file = 'file.jxe',
@@ -35,15 +73,11 @@ app.post('/jamrun', (req, res) => {
     remote,
   } = req.body;
 
-  // Check mandatory field `app_name`
   if (!app_name) {
     return res.status(400).json({ error: 'The "app_name" field is required.' });
   }
 
-  // Construct the base command
   let command = `zx jamrun.mjs ${file} --app=${app_name}`;
-
-  // Optional flags based on request fields
   if (fog) command += ' --fog';
   if (cloud) command += ' --cloud';
   if (device) command += ' --device';
@@ -60,273 +94,87 @@ app.post('/jamrun', (req, res) => {
   if (local) command += ' --local';
   if (remote) command += ` --remote=${remote}`;
 
-  console.log(`Executing command: ${command}`);
-
-  // Execute the constructed command
-  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
-
-  // Set headers to keep the connection open for streaming
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Transfer-Encoding', 'chunked');
- 
-  // Stream stdout data to the client
-  childProcess.stdout.on('data', (data) => {
-    res.write(data); // Send chunks of data as they are produced
-  });
-
-  // Stream stderr data to the client (for debugging or error messages)
-  childProcess.stderr.on('data', (data) => {
-    res.write(`Error: ${data}`);
-  });
-
-  // When the process completes, close the response
-  childProcess.on('close', (code) => {
-    res.end(`\nProcess completed with code ${code}`);
-  });
-
-  // Handle any execution errors
-  childProcess.on('error', (error) => {
-    res.end(`\nFailed to start process: ${error.message}`);
-  });
+  executeCommand(req, res, command);
 });
 
-// Define the /jambatch endpoint with dynamic command construction
+// Define the /jambatch endpoint
 app.post('/jambatch', (req, res) => {
   const {
-    fog,
-    device,
-    cloud,
-    cFile,
-    fFile,
-    dFile,
-    num,
-    cLoc,
-    fLoc,
-    dLoc,
-    cEdge,
-    fEdge,
-    dEdge
+    fog, device, cloud, cFile, fFile, dFile, num, cLoc, fLoc, dLoc, cEdge, fEdge, dEdge
   } = req.body;
 
-
-  // Construct the base command
   let command = `zx jambatch.mjs program.jxe`;
-
-  // Optional flags based on request fields
   if (fog) command += ` --fog=${fog}`;
   if (device) command += ` --device=${device}`;
   if (cloud) command += ` --cloud=${cloud}`;
-  if (cFile) command += `--cFile=${cFile}`;
-  if (fFile) command += `--fFile=${fFile}`;
-  if (dFile) command += `--dFile=${dFile}`;
-  if (num) command += `--num=${num}`;
-  if (cLoc) command += `--cLoc=${cLoc}`;
-  if (fLoc) command += `--fLoc=${fLoc}`;
-  if (dLoc) command += `--dLoc=${dLoc}`;
-  if(cEdge) command += `--cEdge=${cEdge}`;
-  if(fEdge) command += `--fEdge=${fEdge}`;
-  if(dEdge) command += `--dEdge=${dEdge}`;
+  if (cFile) command += ` --cFile=${cFile}`;
+  if (fFile) command += ` --fFile=${fFile}`;
+  if (dFile) command += ` --dFile=${dFile}`;
+  if (num) command += ` --num=${num}`;
+  if (cLoc) command += ` --cLoc=${cLoc}`;
+  if (fLoc) command += ` --fLoc=${fLoc}`;
+  if (dLoc) command += ` --dLoc=${dLoc}`;
+  if (cEdge) command += ` --cEdge=${cEdge}`;
+  if (fEdge) command += ` --fEdge=${fEdge}`;
+  if (dEdge) command += ` --dEdge=${dEdge}`;
 
-  console.log(`Executing command: ${command}`);
-
-  // Execute the constructed command
-  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
-
-  // Set headers to keep the connection open for streaming
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Transfer-Encoding', 'chunked');
- 
+  executeCommand(req, res, command);
 });
 
-// Define the /jamlog endpoint with dynamic command construction
+// Define the /jamlog endpoint
 app.post('/jamlog', (req, res) => {
-  const {
-    program,
-    app,
-    port,
-    remote,
-    tail,
-    c,
-    j,
-  } = req.body;
-
-  // Check mandatory field `remote`
-  if (!remote) {
-    return res.status(400).json({ error: 'The "remote" field is required.' });
+  const { remote, tail } = req.body;
+  if (!remote || !tail) {
+    return res.status(400).json({ error: 'The "remote" and "tail" fields are required.' });
   }
 
-  // Check mandatory field `tail`
-  if (!tail) {
-    return res.status(400).json({ error: 'The "tail" field is required.' });
-  }
-
-
-  // Construct the base command
-  let command = `zx jamlog.mjs --program=jt2 --app-xxx2, --port=1883`;
-
-  // Optional flags based on request fields
-  if (remote) command += ` --remote=${remote}`;
-  if (tail) command += ` --tail=${tail}`;
-
-  console.log(`Executing command: ${command}`);
-
-  // Execute the constructed command
-  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
-
-  // Set headers to keep the connection open for streaming
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Transfer-Encoding', 'chunked');
- 
+  let command = `zx jamlog.mjs --program=jt2 --app-xxx2 --port=1883 --remote=${remote} --tail=${tail}`;
+  executeCommand(req, res, command);
 });
 
-// Define the /jamlist endpoint with dynamic command construction
 app.post('/jamlist', (req, res) => {
-  const {
-    monitor,
-    type,
-    dataStore,
-    tmuxid,
-    port,
-    app,
-    prog,
-    remote
-  } = req.body;
+  const { type, dataStore, tmuxid, port, app, prog } = req.body;
 
-  // Check mandatory field `type`
-  if (!type) {
-    return res.status(400).json({ error: 'The "type" field is required.' });
-  }
-
-  // Check mandatory field `type`
-  if (!dataStore) {
-    return res.status(400).json({ error: 'The "dataStore" field is required.' });
-  }
-
-  // Check mandatory field `tmuxid`
-  if (!tmuxid) {
-    return res.status(400).json({ error: 'The "tmuxid" field is required.' });
-  }
-
-  // Check mandatory field `port`
-  if (!port) {
-    return res.status(400).json({ error: 'The "port" field is required.' });
-  }
-
-  // Check mandatory field `app`
-  if (!port) {
-    return res.status(400).json({ error: 'The "app" field is required.' });
-  }
-
-  // Check mandatory field `app`
-  if (!port) {
-    return res.status(400).json({ error: 'The "prog" field is required.' });
-  }
-
-
-  // Construct the base command
+  // Default command without arguments if none are specified
   let command = `zx jamlist.mjs`;
+  if (type) command += ` --type ${type}`;
+  if (dataStore) command += ` --dataStore ${dataStore}`;
+  if (tmuxid) command += ` --tmuxid ${tmuxid}`;
+  if (port) command += ` --port ${port}`;
+  if (app) command += ` --app ${app}`;
+  if (prog) command += ` --prog ${prog}`;
 
-  // Optional flags based on request fields
-  if (type) command += ` --type=${type}`;
-  if (dataStore) command += ` --dataStore=${dataStore}`;
-  if (tmuxid) command += ` --tmuxid=${tmuxid}`;
-  if (port) command += ` --port=${port}`;
+  executeCommand(req, res, command);
+});
+
+// Define the /jamkill endpoint
+app.post('/jamkill', (req, res) => {
+  const { reset, all, remote, app, prog, port } = req.body;
+
+  let command = 'zx jamkill.mjs';
+  if (reset) command += ' --reset';
+  if (all) command += ' --all';
+  if (remote) command += ` --remote=${remote}`;
   if (app) command += ` --app=${app}`;
   if (prog) command += ` --prog=${prog}`;
+  if (port) command += ` --port=${port}`;
 
-
-  console.log(`Executing command: ${command}`);
-
-  // Execute the constructed command
-  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/' });
-
-  // Set headers to keep the connection open for streaming
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Transfer-Encoding', 'chunked');
- 
+  executeCommand(req, res, command);
 });
 
-
-//Define the /jamkill endpoint
-app.post('/jamkill', (req, res) => {
-  const {
-    reset,
-    all,
-    remote,
-    app,
-    prog,
-    port
-  } = req.body;
-
-//No mandatory fields, by default kills local apps only
-
-//Construct base command
-let command = 'zx jamkill.mjs';
-
-//Optional flags
-if (reset) command += ' --reset';
-if (all) command += ' --all'
-if (remote) command += ' --remote';
-if (app) command += ' --app==${app}';
-if (prog) command += ' --prog==${prog}';
-if (port) command += ' --port=${port}';
-
-console.log('Executing command: ${command}');
-
-//Execute the command
-const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/'});
-
-//Set headers 
-res.setHeader('Content-Type', 'text/plain');
-res.setHeader('Transfer-Encoding', 'chunked');
-});
-
-
-// Define the /jamterm endpoint with dynamic command construction
-app.post ("/jamterm", (req, res)=>{
+// Define the /jamterm endpoint
+app.post("/jamterm", (req, res) => {
   const { all, app, prog, port, pane } = req.body;
 
-  // Construct the base command
   let command = `zx jamterm.mjs`;
-
-  // Add optional flags
   if (all) command += ' --all';
   if (app) command += ` --app=${app}`;
   if (prog) command += ` --prog=${prog}`;
   if (port) command += ` --port=${port}`;
   if (pane) command += ` --pane=${pane}`;
 
-  console.log(`Executing command: ${command}`);
-
-  // Execute the constructed command
-  const childProcess = exec(command, { cwd: '/root/capstone/JAMScript/tools/', shell: true});
-
-  // Set headers to keep the connection open for streaming
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Transfer-Encoding', 'chunked');
-
-  // Stream stdout data to the client
-  childProcess.stdout.on('data', (data) => {
-    res.write(data); // Send chunks of data as they are produced
-  });
-
-  // Stream stderr data to the client (for debugging or error messages)
-  childProcess.stderr.on('data', (data) => {
-    res.write(`Error: ${data}`);
-  });
-
-  // When the process completes, close the response
-  childProcess.on('close', (code) => {
-    res.end(`\nProcess completed with code ${code}`);
-  });
-
-  // Handle any execution errors
-  childProcess.on('error', (error) => {
-    res.end(`\nFailed to start process: ${error.message}`);
-  });
-})
-
-
+  executeCommand(req, res, command);
+});
 
 // Start the server
 app.listen(port, host, () => {
