@@ -133,16 +133,20 @@ app.post('/jamlog', (req, res) => {
 });
 
 app.post('/jamlist', (req, res) => {
-  const { type, dataStore, tmuxid, port, app, prog } = req.body;
+  const { help, all, monitor, type, dataStore, tmuxid, port, app, prog, remote } = req.body;
 
   // Default command without arguments if none are specified
   let command = `zx jamlist.mjs`;
-  if (type) command += ` --type ${type}`;
-  if (dataStore) command += ` --dataStore ${dataStore}`;
-  if (tmuxid) command += ` --tmuxid ${tmuxid}`;
-  if (port) command += ` --port ${port}`;
-  if (app) command += ` --app ${app}`;
-  if (prog) command += ` --prog ${prog}`;
+  if (help) command += ` --help`;
+  if (all) command += ` --all`;
+  if (monitor) command += ` --monitor`;
+  if (type) command += ` --type=${type}`;
+  if (dataStore) command += ` --dataStore=${dataStore}`;
+  if (tmuxid) command += ` --tmuxid=${tmuxid}`;
+  if (port) command += ` --port=${port}`;
+  if (app) command += ` --app=${app}`;
+  if (prog) command += ` --prog=${prog}`;
+  if (remote) command += ` --remote=${remote}`;
 
   executeCommand(req, res, command);
 });
