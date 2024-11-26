@@ -5,7 +5,6 @@ RUN apt update && apt install -y openssh-server sudo
 
 RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-
 RUN apt-get update && apt-get install -y --no-install-recommends apt-utils && \
         apt-get install -y -q wget \
         build-essential \
@@ -73,8 +72,6 @@ RUN mkdir .npm-global
 RUN mkdir .npm-global/bin
 
 ENV PATH="$PATH:/home/admin/JAMScript/tools:/home/admin/.npm-global/bin"
-
-
 
 # Expose the SSH port
 EXPOSE 22
