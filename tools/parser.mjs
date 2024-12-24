@@ -716,6 +716,7 @@ export function getJamrunArgsWrapper(argv){
 
     try {
         options = commandLineArgs(jamrunOptionDefinitions, { argv: args });
+        console.log(options);
     } catch (error) {}
 
     if (options === undefined || options.help) {
@@ -934,7 +935,9 @@ export function getLogArgsWrapper(argv){
     let options;
 
     try {
+        console.log(argv);
         options = commandLineArgs(jamclogOptionDefinition, { argv: args });
+        console.log(options);
     } catch (error) {}
 
     if (options === undefined || options.help) {
@@ -943,7 +946,18 @@ export function getLogArgsWrapper(argv){
         throw error;
     };
 
-    let command = `{ "remote": "${options.remote}", "tail": "${options.remote}" } `
+    let command = `{ "program": "${options.program}", "app": "${options.app}", "port": "${options.port} `;
+
+    if(options.remote){
+        command += ',';
+        command += ` "remote": "${options.remote}"`;
+    }
+
+    if(options.tail){
+        command += ',';
+        command += ` "tail": "${options.tail}"`;
+    }
+    command += ` } `;
 
     return command;
 }
@@ -975,18 +989,15 @@ export function getJamListArgsWrapper(argv){
 
     if(options.all)
     {
-        command += ',';
         command += ` "all": "${options.all}"`;
     }
     if(options.monitor)
     {
-        command += ',';
         command += ` "monitor": "${options.monitor}"`;
     }
 
     if(options.type)
     {
-        command += ',';
         command += ` "type": "${options.type}"`;
     }
 
@@ -1050,30 +1061,25 @@ export function getJamKillArgsWrapper(argv){
 
     if(options.all)
     {
-        command += ',';
         command += ` "all": "${options.all}"`;
     }
     if(options.remote)
     {
-        command += ',';
         command += ` "remote": "${options.remote}"`;
     }
 
     if(options.app)
     {
-        command += ',';
         command += ` "app": "${options.app}"`;
     }
 
     if(options.prog)
     {
-        command += ',';
         command += ` "prog": "${options.prog}"`;
     }
 
     if(options.port)
     {
-        command += ',';
         command += ` "port": "${options.port}"`;
     }
 
@@ -1102,6 +1108,11 @@ export function getJamTermArgsWrapper(argv){
     };
 
     let command = '{'
+
+    if(options.help)
+    {
+        command += ` "help": "${options.help}"`;
+    }
     if(options.all)
     {
         command += ` "all": "${options.all}"`;
@@ -1109,24 +1120,20 @@ export function getJamTermArgsWrapper(argv){
 
     if(options.app)
     {
-        command += ',';
         command += ` "app": "${options.app}"`;
     }
     if(options.prog)
     {
-        command += ',';
         command += ` "prog": "${options.prog}"`;
     }
 
     if(options.port)
     {
-        command += ',';
         command += ` "port": "${options.port}"`;
     }
 
     if(options.pane)
     {
-        command += ',';
         command += ` "pane": "${options.pane}"`;
     }
 
