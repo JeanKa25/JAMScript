@@ -112,7 +112,7 @@ const jamBatchOptionDefinition = [
     { name: "cEdge",  type: String, defaultValue: undefined},
     { name: "fEdge",  type: String, defaultValue: undefined},
     { name: "config",  type: String, defaultValue: undefined},
-    {name: "verb", type:Boolean, defaultValur: false}
+    {name: "verb", type:Boolean, defaultValue: false}
 ];
 //no extention for the prog name ex) jt2
 const jamWorkerOptionDefinition = [
@@ -700,9 +700,437 @@ export function getWorkerArgs(argv){
     };
     options["mode"] = mode[0]
     return options
+   
 
+}
 
-    
+/// Wrapper Parser.mjs ///
+export function getJamrunArgsWrapper(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamrun")
+    );
+    let options;
 
+    try {
+        options = commandLineArgs(jamrunOptionDefinitions, { argv: args });
+    } catch (error) {}
 
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    };
+
+    let command = '{ "file": "jt1.jxe", '
+    if(options.app)
+    {
+        command += ` "app_name": "${options.app}"`;
+    }
+
+    if(options.fog)
+    {
+        command += ',';
+        command += ` "fog": "${options.fog}"`;
+    }
+
+    if(options.cloud)
+    {
+        command += ',';
+        command += ` "cloud": "${options.cloud}"`;
+    }
+
+    if(options.device)
+    {
+        command += ',';
+        command += ` "device": "${options.device}"`;
+    }
+
+    if(options.num)
+    {
+        command += ',';
+        command += ` "num": "${options.num}"`;
+    }
+
+    if(options.data)
+    {
+        command += ',';
+        command += ` "data": "${options.data}"`;
+    }
+
+    if(options.tags)
+    {
+        command += ',';
+        command += ` "tags": "${options.tags}"`;
+    }
+    if(options.bg)
+    {
+        command += ',';
+        command += ` "bg": "${options.bg}"`;
+    }
+
+    if(options.old)
+    {
+        command += ',';
+        command += ` "old": "${options.old}"`;
+    }
+
+    if(options.log)
+    {
+        command += ',';
+        command += ` "log": "${options.log}"`;
+    }
+
+    if(options.verb)
+    {
+        command += ',';
+        command += ` "verb": "${options.verb}"`;
+    }
+
+    if(options.loc)
+    {
+        command += ',';
+        command += ` "loc": "${options.loc}"`;
+    }
+
+    if(options.edge)
+    {
+        command += ',';
+        command += ` "edge": "${options.edge}"`;
+    }
+
+    if(options.valgrind)
+    {
+        command += ',';
+        command += ` "valgrind": "${options.valgrind}"`;
+    }
+
+    if(options.local)
+    {
+        command += ',';
+        command += ` "local": "${options.local}"`;
+    }
+
+    if(options.remote)
+    {
+        command += ',';
+        command += ` "remote": "${options.remote}"`;
+    }
+
+    command += ' }';
+
+    return command;
+}
+
+export function getBatchArgsWrapper(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jambatch.mjs")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamBatchOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    };
+
+    let command = '{ "file": "jt1.jxe" '
+    if(options.fog)
+    {
+        command += ',';
+        command += ` "fog": "${options.fog}"`;
+    }
+
+    if(options.device)
+    {
+        command += ',';
+        command += ` "device": "${options.device}"`;
+    }
+    if(options.cloud)
+    {
+        command += ',';
+        command += ` "cloud": "${options.cloud}"`;
+    }
+
+    if(options.cFile)
+    {
+        command += ',';
+        command += ` "cFile": "${options.cFile}"`;
+    }
+
+    if(options.fFile)
+    {
+        command += ',';
+        command += ` "fFile": "${options.fFile}"`;
+    }
+
+    if(options.dFile)
+    {
+        command += ',';
+        command += ` "dFile": "${options.dFile}"`;
+    }
+    if(options.num)
+    {
+        command += ',';
+        command += ` "num": "${options.num}"`;
+    }
+    if(options.cLoc)
+    {
+        command += ',';
+        command += ` "cLoc": "${options.cLoc}"`;
+    }
+
+    if(options.fLoc)
+    {
+        command += ',';
+        command += ` "fLoc": "${options.fLoc}"`;
+    }
+
+    if(options.dLoc)
+    {
+        command += ',';
+        command += ` "dLoc": "${options.dLoc}"`;
+    }
+
+    if(options.cEdge)
+    {
+        command += ',';
+        command += ` "cEdge": "${options.cEdge}"`;
+    }
+
+    if(options.fEdge)
+    {
+        command += ',';
+        command += ` "fEdge": "${options.fEdge}"`;
+    }
+
+    if(options.fEdge)
+    {
+        command += ',';
+        command += ` "dEdge": "${options.dEdge}"`;
+    }
+
+    command += ' }';
+
+    return command;
+}
+
+export function getLogArgsWrapper(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamlog")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamclogOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    };
+
+    let command = `{ "remote": "${options.remote}", "tail": "${options.remote}" } `
+
+    return command;
+}
+
+export function getJamListArgsWrapper(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamlist.mjs")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamlistOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    };
+
+    let command = '{'
+    if(options.help)
+    {
+        command += ` "help": "${options.help}"`;
+    }
+
+    if(options.all)
+    {
+        command += ',';
+        command += ` "all": "${options.all}"`;
+    }
+    if(options.monitor)
+    {
+        command += ',';
+        command += ` "monitor": "${options.monitor}"`;
+    }
+
+    if(options.type)
+    {
+        command += ',';
+        command += ` "type": "${options.type}"`;
+    }
+
+    if(options.dataStore)
+    {
+        command += ',';
+        command += ` "dataStore": "${options.dataStore}"`;
+    }
+
+    if(options.tmuxid)
+    {
+        command += ',';
+        command += ` "tmuxid": "${options.tmuxid}"`;
+    }
+    if(options.port)
+    {
+        command += ',';
+        command += ` "port": "${options.port}"`;
+    }
+    if(options.app)
+    {
+        command += ',';
+        command += ` "app": "${options.app}"`;
+    }
+
+    if(options.remote)
+    {
+        command += ',';
+        command += ` "remote": "${options.remote}"`;
+    }
+
+    command += ' }';
+
+    return command;
+}
+
+export function getJamKillArgsWrapper(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamkill")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamkillOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    };
+
+    let command = '{'
+    if(options.reset)
+    {
+        command += ` "reset": "${options.reset}"`;
+    }
+
+    if(options.all)
+    {
+        command += ',';
+        command += ` "all": "${options.all}"`;
+    }
+    if(options.remote)
+    {
+        command += ',';
+        command += ` "remote": "${options.remote}"`;
+    }
+
+    if(options.app)
+    {
+        command += ',';
+        command += ` "app": "${options.app}"`;
+    }
+
+    if(options.prog)
+    {
+        command += ',';
+        command += ` "prog": "${options.prog}"`;
+    }
+
+    if(options.port)
+    {
+        command += ',';
+        command += ` "port": "${options.port}"`;
+    }
+
+    command += ' }';
+
+    return command;
+}
+
+export function getJamTermArgsWrapper(argv){
+    const args = argv.filter(
+        (entry) =>
+            !entry.includes("node") &&
+            !entry.includes("zx") &&
+            !entry.includes("jamterm")
+    );
+    let options;
+
+    try {
+        options = commandLineArgs(jamtermOptionDefinition, { argv: args });
+    } catch (error) {}
+
+    if (options === undefined || options.help) {
+        const error = new Error("SHOW USAGE");
+        error.type = "ShowUsage";
+        throw error;
+    };
+
+    let command = '{'
+    if(options.all)
+    {
+        command += ` "all": "${options.all}"`;
+    }
+
+    if(options.app)
+    {
+        command += ',';
+        command += ` "app": "${options.app}"`;
+    }
+    if(options.prog)
+    {
+        command += ',';
+        command += ` "prog": "${options.prog}"`;
+    }
+
+    if(options.port)
+    {
+        command += ',';
+        command += ` "port": "${options.port}"`;
+    }
+
+    if(options.pane)
+    {
+        command += ',';
+        command += ` "pane": "${options.pane}"`;
+    }
+
+    command += ' }';
+
+    return command;
 }
