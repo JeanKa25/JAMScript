@@ -45,10 +45,20 @@ let endpoint_args = process.argv;
 if (endpoint_args[3] == "jamrun"){
     // here we will work with the arguments
     let command = getJamrunArgsWrapper(endpoint_args.slice(4));
-    let curlCommand = `curl -X POST http://url:3000/jamrun -H "Content-Type: application/json" -d ${command}`;
+    let curlCommand = `curl -X POST http://localhost:3000/jamrun -H "Content-Type: application/json" -d '${command}'`;
+    //console.log(curlCommand);
 
-    let cwd = '/root/capstone/JAMScript/tools/';
-    const childProcess = exec(curlCommand, { cwd }); 
+    let cwd = '/Users/andreisandor/Desktop/McGill/Capstone/code/JAMScript/tools/';
+    const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+      }); 
+
+    
 }
 
 if (endpoint_args[3] == "jambatch.mjs"){
