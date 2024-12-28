@@ -48,7 +48,7 @@ if (endpoint_args[3] == "jamrun"){
     let curlCommand = `curl -X POST http://localhost:3000/jamrun -H "Content-Type: application/json" -d '${command}'`;
     //console.log(curlCommand);
 
-    let cwd = '/Users/andreisandor/Desktop/McGill/Capstone/code/JAMScript/tools/';
+    let cwd = '/Users/andreisandor/Desktop/McGill/Capstone/code/JAMScript/tools/'; //To change
     const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
         if (error) {
           console.error(`exec error: ${error}`);
@@ -65,8 +65,15 @@ if (endpoint_args[3] == "jambatch.mjs"){
     let command = getBatchArgsWrapper(endpoint_args.slice(4));
     let curlCommand = `curl -X POST http://url:3000/jambatch -H "Content-Type: application/json" -d ${command}`;
 
-    let cwd = '/root/capstone/JAMScript/tools/';
-    const childProcess = exec(curlCommand, { cwd });
+    let cwd = '/root/capstone/JAMScript/tools/'; //To change
+    const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+      });
 
 }
 
@@ -74,24 +81,45 @@ if (endpoint_args[3] == "jamlog"){
     let command = getLogArgsWrapper(endpoint_args.slice(4));
     let curlCommand = `curl -X POST http://url:3000/jamlog -H "Content-Type: application/json" -d ${command}`;
     
-    let cwd = '/root/capstone/JAMScript/tools/';
-    const childProcess = exec(curlCommand, { cwd });
+    let cwd = '/root/capstone/JAMScript/tools/'; //To change
+    const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+      });
 }
 
 if (endpoint_args[3] == "jamlist"){
     let command = getJamListArgsWrapper(endpoint_args.slice(4));
     let curlCommand = `curl -X POST http://url:3000/jamlist -H "Content-Type: application/json" -d ${command}`;
 
-    let cwd = '/root/capstone/JAMScript/tools/';
-    const childProcess = exec(curlCommand, { cwd });
+    let cwd = '/root/capstone/JAMScript/tools/'; //To change
+    const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+      });
 }
 
 if (endpoint_args[3] == "jamkill"){
     let command = getJamKillArgsWrapper(endpoint_args.slice(4));
     let curlCommand = `curl -X POST http://url:3000/jamkill -H "Content-Type: application/json" -d ${command}`;
 
-    let cwd = '/root/capstone/JAMScript/tools/';
-    const childProcess = exec(curlCommand, { cwd });
+    let cwd = '/root/capstone/JAMScript/tools/'; //To change
+    const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+      });
 
 }
 
@@ -99,6 +127,13 @@ if (endpoint_args[3] == "jamterm"){
     let command = getJamTermArgsWrapper(endpoint_args.slice(4));
     let curlCommand = `curl -X POST http://url:3000/jamterm -H "Content-Type: application/json" -d ${command}`;
 
-    let cwd = '/root/capstone/JAMScript/tools/';
-    const childProcess = exec(curlCommand, { cwd });
+    let cwd = '/root/capstone/JAMScript/tools/'; //To change
+    const childProcess = exec(curlCommand, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+      });
 }
