@@ -14,10 +14,10 @@ app.get('/api', (req, res) => {
 });
 
 // Utility function to handle command execution and streaming response
-function executeCommand(req, res, command, cwd = '/root/capstone/JAMScript/tools/') {
+function executeCommand(req, res, command, cwd = '/Users/andreisandor/Desktop/McGill/Capstone/code/JAMScript/tools') {
   console.log(`Executing command: ${command}`);
   const childProcess = exec(command, { cwd });
-  
+
   // Set headers to keep the connection open for streaming
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -103,7 +103,7 @@ app.post('/jambatch', (req, res) => {
     fog, device, cloud, cFile, fFile, dFile, num, cLoc, fLoc, dLoc, cEdge, fEdge, dEdge
   } = req.body;
 
-  let command = `zx jambatch.mjs program.jxe`;
+  let command = `zx jambatch.mjs`;
   if (fog) command += ` --fog=${fog}`;
   if (device) command += ` --device=${device}`;
   if (cloud) command += ` --cloud=${cloud}`;

@@ -46,26 +46,25 @@ if (endpointArgs[0] === "jamrun") {
   let numName, dataName, tagsName, locName, edgeName, remoteName, fogName, cloudName, deviceName, bgName,oldName, logName, verbName, valgrindName, localName  ;
 
   // Extract arguments with value if present
-  if(numArgIndex === 1) {numName = endpointArgs[numArgIndex].split("=")[1];} // Extract num name
-  if(dataArgIndex === 1) {dataName = endpointArgs[dataArgIndex].split("=")[1];} // Extract data name
-  if(tagsArgIndex === 1) {tagsName = endpointArgs[tagsArgIndex].split("=")[1];} // Extract tag name
-  if(locArgIndex === 1) {locName = endpointArgs[locArgIndex].split("=")[1];} // Extract loc name
-  if(edgeArgIndex === 1) {edgeName = endpointArgs[edgeArgIndex].split("=")[1];} // Extract edge name
-  if(remoteArgIndex === 1) {remoteName = endpointArgs[remoteArgIndex].split("=")[1];} // Extract remote name
+  if(numArgIndex != -1) {numName = endpointArgs[numArgIndex].split("=")[1];} // Extract num name
+  if(dataArgIndex != -1) {dataName = endpointArgs[dataArgIndex].split("=")[1];} // Extract data name
+  if(tagsArgIndex != -1) {tagsName = endpointArgs[tagsArgIndex].split("=")[1];} // Extract tag name
+  if(locArgIndex != -1) {locName = endpointArgs[locArgIndex].split("=")[1];} // Extract loc name
+  if(edgeArgIndex != -1) {edgeName = endpointArgs[edgeArgIndex].split("=")[1];} // Extract edge name
+  if(remoteArgIndex != -1) {remoteName = endpointArgs[remoteArgIndex].split("=")[1];} // Extract remote name
 
 
   // Use arguments without value if present
-  if(fogArgIndex === 1) {fogName = "fog"}; //fog
-  if(cloudArgIndex === 1) {cloudName = "cloud"}; //cloud
-  if(deviceArgIndex === 1) {deviceName = "device"}; //device
-  if(bgArgIndex === 1) {bgName = "bg"}; //bg
-  if(oldArgIndex === 1) {oldName = "old"}; //old
-  if(logArgIndex === 1) {logName = "log"}; //log
-  if(verbArgIndex === 1) {verbName = "verb"}; //verb
-  if(valgrindArgIndex === 1) {valgrindName = "valgrind"}; //valgrind
-  if(localArgIndex === 1) {localName = "local"}; //local
+  if(fogArgIndex != -1) {fogName = "fog"}; //fog
+  if(cloudArgIndex != -1) {cloudName = "cloud"}; //cloud
+  if(deviceArgIndex != -1) {deviceName = "device"}; //device
+  if(bgArgIndex != -1) {bgName = "bg"}; //bg
+  if(oldArgIndex != -1) {oldName = "old"}; //old
+  if(logArgIndex != -1) {logName = "log"}; //log
+  if(verbArgIndex != -1) {verbName = "verb"}; //verb
+  if(valgrindArgIndex != -1) {valgrindName = "valgrind"}; //valgrind
+  if(localArgIndex != -1) {localName = "local"}; //local
   
-
   // Construct the JSON payload
   const payload = {
     file: fileName,
@@ -172,7 +171,7 @@ if (endpointArgs[0] === "jambatch") {
 
   // Add to payload if necessary
   if (fogName) payload.fog = fogName;
-  if (deviceName) paylog.device = deviceName;
+  if (deviceName) payload.device = deviceName;
   if (cloudName) payload.cloud = cloudName;
   if (cFileName) payload.cFile = cFileName;
   if (fFileName) payload.fFile = fFileName;
@@ -241,11 +240,11 @@ if (endpointArgs[0] === "jamlog") {
   programName = endpointArgs[programArgIndex].split("=")[1]; // Extract program name
   appName = endpointArgs[appArgIndex].split("=")[1]; // Extract app name
   portName = endpointArgs[portArgIndex].split("=")[1]; // Extract port name
-  if (remoteArgIndex === 1) {remoteName = endpointArgs[remoteArgIndex].split("=")[1];} // Extract remote name
-  if (tailArgIndex === 1) {tailName = endpointArgs[tailArgIndex].split("=")[1];} // Extract tail name
+  if (remoteArgIndex != -1) {remoteName = endpointArgs[remoteArgIndex].split("=")[1];} // Extract remote name
+  if (tailArgIndex != -1) {tailName = endpointArgs[tailArgIndex].split("=")[1];} // Extract tail name
 
-  if(cArgIndex === 1) {cName = "c"}; //c
-  if(jArgIndex === 1) {jName = "j"}; //j
+  if(cArgIndex != -1) {cName = "c"}; //c
+  if(jArgIndex != -1) {jName = "j"}; //j
 
 
   // Construct the JSON payload
@@ -310,9 +309,9 @@ if (endpointArgs[0] === "jamlist") {
   let helpName, allName, monitorName, typeName,dataStoreName,tmuxName, portName, appName, programName, remoteName;
 
   // Use non-argument if present
-  if(helpArgIndex === 1) {helpName = "help"}; //Help
-  if(allArgIndex === 1) {allName = "all"}; //All
-  if(monitorArgIndex === 1) {monitorName = "monitor"}; //Monitor
+  if(helpArgIndex != -1) {helpName = "help"}; //Help
+  if(allArgIndex != -1) {allName = "all"}; //All
+  if(monitorArgIndex != -1) {monitorName = "monitor"}; //Monitor
 
   // If the parameter with value is present, extract the value
   if (typeArgIndex != -1) {typeName = endpointArgs[typeArgIndex].split("=")[1];} // Extract type
@@ -383,9 +382,9 @@ if (endpointArgs[0] === "jamkill") {
   let helpName, allName, remoteName, typeName,dataStoreName,tmuxName, portName, appName, programName;
 
   // If parameter without value is present
-  if(helpArgIndex === 1) {helpName = "help"}; //Help
-  if(allArgIndex === 1) {allName = "all"}; //All
-  if(remoteArgIndex === 1) {remoteName = "remote"}; //Remote
+  if(helpArgIndex != -1) {helpName = "help"}; //Help
+  if(allArgIndex != -1) {allName = "all"}; //All
+  if(remoteArgIndex != -1) {remoteName = "remote"}; //Remote
 
   // Extract values of parameters with values if present
   if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("=")[1];} // Extract app
@@ -446,7 +445,7 @@ if (endpointArgs[0] === "jamterm") {
   let allName, appName, progName, portName, paneName;
 
   // Use all if present
-  if(allArgIndex === 1) {allName = "all"}; //All
+  if(allArgIndex != -1) {allName = "all"}; //All
 
   // Extract the value of argument if present
   if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("=")[1];} // Extract app

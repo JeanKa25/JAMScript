@@ -96,7 +96,6 @@ try {
 }
 let spawnPipe = 'inherit'
 if(args.config){
-
     const jsonString = fs.readFileSync(args.config);
     const jobs = JSON.parse(jsonString).jobs;
 
@@ -124,7 +123,7 @@ if(args.config){
             continue;
         }
 
-        const exec = `jamrun.mjs ${jobs[i].file} --app=${jobs[i].name} --bg --log --${jobs[i].type}`
+        const exec = ` wrapper.mjs jamrun ${jobs[i].file} --app=${jobs[i].name} --bg --log --${jobs[i].type}`
         if(jobs.num)
             exec + ` --num=${jobs.num}`  
         if(jobs.loc)
@@ -139,6 +138,7 @@ if(args.config){
             console.log(`${body_sec(`Starting job number: ${i+1} - ${exec}`)}`)
         }
 
+
         spawnSync('zx', [exec], {
             stdio: spawnPipe, 
             shell: true       
@@ -150,10 +150,11 @@ if(args.config){
 const verb = args.pop()
 
 for(let arg of args){
+    console.log(arg);
     if(verb){
         console.log(`${body_sec(`Starting new job: jamrun.mjs ${arg}`)}`)
     }
-    spawnSync('zx', ['jamrun.mjs'].concat(arg), {
+    spawnSync('zx wrapper.mjs', ['jamrun'].concat(arg), {
         stdio: spawnPipe, 
         shell: true       
     });
