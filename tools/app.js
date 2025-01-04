@@ -17,7 +17,7 @@ app.get('/api', (req, res) => {
 function executeCommand(req, res, command, cwd = '/root/capstone/JAMScript/tools/') {
   console.log(`Executing command: ${command}`);
   const childProcess = exec(command, { cwd });
-
+  
   // Set headers to keep the connection open for streaming
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -43,12 +43,12 @@ function executeCommand(req, res, command, cwd = '/root/capstone/JAMScript/tools
   });
 
   // If the client disconnects, terminate the child process
-  req.on('close', () => {
-    if (childProcess.exitCode === null) { // If process is still running
-      console.log('Client disconnected, terminating process');
-      childProcess.kill(); // Terminate the process
-    }
-  });
+  // req.on('close', () => {
+  //   if (childProcess.exitCode === null) { // If process is still running
+  //     console.log('Client disconnected, terminating process');
+  //     childProcess.kill(); // Terminate the process
+  //   }
+  // });
 }
 
 // Define the /jamrun endpoint
@@ -123,13 +123,22 @@ app.post('/jambatch', (req, res) => {
 
 // Define the /jamlog endpoint
 app.post('/jamlog', (req, res) => {
-  const { remote, tail } = req.body;
-  if (!remote || !tail) {
-    return res.status(400).json({ error: 'The "remote" and "tail" fields are required.' });
-  }
+  const { help, program, app, port, remote, tail, c, j } = req.body;
 
-  let command = `zx jamlog.mjs --program=jt2 --app-xxx2 --port=1883 --remote=${remote} --tail=${tail}`;
+  // Default command without arguments if none are specified
+  let command = `zx jamlog.mjs`;
+  if (help) command += ` --help`;
+  if (program) command += ` --program=${program}`;
+  if (app) command += ` --app=${app}`;
+  if (port) command += ` --port=${port}`;
+  if (remote) command += ` --remote=${remote}`;
+  if (tail) command += ` --tail=${tail}`;
+
+  if (c) command += ` --c`;
+  if (c) command += ` --j`;
+
   executeCommand(req, res, command);
+  
 });
 
 app.post('/jamlist', (req, res) => {
