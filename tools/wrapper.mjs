@@ -1,7 +1,10 @@
 #!/usr/bin/env zx
 
 import commandLineArgs from 'command-line-args';
-import fetch from "node-fetch"
+import fetch from "node-fetch";
+import {getBatchArgs} from './parser.mjs';
+
+
 
 // Get the command-line arguments
 const endpointArgs = process.argv.slice(3);
@@ -119,97 +122,114 @@ if (endpointArgs[0] === "jamrun") {
 
 
 // ex: zx wrapper.mjs jambatch jt1.jxe ...
-// Validate and process the arguments
+// Validate and process the arguments. jambatch is just a collection of jamrun
 if (endpointArgs[0] === "jambatch") {
-  const fileName = endpointArgs[1];
+ 
 
-  // Index of parameters
-  const fogArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--fog="));
-  const deviceArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--device="));
-  const cloudArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--cloud="));
-  const cFileArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--cFile="));
-  const fFileArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--fFile="));
-  const dFileArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--dFile="));
-  const numArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--num="));
-  const cLocArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--cLoc="));
-  const fLocArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--fLoc="));
-  const dLocArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--dLoc="));
-  const cEdgeArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--cEdge="));
-  const fEdgeArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--fEdge="));
-  const dEdgeArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--dEdge="));
+  let argsBatchParsed = getBatchArgs(endpointArgs.slice(1));
 
+  // For each batch
+  for(let i = 0; i < argsBatchParsed.length - 1; i++)
+  {
+    let setArgs = argsBatchParsed[i];
 
-  if (!fileName) {
-    console.error(
-      "Error: Missing required argument. Usage: zx wrapper.mjs jambatch <file_name>"
-    );
-    process.exit(1);
-  }
+    const fileName = setArgs[0];
+
+    //Index of parameters without value
+    const fogArgIndex = setArgs.findIndex((arg) => arg.startsWith("--fog"));
+    const cloudArgIndex = setArgs.findIndex((arg) => arg.startsWith("--cloud"));
+    const deviceArgIndex = setArgs.findIndex((arg) => arg.startsWith("--device"));
+    const bgArgIndex = setArgs.findIndex((arg) => arg.startsWith("--bg"));
+    const oldArgIndex = setArgs.findIndex((arg) => arg.startsWith("--old"));
+    const logArgIndex = setArgs.findIndex((arg) => arg.startsWith("--log"));
+    const verbArgIndex = setArgs.findIndex((arg) => arg.startsWith("--verb"));
+    const valgrindArgIndex = setArgs.findIndex((arg) => arg.startsWith("--valgrind"));
+    const localArgIndex = setArgs.findIndex((arg) => arg.startsWith("--local"));
 
 
-  let fogName, deviceName, cloudName, cFileName, fFileName, dFileName, numName, cLocName, fLocName, dLocName, cEdgeName, fEdgeName, dEdgeName;
-
-  // Extract the paramters if they are present
-  if (fogArgIndex != -1) {fogName = endpointArgs[fogArgIndex].split("=")[1];} // Extract fog
-  if (deviceArgIndex != -1) {deviceName = endpointArgs[deviceArgIndex].split("=")[1];} // Extract device
-  if (cloudArgIndex != -1) {cloudName = endpointArgs[cloudArgIndex].split("=")[1];} // Extract cloud
-  if (cFileArgIndex != -1) {cFileName = endpointArgs[cFileArgIndex].split("=")[1];} // Extract cFile
-  if (fFileArgIndex != -1) {fFileName = endpointArgs[fFileArgIndex].split("=")[1];} // Extract fFile
-  if (dFileArgIndex != -1) {dFileName = endpointArgs[dFileArgIndex].split("=")[1];} // Extract dFile
-  if (numArgIndex != -1) {numName = endpointArgs[numArgIndex].split("=")[1];} // Extract num
-  if (cLocArgIndex != -1) {cLocName = endpointArgs[cLocArgIndex].split("=")[1];} // Extract cLoc
-  if (fLocArgIndex != -1) {fLocName = endpointArgs[fLocArgIndex].split("=")[1];} // Extract fLoc
-  if (dLocArgIndex != -1) {dLocName = endpointArgs[dLocArgIndex].split("=")[1];} // Extract dLoc
-  if (cEdgeArgIndex != -1) {cEdgeName = endpointArgs[cEdgeArgIndex].split("=")[1];} // Extract cEdge
-  if (fEdgeArgIndex != -1) {fEdgeName = endpointArgs[fEdgeArgIndex].split("=")[1];} // Extract fEdge
-  if (dEdgeArgIndex != -1) {dEdgeName = endpointArgs[dEdgeArgIndex].split("=")[1];} // Extract dEdge
-
-  // Construct the JSON payload
-  const payload = {
-    file: fileName
-  };
-
-  // Add to payload if necessary
-  if (fogName) payload.fog = fogName;
-  if (deviceName) payload.device = deviceName;
-  if (cloudName) payload.cloud = cloudName;
-  if (cFileName) payload.cFile = cFileName;
-  if (fFileName) payload.fFile = fFileName;
-  if (dFileName) payload.dFile = dFileName;
-  if (numName) payload.num = numName; 
-  if (cLocName) payload.cLoc = cLocName;
-  if (fLocName) payload.fLoc = fLocName;
-  if (dLocName) payload.dLoc = dLocName;
-  if (cEdgeName) payload.cEdge = cEdgeName;
-  if (fEdgeName) payload.fEdge = fEdgeName;
-  if (dEdgeName) payload.dEdge = dEdgeName;
+    // Index of parameters with value
+    const appArgIndex = setArgs.findIndex((arg) => arg.startsWith("--app="));
+    const numArgIndex = setArgs.findIndex((arg) => arg.startsWith("--num="));
+    const dataArgIndex = setArgs.findIndex((arg) => arg.startsWith("--data="));
+    const tagsArgIndex = setArgs.findIndex((arg) => arg.startsWith("--tags="));
+    const locArgIndex = setArgs.findIndex((arg) => arg.startsWith("--loc="));
+    const edgeArgIndex = setArgs.findIndex((arg) => arg.startsWith("--edge="));
+    const remoteArgIndex = setArgs.findIndex((arg) => arg.startsWith("--remote="));
 
 
-  // Send the POST request to the server
-  const endpoint = "http://localhost:3000/jambatch";
-  fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  })
-    .then((response) => {
-      // Ensure response status is OK
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
+    let appName, numName, dataName, tagsName, locName, edgeName, remoteName, fogName, cloudName, deviceName, bgName,oldName, logName, verbName, valgrindName, localName  ;
 
-      // Handle streaming response with Node.js readable stream
-      console.log("Streaming response:");
-      response.body.on("data", (chunk) => {
-        process.stdout.write(chunk.toString());
-      });
-      response.body.on("end", () => {
-        console.log("\nStream finished.");
-      });
+    // Extract arguments with value if present
+    if(appArgIndex != -1) {appName = setArgs[appArgIndex].split("=")[1];} // Extract app name
+    if(numArgIndex != -1) {numName = setArgs[numArgIndex].split("=")[1];} // Extract num name
+    if(dataArgIndex != -1) {dataName = setArgs[dataArgIndex].split("=")[1];} // Extract data name
+    if(tagsArgIndex != -1) {tagsName = setArgs[tagsArgIndex].split("=")[1];} // Extract tag name
+    if(locArgIndex != -1) {locName = setArgs[locArgIndex].split("=")[1];} // Extract loc name
+    if(edgeArgIndex != -1) {edgeName = setArgs[edgeArgIndex].split("=")[1];} // Extract edge name
+    if(remoteArgIndex != -1) {remoteName = setArgs[remoteArgIndex].split("=")[1];} // Extract remote name
+  
+  
+    // Use arguments without value if present
+    if(fogArgIndex != -1) {fogName = "fog"}; //fog
+    if(cloudArgIndex != -1) {cloudName = "cloud"}; //cloud
+    if(deviceArgIndex != -1) {deviceName = "device"}; //device
+    if(bgArgIndex != -1) {bgName = "bg"}; //bg
+    if(oldArgIndex != -1) {oldName = "old"}; //old
+    if(logArgIndex != -1) {logName = "log"}; //log
+    if(verbArgIndex != -1) {verbName = "verb"}; //verb
+    if(valgrindArgIndex != -1) {valgrindName = "valgrind"}; //valgrind
+    if(localArgIndex != -1) {localName = "local"}; //local
+
+    // Construct the JSON payload
+    const payload = {
+      file: fileName,
+      app_name: appName
+    };
+
+    // Add to payload if necessary
+    if (numName) payload.num = numName; 
+    if (dataName) payload.data = dataName;
+    if (tagsName) payload.tags = tagsName;
+    if (locName) payload.loc = locName;
+    if (edgeName) payload.edge = edgeName;
+    if (remoteName) payload.remote = remoteName;
+
+    if (fogName) payload.fog = fogName;
+    if (cloudName) payload.cloud = cloudName;
+    if (deviceName) payload.device = deviceName;
+    if (bgName) payload.bg = bgName;
+    if (oldName) payload.old = oldName;
+    if (logName) payload.log = logName;
+    if (verbName) payload.verb = verbName;
+    if (valgrindName) payload.valgrind = valgrindName;
+    if (localName) payload.local = locName;
+
+    // Send the POST request to the server
+    const endpoint = "http://localhost:3000/jamrun";
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     })
-    .catch((error) => {
-      console.error("Error sending request:", error.message);
-    });
+      .then((response) => {
+        // Ensure response status is OK
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        // Handle streaming response with Node.js readable stream
+        console.log("Streaming response:");
+        response.body.on("data", (chunk) => {
+          process.stdout.write(chunk.toString());
+        });
+        response.body.on("end", () => {
+          console.log("\nStream finished.");
+        });
+      })
+      .catch((error) => {
+        console.error("Error sending request:", error.message);
+      });
+    }
 }
 
 
