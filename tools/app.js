@@ -135,7 +135,7 @@ app.post('/jamlog', (req, res) => {
   if (tail) command += ` --tail=${tail}`;
 
   if (c) command += ` --c`;
-  if (c) command += ` --j`;
+  if (j) command += ` --j`;
 
   executeCommand(req, res, command);
   
@@ -149,13 +149,13 @@ app.post('/jamlist', (req, res) => {
   if (help) command += ` --help`;
   if (all) command += ` --all`;
   if (monitor) command += ` --monitor`;
-  if (type) command += ` --type=${type}`;
-  if (dataStore) command += ` --dataStore=${dataStore}`;
-  if (tmuxid) command += ` --tmuxid=${tmuxid}`;
-  if (port) command += ` --port=${port}`;
-  if (app) command += ` --app=${app}`;
-  if (prog) command += ` --prog=${prog}`;
-  if (remote) command += ` --remote=${remote}`;
+  if (type) command += ` --type==${type}`;
+  if (dataStore) command += ` --dataStore==${dataStore}`;
+  if (tmuxid) command += ` --tmuxid==${tmuxid}`;
+  if (port) command += ` --port==${port}`;
+  if (app) command += ` --app==${app}`;
+  if (prog) command += ` --prog==${prog}`;
+  if (remote) command += ` --remote`;
 
   executeCommand(req, res, command);
 });
@@ -168,9 +168,9 @@ app.post('/jamkill', (req, res) => {
   if (reset) command += ' --reset';
   if (all) command += ' --all';
   if (remote) command += ` --remote=${remote}`;
-  if (app) command += ` --app=${app}`;
-  if (prog) command += ` --prog=${prog}`;
-  if (port) command += ` --port=${port}`;
+  if (app) command += ` --app==${app}`;
+  if (prog) command += ` --prog==${prog}`;
+  if (port) command += ` --port==${port}`;
 
   executeCommand(req, res, command);
 });
@@ -181,9 +181,9 @@ app.post("/jamterm", (req, res) => {
 
   let command = `zx jamterm.mjs`;
   if (all) command += ' --all';
-  if (app) command += ` --app=${app}`;
-  if (prog) command += ` --prog=${prog}`;
-  if (port) command += ` --port=${port}`;
+  if (app) command += ` --app==${app}`;
+  if (prog) command += ` --prog==${prog}`;
+  if (port) command += ` --port==${port}`;
   if (pane) command += ` --pane=${pane}`;
 
   executeCommand(req, res, command);

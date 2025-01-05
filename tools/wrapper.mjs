@@ -92,7 +92,6 @@ if (endpointArgs[0] === "jamrun") {
   if (valgrindName) payload.valgrind = valgrindName;
   if (localName) payload.local = locName;
 
-
   // Send the POST request to the server
   const endpoint = "http://localhost:3000/jamrun";
   fetch(endpoint, {
@@ -317,13 +316,13 @@ if (endpointArgs[0] === "jamlist") {
   const monitorArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--monitor"));
 
   // Get index of parameters with a value associated with it
-  const typeArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--type="));
-  const dataStoreArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--dataStore="));
-  const tmuxidIndex = endpointArgs.findIndex((arg) => arg.startsWith("--tmuxid="));
-  const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port="));
-  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app="));
-  const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog="));
-  const remomteArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--remote="));
+  const typeArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--type=="));
+  const dataStoreArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--dataStore=="));
+  const tmuxidIndex = endpointArgs.findIndex((arg) => arg.startsWith("--tmuxid=="));
+  const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port=="));
+  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app=="));
+  const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog=="));
+  const remomteArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--remote=="));
 
 
   let helpName, allName, monitorName, typeName,dataStoreName,tmuxName, portName, appName, programName, remoteName;
@@ -334,13 +333,13 @@ if (endpointArgs[0] === "jamlist") {
   if(monitorArgIndex != -1) {monitorName = "monitor"}; //Monitor
 
   // If the parameter with value is present, extract the value
-  if (typeArgIndex != -1) {typeName = endpointArgs[typeArgIndex].split("=")[1];} // Extract type
-  if (dataStoreArgIndex != -1) {dataStoreName = endpointArgs[dataStoreArgIndex].split("=")[1];} // Extract dataStore
-  if (tmuxidIndex != -1) {tmuxName = endpointArgs[tmuxidIndex].split("=")[1];} // Extract tmux
-  if (portArgIndex != -1) {portName = endpointArgs[portArgIndex].split("=")[1];} // Extract port
-  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("=")[1];} // Extract app
-  if (progArgIndex != -1) {programName = endpointArgs[progArgIndex].split("=")[1];} // Extract prog
-  if (remomteArgIndex != -1) {remoteName = endpointArgs[remomteArgIndex].split("=")[1];} // Extract remote
+  if (typeArgIndex != -1) {typeName = endpointArgs[typeArgIndex].split("==")[1];} // Extract type
+  if (dataStoreArgIndex != -1) {dataStoreName = endpointArgs[dataStoreArgIndex].split("==")[1];} // Extract dataStore
+  if (tmuxidIndex != -1) {tmuxName = endpointArgs[tmuxidIndex].split("==")[1];} // Extract tmux
+  if (portArgIndex != -1) {portName = endpointArgs[portArgIndex].split("==")[1];} // Extract port
+  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("==")[1];} // Extract app
+  if (progArgIndex != -1) {programName = endpointArgs[progArgIndex].split("==")[1];} // Extract prog
+  if (remomteArgIndex != -1) {remoteName = endpointArgs[remomteArgIndex].split("==")[1];} // Extract remote
 
   // Construct the JSON payload
   let payload = {
@@ -355,8 +354,7 @@ if (endpointArgs[0] === "jamlist") {
   if (portName) payload.port = portName;
   if (appName) payload.app = appName;
   if (programName) payload.prog = programName;
-
-
+  
   // Send the POST request to the server
   const endpoint = "http://localhost:3000/jamlist";
   fetch(endpoint, {
@@ -394,9 +392,9 @@ if (endpointArgs[0] === "jamkill") {
   const remoteArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--remote"));
 
   // Get index of parameter with value if present
-  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app="));
-  const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog="));
-  const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port="));
+  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app=="));
+  const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog=="));
+  const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port=="));
 
 
   let helpName, allName, remoteName, typeName,dataStoreName,tmuxName, portName, appName, programName;
@@ -407,9 +405,9 @@ if (endpointArgs[0] === "jamkill") {
   if(remoteArgIndex != -1) {remoteName = "remote"}; //Remote
 
   // Extract values of parameters with values if present
-  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("=")[1];} // Extract app
-  if (progArgIndex != -1) {programName = endpointArgs[progArgIndex].split("=")[1];} // Extract prog
-  if (portArgIndex != -1) {portName = endpointArgs[portArgIndex].split("=")[1];} // Extract port
+  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("==")[1];} // Extract app
+  if (progArgIndex != -1) {programName = endpointArgs[progArgIndex].split("==")[1];} // Extract prog
+  if (portArgIndex != -1) {portName = endpointArgs[portArgIndex].split("==")[1];} // Extract port
 
   // Construct the JSON payload
   let payload = {
@@ -457,9 +455,9 @@ if (endpointArgs[0] === "jamterm") {
   const allArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--all"));
 
   // Get the index of a parameter with a value
-  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app="));
-  const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog="));
-  const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port="));
+  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app=="));
+  const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog=="));
+  const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port=="));
   const paneArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--pane="));
 
   let allName, appName, progName, portName, paneName;
@@ -468,9 +466,9 @@ if (endpointArgs[0] === "jamterm") {
   if(allArgIndex != -1) {allName = "all"}; //All
 
   // Extract the value of argument if present
-  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("=")[1];} // Extract app
-  if (progArgIndex != -1) {progName = endpointArgs[progArgIndex].split("=")[1];} // Extract prog
-  if (portArgIndex != -1) {portName = endpointArgs[portArgIndex].split("=")[1];} // Extract port
+  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("==")[1];} // Extract app
+  if (progArgIndex != -1) {progName = endpointArgs[progArgIndex].split("==")[1];} // Extract prog
+  if (portArgIndex != -1) {portName = endpointArgs[portArgIndex].split("==")[1];} // Extract port
   if (paneArgIndex != -1) {paneName = endpointArgs[paneArgIndex].split("=")[1];} // Extract pane
 
 
@@ -481,9 +479,8 @@ if (endpointArgs[0] === "jamterm") {
   if (allName) payload.all = allName;
   if (appName) payload.app = appName;
   if (progName) payload.prog = progName;
+  if (portName) payload.port = portName;
   if (paneName) payload.pane = paneName;
-
-
 
   // Send the POST request to the server
   const endpoint = "http://localhost:3000/jamterm";
