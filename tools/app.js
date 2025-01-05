@@ -14,7 +14,7 @@ app.get('/api', (req, res) => {
 });
 
 // Utility function to handle command execution and streaming response
-function executeCommand(req, res, command, cwd = '/Users/andreisandor/Desktop/McGill/Capstone/code/JAMScript/tools') {
+function executeCommand(req, res, command, cwd = '/root/capstone/JAMScript/tools/') {
   console.log(`Executing command: ${command}`);
   const childProcess = exec(command, { cwd });
 
