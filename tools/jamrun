@@ -1,0 +1,750 @@
+#!/bin/bash
+IDIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
+source "$IDIR/inc/misc_tools.sh"
+REDISFUNCS=`realpath "$IDIR/../deps/lua/jredlib.lua"`
+
+SHELLPID=$$
+trap cleanup SIGTERM SIGINT SIGKILL
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+# Determine the platform we are running on
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     machine=Linux;;
+    Darwin*)    machine=Mac;;
+    *)          machine="UNKNOWN:${unameOut}"
+esac
+
+VALGRIND_OPTS='valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=log_valgrind -s'
+
+MOSQUITTO=`which mosquitto`
+MOSQUITTO_PUB=`which mosquitto_pub`
+TMUX=`which tmux`
+NOVERBOSE=1
+
+if [ -z $MOSQUITTO ]; then
+    die "mosquitto (MQTT broker) not installed. Quitting."
+fi
+if [ -z $MOSQUITTO_PUB ]; then
+    die "mosquitto_pub (MQTT tools) not installed. Quitting."
+fi
+if [ -z $TMUX ]; then
+    die "tmux not installed. Quitting."
+fi
+
+
+show_usage() {
+    cat << EOF
+jamrun program.jxe
+Runs J and C node, one each, of a device with program.jxe
+under a default application name 'app-N'. To run under a different
+app name X, use the --app=X option.
+
+jamrun program.jxe --fog
+Runs a fog node (only J node) with program.jxe. Similarly, the --cloud
+flag runs a cloud node.
+
+By default, jamrun uses a Redis server running at 127.0.0.1:6379 as the
+data store. The Redis server needs to be started before launching the
+application. To use a different Redis server use the --data option.
+
+jamrun program.jxe --data=127.0.0.1:7000
+Runs program.jxe and connects it to an already running Redis server at
+port 7000 of the local host. Redis server can run outside the
+local host (Redis needs to the configured to accept outside
+connections).
+
+To start more than one C node at a device use the following command.
+jamrun program.jxe --num=4
+
+To provide a set of tags to the program, use the following command.
+jamrun program.jxe --tag="param1, param2"
+
+Use the --bg option to run a command in the backgroud.
+
+Use the --old option to run the previous version in .jamruns folder.
+You can edit that version and rerun a custom version of a file.
+
+Use the --log option to turn on logging. This is useful for programs where
+the C side is crashing at the startup. The tmux console would not run when
+the program crash at startup. So the --log option allows us to see the
+program error messages.
+
+Use the --verb option to turn on verbose messaging.
+
+Use --valgrind to run the cside with valgrind for leak checking.
+
+Use --local to disable multicast discovery of the J node. The C node assumes that the J node in the local loopback.
+
+Usage: jamrun file.jxe
+                [--app=appl_name]
+                [--fog|--cloud]
+                [--num=num_c_devs]
+                [--data=data-url]
+                [--tags=quoted_list_of_tags]
+                [--bg]
+                [--old]
+                [--iflow=flow_name]
+                [--oflow=flow_name]
+                [--log]
+                [--verb]
+                [--loc=long,lat]
+                [--edge=num_edge_connections]
+                [--valgrind]
+                [--local]
+
+
+The jamrun command creates a run state in the $HOME/.jamruns folder.
+EOF
+}
+
+
+startmqtt() {
+    local port=$1
+    local cfile=$2
+
+    # Check whether the MQTT server is running.. if not start it
+    $MOSQUITTO_PUB -p $port -t "test" -m "hello" 2> /dev/null
+
+    if [ $? -ne 0 ]; then
+        if [ -z $NOVERBOSE ]; then
+            echo "MQTT is not running at $port"
+            echo "Attempting to start MQTT at $port"
+        fi
+        if [ $machine = Mac ]; then
+            open -n -a $MOSQUITTO --stdout /dev/null --args -c $cfile
+	        #$MOSQUITTO -c $cfile &>/dev/null & MOSQUITTO_PID=$!
+            #MOSQUITTO_PID=$! # Currently Broken
+        elif [ $machine = Linux ]; then
+            nohup $MOSQUITTO -c $cfile &>/dev/null & MOSQUITTO_PID=$!
+        fi
+    fi
+}
+
+
+dojamout() {
+    dojamout_p1 $1 $2 $3
+    dojamout_p2 $1 $2 $3
+}
+
+
+dojamout_p1() {
+    local type=$1
+    local pnum=$2
+    local floc=$3
+
+    startmqtt $pnum "${floc}/${pnum}/mqtt.conf"
+    echo "$data" > $floc/$pnum/dataStore
+    echo "process" > $floc/$pnum/class
+    echo "$SHELLPID" > $floc/$pnum/shellpid
+    echo "new" > $floc/$pnum/processId
+}
+
+
+dojamout_p2() {
+
+    if [ -z $bg ]; then
+        dojamout_p2_fg $1 $2 $3 $4
+    else
+        dojamout_p2_bg $1 $2 $3 $4
+    fi
+}
+
+cleanup() {
+     if [ $killbroker == "1" ]; then
+        echo Killing broker with PID: $MOSQUITTO_PID
+        kill -9 $MOSQUITTO_PID
+    fi
+    #echo ${AOUT_PIDS[@]}
+    #kill -9 ${AOUT_PIDS[@]}
+
+    #reset
+    cleanuptmux
+    exit 1
+}
+
+
+dojamout_p2_fg() {
+    local type=$1
+    local pnum=$2
+    local floc=$3
+    local group=$4
+
+    buildjargs "--app=$jappid" "--port=$pnum" "--group=$group" "--data=$data" "--tags=$tags" "--iflow=$iflow" "--oflow=$oflow" "--edge=$edge" "--long=$long" "--lat=$lat" "--localregistryhost=$localregistryhost"
+    local args=$results
+    echo $args
+    case $type in
+        cloud)
+            node jstart.js $args
+            ;;
+        fog)
+            node jstart.js $args
+            ;;
+        device)
+            node jstart.js $args
+            ;;
+    esac
+
+    cleanup
+}
+
+
+dojamout_p2_bg() {
+    local type=$1
+    local pnum=$2
+    local floc=$3
+    local group=$4
+
+    buildjargs "--app=$jappid" "--port=$pnum" "--group=$group" "--data=$data" "--tags=$tags" "--iflow=$iflow" "--oflow=$oflow" "--edge=$edge" "--long=$long" "--lat=$lat"
+    local args=$results
+
+    if [ `uname` == "Linux" ]; then
+        script -a -c "node jstart.js $args" -f log.j > /dev/null &
+    else
+        script -a -t 1 log.j node jstart.js $args > /dev/null &
+    fi
+
+    if [ -z $NOVERBOSE ]; then
+        echo ">>> Started the J node in background"
+    fi
+}
+
+
+doaout() {
+    local counter=1
+    local num=$1
+    local port=$2
+    local group=$3
+    local datap=$4
+
+    if [ -e a.out ]; then
+        chmod +x a.out
+    fi
+
+    while [ $counter -le $num ]; do
+        if [ -e a.out ]; then
+            # execute the program.. we are in the folder..
+            buildcargs "-a=$jappid" "-p=$port" "-n=$counter" "-g=$group" "-t=$tags" "-o=$datap"
+            local cargs=$results
+
+            if [ -z $DISABLE_STDOUT_REDIRECT ]; then
+                if [ -z $log ]; then
+                    $TMUX new-session -s $tmuxapp-$counter -d  "$VALGRIND ./a.out $cargs"
+                else
+                    if [ `uname` == "Linux" ]; then
+                        $TMUX new-session -s $tmuxapp-$counter -d  script -a -c "$VALGRIND ./a.out $cargs" -f log
+                    else
+                        $TMUX new-session -s $tmuxapp-$counter -d  "script -a -t 1 log ./a.out $cargs"
+                    fi
+                fi
+            else
+                # As simple as can be
+                ./a.out $cargs &
+                echo This worked correctly
+            fi
+        fi
+        ((counter++))
+        if [ -z $NOVERBOSE ]; then
+            echo ">>> Started a C node"
+        fi
+    done
+}
+
+# This is always scanning for a command with 'node'
+portavailable() {
+    local folder=$1
+    local port=$2
+
+    if [ -d $folder/$port ]; then
+        if [ -e $folder/$port/processId ]; then
+            local pid=`cat $folder/$port/processId`
+            if [ $pid == "new" ]; then
+                porttaken=1
+            elif [ ! -z $pid ]; then
+                porttaken=`ps -o pid= -p $pid | wc -l | tr -d '[:space:]'`
+            else
+                porttaken=0
+            fi
+        else
+            porttaken=0
+        fi
+    else
+        porttaken=0
+    fi
+
+    if [ $porttaken -eq 0 ]; then 
+        porttaken=`netstat -an -p tcp 2>/dev/null | grep $port | wc -l`
+    fi
+}
+
+setuptmux() {
+
+    if [ -z $tmuxid ]; then
+        tmuxapp="tg-$RANDOM"
+    else
+        tmuxapp=$tmuxid
+    fi
+
+    echo "$tmuxapp" > $1/tmuxid
+    save "$tmuxapp" $appfolder/tmuxid
+
+    trap cleanuptmux SIGINT
+}
+
+getappid() {
+    local mainf=$1
+    local localf=$2
+    local appid=$3
+
+    if [ $appid == "app-n" ]; then
+        inc_counter $mainf/counter
+        save "app-$result" $localf/appid
+    else
+        save "$appid" $localf/appid
+    fi
+
+    jappid=`cat $localf/appid`
+    # save for short cut use
+    save "$jappid" $appfolder/appid
+}
+
+killtmux() {
+    for q in `tmux ls | grep $1 | cut -d ':' -f 1`; do
+        echo $q
+        tmux kill-session -t $q
+    done
+}
+
+cleanuptmux() {
+    #if [ ! -z $tmuxapp ]; then
+        #killtmux $tmuxapp
+    #fi
+    exit
+}
+
+startredis() {
+    local port=$1
+    redis-server  --port $port  - 1> /dev/null &
+}
+
+waitforredis() {
+    local port=$1
+
+    while : ; do
+        local resp=`redis-cli -p $port -c PING 2>/dev/null`
+        if [[ $resp == "PONG" ]]; then
+            break
+        fi
+        if [ -z $NOVERBOSE ]; then
+            echo Trying to find redis server...
+        fi
+        sleep 1
+    done
+    if [ -z $NOVERBOSE ]; then
+        echo ">>> Redis running at port: $port"
+    fi
+}
+
+setupredis() {
+    local port=$1
+
+    cat $REDISFUNCS | redis-cli -p $port -x FUNCTION LOAD REPLACE > /dev/null
+    echo "set protected-mode no" | redis-cli -p $port > /dev/null
+    echo 'config set save ""protected-mode no' | redis-cli -p $port > /dev/null
+}
+
+
+resolvedata() {
+    local name=$1
+
+    local host="${name%:*}"
+    local port="${name##*:}"
+
+    startredis $port
+    waitforredis $port
+    setupredis $port
+    
+    if [ $host == "docker" ]; then
+        local ipaddr=`hostname -I`
+        name=$ipaddr:$port
+    fi
+    # trim space left behind by hostname -I
+    data=$(echo $name | tr -d '[:space:]')
+}
+
+
+# We are already in the correct foldler
+# We should find MANIFEST if there is a previous version in the current folder
+# We unzip to the current folder if needed.
+unpack() {
+    local file=$1
+
+    if [ -z $old ]; then
+        if [ ! -e MANIFEST.txt ]; then
+            # there is no old file. unpack
+            unzip -oq $file
+            if [ $? -ne 0 ]; then
+                die "Problem reading file: $file"
+            fi
+        else
+            # get new time - by just peaking into the ZIP file
+            ntime=`zipgrep CREATE $file | awk 'NR==1{split($0,a, " "); print a[3]}'`
+            # get the old one by reading the previous MANIFEST.txt
+            otime=`grep CREATE MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`
+            if (( $ntime > $otime )); then
+                # newer file so unpack it
+                unzip -oq $file
+                if [ $? -ne 0 ]; then
+                    die "Problem reading file: $file"
+                fi
+            fi
+        fi
+    fi
+}
+
+getheight() {
+    height=`grep MAX-HEIGHT MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`
+}
+
+getjdata() {
+    jdata=`grep JDATA MANIFEST.txt | awk '{split($0,a, " "); print a[3]}'`
+}
+
+# set the global longitude and lattitude variables
+#
+getlonglat() {
+    local loc=$1
+
+    long="${loc%,*}"
+    lat="${loc##*,}"
+}
+
+# for now, just roam the north-eastern part...
+generatelonglat() {
+    a=$(( $RANDOM % 180 ))
+    b=$(( $RANDOM % 10000 ))
+    long=$a.$b
+    c=$(( $RANDOM % 90 ))
+    d=$(( $RANDOM % 10000 ))
+    lat=$c.$d
+}
+
+###
+# Main script execution begins here...
+#
+
+# Initialize all the option variables.
+app=app-n
+type=device
+data=127.0.0.1:6379
+num=1
+tags=
+bg=
+old=
+local=
+porttaken=0
+tmuxid=
+log=
+edge=1
+localregistryhost=0
+killbroker=0
+
+# generate the random longitude and lattitude values
+# use the --loc option to override these values
+generatelonglat
+
+file=$1
+shift
+fext="${file##*.}"
+
+if [ -z $file ] || [ $file = "-h" ] || [ $file = "--help" ]; then
+    show_usage
+    exit 1
+fi
+
+if [ "$fext" != "jxe" ]; then
+    die "Extension on $file is not .jxe"
+fi
+
+
+while :; do
+    case $1 in
+        --help)
+            show_usage      # Display a usage synopsis.
+            exit
+            ;;
+        --app)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                app=$2
+                shift
+            else
+                die 'ERROR: "--app" requires a non-empty option argument.'
+            fi
+            ;;
+        --app=?*)
+            app=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --app=)            # Handle the case of an empty
+            die 'ERROR: "--args" requires a non-empty option argument.'
+            ;;
+
+        --tags)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                tags=$2
+                shift
+            else
+                die 'ERROR: "--tags" requires a non-empty option argument.'
+            fi
+            ;;
+        --tags=?*)
+            tags=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --tags=)            # Handle the case of an empty
+            die 'ERROR: "--tags" requires a non-empty option argument.'
+            ;;
+        --tmux)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                tmuxid=$2
+                shift
+            else
+                die 'ERROR: "--tmux" requires a non-empty option argument.'
+            fi
+            ;;
+        --tmux=?*)
+            tmuxid=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --tmux=)            # Handle the case of an empty
+            die 'ERROR: "--tmux" requires a non-empty option argument.'
+            ;;
+        --num)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                num=$2
+                shift
+            else
+                die 'ERROR: "--num" requires a non-empty option argument.'
+            fi
+            ;;
+        --num=?*)
+            num=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --num=)            # Handle the case of an empty
+            die 'ERROR: "--num" requires a non-empty option argument.'
+            ;;
+        --loc)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                getlonglat $2
+                shift
+            else
+                die 'ERROR: "--loc" requires longitude and lattitude specification'
+            fi
+            ;;
+        --loc=?*)
+            loc=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            getlonglat $loc
+            ;;
+        --loc=)            # Handle the case of an empty
+            die 'ERROR: "--loc" requires longitude and lattitude specification'
+            ;;
+        --edge)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                edge=$2
+                shift
+            else
+                die 'ERROR: "--edge" requires a non-empty option argument.'
+            fi
+            ;;
+        --edge=?*)
+            edge=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --edge=)            # Handle the case of an empty
+            die 'ERROR: "--edge" requires a non-empty option argument.'
+            ;;
+        --data)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                data=$2
+                shift
+            else
+                die 'ERROR: "--data" requires a non-empty option argument.'
+            fi
+            ;;
+        --data=?*)
+            data=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --data=)            # Handle the case of an empty
+            die 'ERROR: "--data" requires a non-empty option argument.'
+            ;;
+        --fog)
+            if [ "$type" != "device" ]; then
+                die 'ERROR: "type" cannot be reassigned.'
+            else
+                type="fog"
+                num=
+            fi
+            ;;
+        --cloud)
+            if [ "$type" != "device" ]; then
+                die 'ERROR: "type" cannot be reassigned.'
+            else
+                type="cloud"
+                num=
+            fi
+            ;;
+        --device)
+            ;;
+        --local_registry)
+            localregistryhost=1
+            ;;
+        --temp_broker)
+            killbroker=1
+            ;;
+        --bg)
+            bg=1
+            ;;
+        --verb)
+            NOVERBOSE=
+            ;;
+        --log)
+            log=1
+            ;;
+        --old)
+            old=1
+            ;;
+        --local)
+            local=1
+            ;;
+		--valgrind)
+			VALGRIND="$VALGRIND_OPTS"
+			;;
+        --disable-stdout-redirect)
+            DISABLE_STDOUT_REDIRECT=1
+            ;;
+        --)              # End of all options.
+            shift
+            break
+        ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)               # Default case: No more options, so break out of the loop.
+            break
+    esac
+
+    shift
+done
+
+# Check necessary parameters and set defaults
+
+if [ "$type" != "device" ]; then
+    edge=
+    if [ -n "$num" ]; then
+        die "number of devices can't be speciied for fog/cloud"
+    fi
+    if [ -n "$edge" ]; then
+        die "number of edge connections can't be specified for fog/cloud"
+    fi
+fi
+
+
+if [ -e "$file" ]; then
+
+    # Check whether the global .jamruns folder is there
+    jamfolder=$HOME"/.jamruns"
+    create_missingdir $jamfolder
+
+    # Check whether the app folder is there
+    appfolder=$jamfolder/apps
+    create_missingdir $appfolder
+
+    # Get the folder
+    filenoext="${file%.*}"
+    filenoext="${filenoext##*/}"
+    folder=$appfolder/$filenoext"_"$app
+    create_missingdir $folder
+
+    #save handle to file
+    ifile="$(cd "$(dirname "$file")"; pwd)/$(basename "$file")"
+    cd $folder
+    unpack $ifile  # We are already in $folder
+    # find the machine height
+    getheight
+    getjdata
+
+    if [ -e jstart.js ]; then
+        # save the current program information for short cut use
+        save "$filenoext" $appfolder/program
+        save "$app" $appfolder/app
+
+        # execute the program.. we are in the folder..
+        case $type in
+            cloud)
+                iport=9883
+                while [ : ]; do
+                    portavailable $folder $iport
+                    [[ $porttaken == 1 ]] || break
+                    ((iport++))
+                done
+                if [ "$jdata" = true ]; then
+                    dport=$((iport + 20000))
+                    resolvedata "127.0.0.1:$dport"
+                fi
+                create_missingdir $folder/$iport
+                create_conffile "${folder}/${iport}/mqtt.conf"  $iport
+                getappid $jamfolder $folder/$iport $app
+                dojamout $type $iport $folder
+            ;;
+            fog)
+                iport=5883
+                while [ : ]; do
+                    portavailable $folder $iport
+                    [[ $porttaken == 1 ]] || break
+                    ((iport++))
+                done
+                if [ "$jdata" = true ]; then
+                    dport=$((iport + 20000))
+                    resolvedata "127.0.0.1:$dport"
+                fi
+                create_missingdir $folder/$iport
+                create_conffile "${folder}/${iport}/mqtt.conf"  $iport
+                getappid $jamfolder $folder/$iport $app
+                dojamout $type $iport $folder
+            ;;
+            device)
+                iport=1883
+                while [ : ]; do
+                    portavailable $folder $iport
+                    [[ $porttaken == 1 ]] || break
+                    ((iport++))
+                done
+                if [ -z $local ]; then
+                    group="$((iport-1882))"
+                else
+                    group=0
+                fi
+                if [ "$jdata" = true ]; then
+                    dport=$((iport + 20000))
+                    resolvedata "127.0.0.1:$dport"
+                fi
+                create_missingdir $folder/$iport
+                create_conffile "${folder}/${iport}/mqtt.conf"  $iport
+                getappid $jamfolder $folder/$iport $app
+                dojamout_p1 $type $iport $folder
+                setuptmux $folder/$iport
+                doaout $num $iport $group $dport
+                dojamout_p2 $type $iport $folder $group
+                if [ -z $bg ]; then
+                    cleanuptmux
+                fi
+            ;;
+        esac
+    else
+        die "File: $file is not a valid JAMScript executable"
+    fi
+
+else
+    die "File: $file not found"
+fi
