@@ -564,10 +564,11 @@ if [ -e "$file" ]; then
         reuse_container $type $dockerid
     fi
 
+    docker exec $dockerSer mkdir /home/admin/temp
     docker cp $file $dockerSer:/home/admin/temp/`basename $file`
-    dojamrun $type $dockerid `basename $file` $num
+    dojamrun $type $dockerid /home/admin/temp/`basename $file` $num
     if [ -z $bg ] && [ $docktype == "new" ]; then
-        removedockermach
+       removedockermach
     fi
 else
     die "File: $file not found"
