@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 IDIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
 #source "$IDIR/inc/pumba_tools.sh"
@@ -568,7 +569,7 @@ if [ -e "$file" ]; then
     docker cp $file $dockerSer:/home/admin/temp/`basename $file`
     dojamrun $type $dockerid /home/admin/temp/`basename $file` $num
     if [ -z $bg ] && [ $docktype == "new" ]; then
-       removedockermach
+      removedockermach
     fi
 else
     die "File: $file not found"

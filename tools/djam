@@ -51,7 +51,7 @@ params=$@
 
 case $jcmd in
     list)
-        jamlist $params
+        djamlist $params
         ;;
     build)
         djambuild $params
