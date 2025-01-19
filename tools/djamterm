@@ -79,7 +79,7 @@ dockertmux() {
                         if [ -e $dir/tmuxid_c ]; then
                             local dtm=`cat $dir/tmuxid_c | tr -d '[:space:]'`
                             if [ $dtm == $tmuxapp ]; then
-                                docker exec -ti `cat $dir/dockerId` script -q -c "/usr/bin/tmux attach -t $tmuxapp-$termno" /dev/null
+                                docker exec -t  `cat $dir/dockerId` script -q -c "/usr/bin/tmux attach -t $tmuxapp-$termno" /dev/null
                                 break
                             fi
                         fi

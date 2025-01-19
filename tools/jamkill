@@ -79,9 +79,9 @@ killprocess() {
         local didp=`cat $1/dockerId`
         local present=`docker ps --filter id=$didp | grep $didp | wc -l | tr -d '[:space:]'`
         if [ $present == "1" ]; then
-            docker exec -it $didp jamkill `cat $1/appid`
+            docker exec -t $didp jamkill `cat $1/appid`
             echo "-" > $1/dockerId
-            local count=`docker exec -it $didp jamlist | wc -l | tr -d '[:space:]'`
+            local count=`docker exec -t $didp jamlist | wc -l | tr -d '[:space:]'`
             if (( $count <= 2 )); then
                 echo "Killing docker $didp"
                 docker kill $didp

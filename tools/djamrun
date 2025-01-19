@@ -76,10 +76,10 @@ runatcloud() {
 
     if [ -z $bg ]; then
         echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec  -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     else
         echo $dockid > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec  -t  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     fi
 
 }
@@ -101,10 +101,10 @@ runatfog() {
 
     if [ -z $bg ]; then
         echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     else
         echo $dockid > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec   -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     fi
 
 }
@@ -132,10 +132,10 @@ runatdevice() {
     buildjargs $argstr
     if [ -z $bg ]; then
         echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec  -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     else
         echo $dockid"-j" > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec   -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     fi
     echo ">>> Device started in container $dockid"
 }

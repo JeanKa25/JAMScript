@@ -123,15 +123,15 @@ if [ -e $appsfolder/$lprogram"_"$lapp ]; then
                 runon=`cat $dir/dockerId`
                 if [ -z $app ] && [ -z $program ]; then
                     if [ -z $j ]; then
-                        docker exec -it $runon jamlog
+                        docker exec -t $runon jamlog
                     else
-                        docker exec -it $runon jamlog --j
+                        docker exec -t $runon jamlog --j
                     fi
                 else
                     if [ -z $j ]; then
-                        docker exec -it $runon jamlog --program=$program --app=$app
+                        docker exec -t $runon jamlog --program=$program --app=$app
                     else
-                        docker exec -it $runon jamlog --program=$program --app=$app --j
+                        docker exec -t $runon jamlog --program=$program --app=$app --j
                     fi
                 fi
             fi

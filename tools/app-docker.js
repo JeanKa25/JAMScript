@@ -17,7 +17,6 @@ const childProcessExport3 = exec('export PATH=$JAM_HOME/tools:$PATH',
                                   {cwd});
 const childProcessExport4 = exec('export JAMDATA=/Users/andreisandor/Desktop/McGill/Capstone/newServer/JAMScript/data', {cwd});
 
-
 const childProcess1 = exec('djam init --ideal',  {cwd} );
 const childProcess2 = exec('djam pull mahes25/jamscript',  {cwd});
 ////////////////////////////////////////////////////////////////////////////
@@ -31,8 +30,8 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the API' });
 });
 
-// Utility function to handle command execution and streaming response
-function executeCommand(req, res, command, cwd = '/root/capstone/JAMScript/tools/') {
+// Utility function to handle command execution and streaming response. **** UPDATE CWD ****
+function executeCommand(req, res, command, cwd = '/Users/andreisandor/Desktop/McGill/Capstone/newServer/JAMScript/tools') {                     
   console.log(`Executing command: ${command}`);
   const childProcess = exec(command, { cwd });
 

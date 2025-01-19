@@ -44,7 +44,7 @@ EOF
 runjamist(){
     local didp=`docker ps | awk 'NR > 1 {print $1; exit}'`
     echo $didp
-    docker exec -it $didp jamlist
+    docker exec -t $didp jamlist
 }
 runjamist
 
