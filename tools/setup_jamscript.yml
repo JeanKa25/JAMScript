@@ -1,0 +1,105 @@
+---
+- name: Setup JAMScript tools and run Node.js server
+  hosts: all
+  become: true
+  tasks:
+    # Update and install basic dependencies
+    - name: Update and upgrade the system
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Install basic dependencies
+      apt:
+        name: 
+          - build-essential
+          - curl
+          - git
+          - wget
+          - unzip
+          - python3
+          - python3-pip
+        state: present
+
+    # Install Node.js and npm
+    - name: Add NodeSource repository
+      shell: curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+      args:
+        executable: /bin/bash
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Verify Node.js and npm installation
+      shell: |
+        node -v
+        npm -v
+
+    # Install PM2 for process management
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+
+    # Install zx for script execution
+    - name: Install zx globally
+      npm:
+        name: zx
+        global: yes
+
+    # Install Mosquitto MQTT Broker
+    - name: Install Mosquitto MQTT Broker
+      apt:
+        name: 
+          - mosquitto
+          - mosquitto-clients
+        state: present
+
+    - name: Enable and start Mosquitto service
+      service:
+        name: mosquitto
+        enabled: yes
+        state: started
+
+    # Clone the JAMScript repository
+    - name: Clone JAMScript repository
+      git:
+        repo: https://github.com/JeanKa25/JAMScript.git
+        dest: /root/JAMScript
+        version: docker_implementation
+
+    # Run install.sh script
+    - name: Run install.sh script
+      shell: sudo ./install.sh
+      args:
+        chdir: /root/JAMScript
+
+    # Run npm install
+    - name: Run npm install
+      npm:
+        path: /root/JAMScript
+        state: present
+
+    # Ensure permissions for required files
+    - name: Ensure all .mjs files have execute permissions
+      file:
+        path: /root/JAMScript/tools
+        recurse: yes
+        state: directory
+        mode: '0755'
+
+    - name: Ensure jt1.jxe has execute permissions
+      file:
+        path: /root/JAMScript/tools/jt1.jxe
+        state: file
+        mode: '0755'
+
+    # Run the Node.js server
+    - name: Start Node.js server
+      shell: node /root/JAMScript/tools/app.js &
+      args:
+        executable: /bin/bash
+
