@@ -12,7 +12,7 @@
 
     - name: Install basic dependencies
       apt:
-        name: 
+        name:
           - build-essential
           - curl
           - git
@@ -21,6 +21,25 @@
           - python3
           - python3-pip
         state: present
+
+    # Install Docker
+    - name: Install Docker
+      apt:
+        name:
+          - docker.io
+        state: present
+
+    - name: Enable and start Docker service
+      service:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Add user to the Docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
 
     # Install Node.js and npm
     - name: Add NodeSource repository
@@ -38,12 +57,6 @@
         node -v
         npm -v
 
-    # Install PM2 for process management
-    - name: Install PM2 globally
-      npm:
-        name: pm2
-        global: yes
-
     # Install zx for script execution
     - name: Install zx globally
       npm:
@@ -53,7 +66,7 @@
     # Install Mosquitto MQTT Broker
     - name: Install Mosquitto MQTT Broker
       apt:
-        name: 
+        name:
           - mosquitto
           - mosquitto-clients
         state: present
@@ -69,7 +82,8 @@
       git:
         repo: https://github.com/JeanKa25/JAMScript.git
         dest: /root/JAMScript
-        version: docker_implementation
+        version: ansible-setup
+        recursive: no
 
     # Run install.sh script
     - name: Run install.sh script
@@ -97,9 +111,9 @@
         state: file
         mode: '0755'
 
-    # Run the Node.js server
-    - name: Start Node.js server
-      shell: node /root/JAMScript/tools/app.js &
+    # Start the Node.js server using node
+    - name: Start the Node.js server in the background
+      shell: nohup node /root/JAMScript/tools/app.js > /root/JAMScript/server.log 2>&1 &
       args:
         executable: /bin/bash
 
