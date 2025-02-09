@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 IDIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
 source "$IDIR/inc/misc_tools.sh"
@@ -13,12 +12,12 @@ die() {
 show_usage() {
     cat << EOF
 A tool to display the active programs and their attributes.
-Usage: djamlist 
+Usage: djamlist
 
 djam list [--help]
 
 djam list [--all]
-    
+
 djam list [--monitor]
 
 djam list [--remote]
@@ -30,21 +29,40 @@ djam list [--dataStore==127.0.0.1:21883]
 djam list [--tmuxid==tg-25165]
 
 djam list [--port=3]
-   
+
 djam list [--app==XX3]
 
 djam list [--prog==X]
-
 
 This is the docker version of jamlist.
 
 EOF
 }
- 
-runjamist(){
-    local didp=`docker ps | awk 'NR > 1 {print $1; exit}'`
-    echo $didp
-    docker exec -t $didp jamlist
-}
-runjamist
 
+run_djamlist() {
+    # Get a list of all running container IDs
+    local containers=$(docker ps -q)
+
+    # If no containers are running, exit
+    if [[ -z "$containers" ]]; then
+        echo "No running Docker containers found."
+        exit 1
+    fi
+
+    # Loop through each container and run djamlist inside it
+    for container in $containers; do
+        echo
+        echo "ContainerID: $container"
+        output=$(docker exec -t "$container" jamlist 2>/dev/null)
+
+        # Print output line by line and check for errors
+        while IFS= read -r line; do
+            if echo "$line" | grep -q "cannot access"; then
+                continue
+            fi
+            echo "$line"
+        done <<< "$output"
+    done
+}
+
+run_djamlist
