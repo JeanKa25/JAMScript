@@ -44,7 +44,6 @@ Shows the J terminal of the program running under u-600-dev-2331.
 EOF
 }
 
-
 localtmux() {
     local tmuxapp=$1
     local termno=$2
@@ -60,13 +59,14 @@ localtmux() {
     fi
 }
 
-
 dockertmux() {
     local tmuxapp=$1
     local termno=$2
 
     appsfolder=$HOME"/.jamruns/apps"
     cd $appsfolder
+
+    # echo "Searching for tmux-id: $tmuxapp"
 
     for jruns in */; do
         if [ $jruns != "*/" ]; then
@@ -78,9 +78,18 @@ dockertmux() {
                     if [ $dcl == "docker" ]; then
                         if [ -e $dir/tmuxid_c ]; then
                             local dtm=`cat $dir/tmuxid_c | tr -d '[:space:]'`
-                            if [ $dtm == $tmuxapp ]; then
-                                docker exec -t  `cat $dir/dockerId` script -q -c "/usr/bin/tmux attach -t $tmuxapp-$termno" /dev/null
-                                break
+                            if [ "$dtm" == "$tmuxapp" ]; then
+                                docker_id=$(cat "$dir/dockerId")
+                                # echo "Found tmux session '$tmuxapp' inside container '$docker_id'"
+
+                                if [[ -t 1 ]]; then
+                                    docker exec -it $docker_id tmux attach -t $tmuxapp
+                                else
+                                    echo "Tmux session '$tmuxapp' is running inside the container '$docker_id'."
+                                    echo "You can attach it manually using:"
+                                    echo "docker exec -it $docker_id tmux attach -t $tmuxapp"
+                                fi
+                                return 0
                             fi
                         fi
                     fi
@@ -88,8 +97,10 @@ dockertmux() {
             done
         fi
     done
-}
 
+    echo "No matching tmux session found for tmux-id: $tmuxapp"  # Debug: Print if no match is found
+    return 1
+}
 
 ###
 # Main script execution begins here...
@@ -103,34 +114,31 @@ exit_missingdir $appsfolder ".jamruns/apps folder missing. JAMScript tools not s
 
 cd $appsfolder
 
-
 if [ -z $1 ]; then
     if [ -e tmuxid ]; then
         tmuxid=`cat tmuxid`
-        dockertmux $tmuxid 1
-        exit # this improves the readability of the script later - not needed!
+        dockertmux $tmuxid
+        exit
     fi
 else
-    # Show help
     if [ $1 == "-h" ] || [ $1 == "--help" ]; then
         show_usage
-        exit # readability improver!
+        exit
     elif [ $1 == "-t" ]; then
         if [ -e tmuxid ]; then
             tmuxid=`cat tmuxid`
             dockertmux $tmuxid $2
         fi
-        exit # readability improver!
+        exit
     else
         if [ -z $2 ]; then
             txid=$1
             if [ ${txid: -1} == "c" ]; then
-                # Connect to the docker to display the C panes
                 dockertmux $txid 1
             else
                 localtmux $txid
             fi
-            exit # readability improver!
+            exit
         else
             if [ -n $3 ] && [ $2 == "-t" ]; then
                 termid=$3

@@ -1,0 +1,13 @@
+- name: Run JAMLog Command
+  hosts: '{{ server }}'
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Run JAMLog and store logs
+      shell: zx wrapper.mjs jamlog --program=jt1.jxe --app=DEMO --port=1883  > jamlog.log 2>&1
+      args:
+        chdir: /home/jamtools/JAMScript/tools

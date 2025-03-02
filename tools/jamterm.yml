@@ -1,0 +1,13 @@
+- name: Run JAMTerm Command
+  hosts: '{{ server }}'
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Run JAMTerm command and store logs
+      shell: zx wrapper.mjs jamterm > jamterm.log 2>&1
+      args:
+        chdir: /home/jamtools/JAMScript/tools

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 IDIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
 #source "$IDIR/inc/pumba_tools.sh"
@@ -75,10 +76,10 @@ runatcloud() {
 
     if [ -z $bg ]; then
         echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec  -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     else
         echo $dockid > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec  -t  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     fi
 
 }
@@ -100,10 +101,10 @@ runatfog() {
 
     if [ -z $bg ]; then
         echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     else
         echo $dockid > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec   -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     fi
 
 }
@@ -131,10 +132,10 @@ runatdevice() {
     buildjargs $argstr
     if [ -z $bg ]; then
         echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec  -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     else
-        echo $dockid"-c" > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-c" -d docker exec -it $dockerSer tmux new-session -d -s $dockid"-c" "jamrun $file $results"
+        echo $dockid"-j" > $thisappfolder/$dockid/tmuxid
+        tmux new-session -s $dockid"-j" -d docker exec   -t --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
     fi
     echo ">>> Device started in container $dockid"
 }
@@ -344,6 +345,10 @@ while :; do
             show_usage      # Display a usage synopsis.
             exit
             ;;
+        --device_num=*)
+            device_num="${1#*=}"
+            shift
+            ;;
         --app)           # Takes an option argument; ensure it has been specified.
             if [ "$2" ]; then
                 app=$2
@@ -473,11 +478,11 @@ while :; do
                 num=
             fi
             ;;
-        --bg)
-            bg=1
-            ;;
         --log)
             log=1
+            ;;
+        --bg)
+            bg=1
             ;;
         --mount)
             mount=1
@@ -563,11 +568,15 @@ if [ -e "$file" ]; then
         # Automatically inherit the redis.. no checking??
         reuse_container $type $dockerid
     fi
-    docker exec $dockerSer mkdir -p /home/admin/temp
-    docker cp $file $dockerSer:/home/admin/temp/`basename $file`
-    dojamrun $type $dockerid /home/admin/temp/`basename $file` $num
+        docker exec $dockerSer mkdir /home/admin/temp
+        docker cp $file $dockerSer:/home/admin/temp/`basename $file`
+
+    for ((i=1; i<=device_num; i++)); do
+        docker exec -t $dockerid jamrun /home/admin/temp/`basename $file` --bg $num
+    done
+
     if [ -z $bg ] && [ $docktype == "new" ]; then
-        removedockermach
+      removedockermach
     fi
 else
     die "File: $file not found"

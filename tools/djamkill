@@ -1,0 +1,86 @@
+#!/bin/bash
+
+IDIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
+source "$IDIR/inc/misc_tools.sh"
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+show_usage() {
+    cat << EOF
+A tool to display the active programs and their attributes.
+Usage: djamlist
+
+djam list [--help]
+
+djam list [--all]
+
+djam list [--monitor]
+
+djam list [--remote]
+
+djam list [--type==fog]
+
+djam list [--dataStore==127.0.0.1:21883]
+
+djam list [--tmuxid==tg-25165]
+
+djam list [--port=3]
+
+djam list [--app==XX3]
+
+djam list [--prog==X]
+
+This is the docker version of jamlist.
+
+EOF
+}
+
+run_djamkill() {
+    # Get a list of all running container IDs
+    local containers
+    containers=$(docker ps -q)
+
+    if [[ -z "$containers" ]]; then
+        echo "No running Docker containers found."
+        exit 1
+    fi
+
+    for container in $containers; do
+        # Run djamlist in the container and capture its output.
+        # This assumes that "djamlist" when executed via docker exec returns the status only for that container.
+        jamlist_output=$(djamlist 2>/dev/null)
+
+        # If the output might be aggregated, extract only the block for this container.
+        # The following awk command grabs lines after the "ContainerID: $container" line
+        # until the next "ContainerID:" header or the end of the output.
+        container_block=$(echo "$jamlist_output" | awk "/ContainerID: $container/{flag=1; next} /^ContainerID:/{flag=0} flag")
+
+        # If the block shows no running instances, skip this container.
+        if echo "$container_block" | grep -q "No running instances of JAMScript."; then
+            continue
+        fi
+
+        echo
+        echo "ContainerID: $container"
+
+        # Run jamkill and capture its output.
+        output=$(docker exec -t "$container" jamkill 2>/dev/null)
+
+        # Process each line, filtering out unwanted error messages.
+        while IFS= read -r line; do
+            if echo "$line" | grep -q -E "cannot access|no server running|\.jamruns/apps folder missing"; then
+                continue
+            fi
+            echo "$line"
+        done <<< "$output"
+
+        docker stop "$container"
+        docker rm "$container"
+    done
+}
+
+run_djamkill

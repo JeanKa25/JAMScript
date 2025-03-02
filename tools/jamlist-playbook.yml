@@ -1,0 +1,13 @@
+- name: Run JAMList Command
+  hosts: "{{ server }}"
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Run JAMRun command and store logs
+      shell: zx wrapper.mjs jamlist > jamlist.log 2>&1
+      args:
+        chdir: /home/jamtools/JAMScript/tools

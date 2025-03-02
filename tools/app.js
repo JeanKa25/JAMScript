@@ -14,7 +14,7 @@ app.get('/api', (req, res) => {
 });
 
 // Utility function to handle command execution and streaming response
-function executeCommand(req, res, command, cwd = '/root/JAMScript/tools/') {
+function executeCommand(req, res, command, cwd = '/home/jamtools/JAMScript/tools/') {
   console.log(`Executing command: ${command}`);
   const childProcess = exec(command, { cwd });
 

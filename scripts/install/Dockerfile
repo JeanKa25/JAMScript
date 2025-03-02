@@ -41,7 +41,8 @@ WORKDIR /home/admin
 RUN wget https://deb.nodesource.com/setup_20.x && chmod +x ./setup_20.x && echo admin | sudo -S ./setup_20.x && \
         sudo apt-get install -y -q nodejs
 
-        RUN git clone --branch shahin/migration https://github.com/citelab/JAMScript
+RUN git clone --branch master https://github.com/JeanKa25/JAMScript && cd JAMScript/tools && chmod 777 *
+
 
 WORKDIR /home/admin/JAMScript/deps
 RUN git clone https://github.com/intel/tinycbor
@@ -78,4 +79,3 @@ EXPOSE 22
 
 # Start SSH service and keep the container running
 ENTRYPOINT ["bash", "-c", "sudo service ssh start && exec bash"]
-

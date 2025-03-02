@@ -1,0 +1,13 @@
+- name: Run JamBatch command
+  hosts: "{{ server }}"
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Run batch command and store logs
+      shell: zx wrapper.mjs djambatch "{{ file }}"  "{{ deviceNb }}" "{{ app }}" --bg > jambatch.log 2>&1
+      args:
+        chdir: /home/jamtools/JAMScript/tools

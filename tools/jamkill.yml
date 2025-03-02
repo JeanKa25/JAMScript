@@ -1,0 +1,13 @@
+- name: Run JAMkill
+  hosts: servers
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Run JAMKill
+      shell: zx wrapper.mjs jamkill
+      args:
+         chdir: /home/jamtools/JAMScript/tools

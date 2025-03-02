@@ -5,7 +5,6 @@ import fetch from "node-fetch";
 import {getBatchArgs} from './parser.mjs';
 
 
-
 // Get the command-line arguments
 const endpointArgs = process.argv.slice(3);
 
@@ -93,7 +92,7 @@ if (endpointArgs[0] === "jamrun") {
   if (localName) payload.local = locName;
 
   // Send the POST request to the server
-  const endpoint = "http://localhost:3000/jamrun";
+  const endpoint = "http://0.0.0.0:3000/jamrun";
   fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -204,7 +203,7 @@ if (endpointArgs[0] === "jambatch") {
     if (localName) payload.local = locName;
 
     // Send the POST request to the server
-    const endpoint = "http://localhost:3000/jamrun";
+    const endpoint = "http://0.0.0.0:3000/jamrun";
     fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -280,7 +279,7 @@ if (endpointArgs[0] === "jamlog") {
   if (jName) payload.j = jName;
 
   // Send the POST request to the server
-  const endpoint = "http://localhost:3000/jamlog";
+  const endpoint = "http://0.0.0.0:3000/jamlog";
   fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -324,7 +323,6 @@ if (endpointArgs[0] === "jamlist") {
   const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog=="));
   const remomteArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--remote=="));
 
-
   let helpName, allName, monitorName, typeName,dataStoreName,tmuxName, portName, appName, programName, remoteName;
 
   // Use non-argument if present
@@ -356,7 +354,7 @@ if (endpointArgs[0] === "jamlist") {
   if (programName) payload.prog = programName;
   
   // Send the POST request to the server
-  const endpoint = "http://localhost:3000/jamlist";
+  const endpoint = "http://0.0.0.0:3000/jamlist";
   fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -422,7 +420,7 @@ if (endpointArgs[0] === "jamkill") {
 
 
   // Send the POST request to the server
-  const endpoint = "http://localhost:3000/jamkill";
+  const endpoint = "http://0.0.0.0:3000/jamkill";
   fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -451,6 +449,9 @@ if (endpointArgs[0] === "jamkill") {
 // ex: zx wrapper.mjs jamterm
 // Validate and process the arguments
 if (endpointArgs[0] === "jamterm") {
+
+  const tmuxIdArg = endpointArgs[1]
+
   //Get if the index of all
   const allArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--all"));
 
@@ -459,8 +460,9 @@ if (endpointArgs[0] === "jamterm") {
   const progArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--prog=="));
   const portArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--port=="));
   const paneArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--pane="));
+  const tmerArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("-t "))
 
-  let allName, appName, progName, portName, paneName;
+  let allName, appName, progName, portName, paneName, termNum;
 
   // Use all if present
   if(allArgIndex != -1) {allName = "all"}; //All
@@ -482,8 +484,62 @@ if (endpointArgs[0] === "jamterm") {
   if (portName) payload.port = portName;
   if (paneName) payload.pane = paneName;
 
+  if (tmuxIdArg) payload.tmux_id = tmuxIdArg;
+  if (termNum) payload.terminal_number = termNum;
+ 
   // Send the POST request to the server
-  const endpoint = "http://localhost:3000/jamterm";
+  const endpoint = "http://0.0.0.0:3000/jamterm";
+  fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then((response) => {
+      // Ensure response status is OK
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      // Handle streaming response with Node.js readable stream
+      console.log("Streaming response:");
+      response.body.on("data", (chunk) => {
+        process.stdout.write(chunk.toString());
+      });
+      response.body.on("end", () => {
+        console.log("\nStream finished.");
+      });
+    })
+    .catch((error) => {
+      console.error("Error sending request:", error.message);
+    });
+}
+
+
+// ex: zx wrapper.mjs djambatch jt1.jxe --device_num=5 --app=DEMO2 --bg
+// Validate and process the arguments
+if (endpointArgs[0] === "djambatch") {
+
+  // Get index of parameters with a value associated with it
+  const deviceNumArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--device_num="));
+  const appArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--app="));
+
+
+  let deviceNumName, appName;
+
+
+  // If the parameter with value is present, extract the value
+  if (deviceNumArgIndex != -1) {deviceNumName = endpointArgs[deviceNumArgIndex].split("=")[1];} // Extract device_num
+  if (appArgIndex != -1) {appName = endpointArgs[appArgIndex].split("=")[1];} // Extract app
+
+
+  // Construct the JSON payload
+  let payload = {
+    device_num: deviceNumName,
+    app: appName
+  };
+
+  // Send the POST request to the server
+  const endpoint = "http://0.0.0.0:3000/jambatch";
   fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
