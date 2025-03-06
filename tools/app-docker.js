@@ -5,22 +5,15 @@ const app = express();
 const port = 3000;
 const host = '0.0.0.0';
 
+/// SET WORKING DIRECTORY FOR JAMTOOLS ///
+const JAM_HOME = '/home/jamtools/JAMScript';
+const TOOLS_DIR = `${JAM_HOME}/tools`;
 
-/// TO UPDATE IN FUNCTION OF WHERE THE TOOLS ARE ON YOUR LOCAL COPY ///
-let cwd = '/home/jamtools/JAMScript/tools';
-const childProcessExport1 = exec('export JAM_HOME=/home/jamtools/JAMScript/',
-                                  {cwd} );
-
-const childProcessExport2 = exec('export JAMHOME=/home/jamtools/JAMScript/',
-                                  {cwd});
-const childProcessExport3 = exec('export PATH=$JAM_HOME/tools:$PATH',
-                                  {cwd});
-const childProcessExport4 = exec('export JAMDATA=/home/jamtools/JAMScript/data', {cwd});
-
-const childProcess1 = exec('djam init --ideal',  {cwd} );
-const childProcess2 = exec('echo test',  {cwd});
-////////////////////////////////////////////////////////////////////////////
-
+// Update PATH for all commands to ensure JAMTools are available
+process.env.PATH = `${TOOLS_DIR}:${process.env.PATH}`;
+process.env.JAM_HOME = JAM_HOME;
+process.env.JAMHOME = JAM_HOME;
+process.env.JAMDATA = `${JAM_HOME}/data`;
 
 // Middleware to parse JSON requests
 app.use(express.json());
@@ -33,7 +26,10 @@ app.get('/api', (req, res) => {
 // Utility function to handle command execution and streaming response. **** UPDATE CWD ****
 function executeCommand(req, res, command, cwd = '/home/jamtools/JAMScript/tools') {
   console.log(`Executing command: ${command}`);
-  const childProcess = exec(command, { cwd });
+  const childProcess = exec(command, {
+    cwd: TOOLS_DIR, // Set correct working directory
+    env: process.env, // Use modified environment with updated PATH
+  });
 
   // Set headers to keep the connection open for streaming
   res.setHeader('Content-Type', 'text/plain');
@@ -94,7 +90,7 @@ app.post('/jamrun', (req, res) => {
     return res.status(400).json({ error: 'The "app_name" field is required.' });
   }
 
-  let command = `djam run ${file} --app=${app_name}`;
+  let command = `${TOOLS_DIR}/djam run ${file} --app=${app_name}`;
   if (fog) command += ' --fog';
   if (cloud) command += ' --cloud';
   if (device) command += ' --device';
@@ -120,7 +116,7 @@ app.post('/jamrun', (req, res) => {
    file = 'jt1.jxe', device_num,app
    } = req.body;
 
-   let command = `djambatch ${file} --device_num=${device_num} --app=${app} --bg `;
+   let command = `${TOOLS_DIR}/djambatch ${file} --device_num=${device_num} --app=${app} --bg `;
 
    executeCommand(req, res, command);
   });
@@ -130,7 +126,7 @@ app.post('/jamlog', (req, res) => {
   const { help, program, app, port, remote, tail, c, j } = req.body;
 
   // Default command without arguments if none are specified
-  let command = `djam log`;
+  let command = `${TOOLS_DIR}/djam log`;
   if (help) command += ` --help`;
   if (program) command += ` --program=${program}`;
   if (app) command += ` --app=${app}`;
@@ -149,7 +145,7 @@ app.post('/jamlist', (req, res) => {
   const { help, all, monitor, type, dataStore, tmuxid, port, app, prog, remote } = req.body;
 
   // Default command without arguments if none are specified
-  let command = `djam list`;
+  let command = `${TOOLS_DIR}/djam list`;
   if (help) command += ` --help`;
   if (all) command += ` --all`;
   if (monitor) command += ` --monitor`;
@@ -168,7 +164,7 @@ app.post('/jamlist', (req, res) => {
 app.post('/jamkill', (req, res) => {
   const { reset, all, remote, app, prog, port } = req.body;
 
-  let command = 'djam kill';
+  let command = `${TOOLS_DIR}/djam kill`;
   if (reset) command += ' --reset';
   if (all) command += ' --all';
   if (remote) command += ` --remote=${remote}`;
@@ -184,7 +180,7 @@ app.post('/jamterm', (req, res) => {
   const { tmux_id, terminal_number } = req.body;
   console.log (req.body)
 
-  let command = `djam term`;
+  let command = `${TOOLS_DIR}/djam term`;
   console.log(`tmux_id entered : ${tmux_id}`)
   if (tmux_id) command += ` ${tmux_id}`;
   console.log(`terminal_number entered : ${terminal_number}`)
