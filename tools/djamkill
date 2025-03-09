@@ -1,0 +1,137 @@
+#!/bin/bash
+
+IDIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
+source "$IDIR/inc/misc_tools.sh"
+
+TMUX=$(which tmux)
+[ -z "$TMUX" ] && TMUX=/usr/local/bin/tmux
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+show_usage() {
+    cat <<EOF
+Docker JAMScript Process Killer
+
+Usage: djamkill [OPTIONS]
+
+Options:
+    --help      Show this help message
+    --all       Kill all running instances
+    --reset     Full reset (kill all processes and clean directories)
+    app-id      Kill specific application ID
+
+EOF
+}
+
+clean_directories() {
+    local jamfolder="$HOME/.jamruns"
+    echo "Cleaning JAMScript directories..."
+    rm -rf "${jamfolder}/ports" "${jamfolder}/apps" "${jamfolder}/mqttpid"
+    find "${jamfolder}" -mindepth 1 -maxdepth 1 -type d ! -name 'remote' -exec rm -rf {} +
+}
+
+kill_related_processes() {
+    echo "Killing related processes..."
+    pkill -f "node|mosquitto|redis-server|jamrun" || true
+    "$TMUX" kill-server || true
+}
+
+reset_environment() {
+    kill_related_processes
+    
+    # Clean Docker containers
+    docker ps -aq --filter "name=u-$UID-*" | while read -r id; do
+        docker kill "$id" >/dev/null 2>&1
+        docker rm "$id" >/dev/null 2>&1
+    done
+
+    clean_directories
+    echo "Environment reset complete"
+}
+
+killtmux() {
+    for q in $("$TMUX" ls | grep "$1" | cut -d ':' -f 1); do
+        "$TMUX" kill-session -t "$q"
+    done
+}
+
+killprocess() {
+    local dir="$1"
+    
+    # Kill Docker containers
+    if [ -e "$dir/dockerId" ]; then
+        local didp=$(cat "$dir/dockerId")
+        if docker ps --filter id="$didp" | grep -q "$didp"; then
+            docker exec -t "$didp" jamkill "$(cat "$dir/appid")" >/dev/null 2>&1
+            echo "-" > "$dir/dockerId"
+            local count=$(docker exec -t "$didp" jamlist | wc -l | tr -d '[:space:]')
+            if (( count <= 2 )); then
+                docker kill "$didp" >/dev/null 2>&1
+                docker rm "$didp" >/dev/null 2>&1
+            fi
+        fi
+    fi
+
+    # Clean directory
+    [ -d "$dir" ] && rm -rf "$dir"
+}
+
+killjob() {
+    local jobid="$1"
+    local appsfolder="$HOME/.jamruns/apps"
+    
+    find "$appsfolder" -type d -name "*_$jobid" | while read -r dir; do
+        killprocess "$dir"
+        [ -e "$dir/tmuxid" ] && killtmux "$(cat "$dir/tmuxid")"
+    done
+}
+
+killalljobs() {
+    local appsfolder="$HOME/.jamruns/apps"
+    
+    find "$appsfolder" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
+        killprocess "$dir"
+        [ -e "$dir/tmuxid" ] && killtmux "$(cat "$dir/tmuxid")"
+    done
+    
+    clean_directories
+}
+
+# Main execution
+jamfolder="$HOME/.jamruns"
+appsfolder="$jamfolder/apps"
+
+case "$1" in
+    --help)
+        show_usage
+        exit 0
+        ;;
+    --reset)
+        reset_environment
+        exit 0
+        ;;
+    --all)
+        killalljobs
+        exit 0
+        ;;
+    "")
+        if [ -e "$appsfolder/appid" ]; then
+            killjob "$(cat "$appsfolder/appid")"
+        else
+            die "No active application found"
+        fi
+        ;;
+    *)
+        if [[ "$1" == --* ]]; then
+            die "Invalid option: $1"
+        else
+            killjob "$1"
+        fi
+        ;;
+esac
+
+exit 0
