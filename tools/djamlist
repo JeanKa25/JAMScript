@@ -39,8 +39,35 @@ This is the docker version of jamlist.
 EOF
 }
 
+build_tmux_map() {
+    local appsfolder="$HOME/.jamruns/apps"
+    declare -gA TMUX_MAP
+
+    for appdir in "$appsfolder"/*/; do
+        for instance in "$appdir"*/; do
+            if [ -d "$instance" ]; then
+                if [[ -f "$instance/class" && "$(tr -d '[:space:]' < "$instance/class")" == "docker" ]]; then
+                    docker_id=$(tr -d '[:space:]' < "$instance/dockerId")
+
+                    if [ -f "$instance/tmuxid_c" ]; then
+                        tmuxid=$(tr -d '[:space:]' < "$instance/tmuxid_c")
+                    elif [ -f "$instance/tmuxid" ]; then
+                        tmuxid=$(tr -d '[:space:]' < "$instance/tmuxid")
+                    else
+                        tmuxid="-"
+                    fi
+
+                    TMUX_MAP["$docker_id"]="$tmuxid"
+                fi
+            fi
+        done
+    done
+}
+
 run_djamlist() {
-    # Get a list of all running container IDs
+    build_tmux_map  # Build tmuxid map first
+
+    # Get a list of running containers
     local containers
     containers=$(docker ps -q)
 
@@ -50,35 +77,36 @@ run_djamlist() {
         exit 1
     fi
 
-    # Count the number of containers (each on its own line)
-    local num_containers
-    num_containers=$(echo "$containers" | wc -l | tr -d ' ')
+    # Optional: Print headers if needed
+    printf "%-12s %-10s %-15s %-12s %-12s %-15s %-8s %-10s %-20s %-s\n" \
+        "ID" "NAME" "PROGRAM" "HOST" "PARENT" "D-STORE" "TYPE" "C-NODES" "TMUX-ID" "CONTAINER-ID"
+    printf '%*s\n' 136 '' | tr ' ' '-'
 
-    # If 1 or fewer containers, assume no JAMScript instances are running.
-    if (( num_containers <= 0 )); then
-        echo "No running instances of JAMScript on this server."
-        exit 0
-    fi
-
-    # Loop through each container and run djamlist inside it
+    # Process each container
     for container in $containers; do
         output=$(docker exec -t "$container" jamlist 2>/dev/null)
-        # Remove blank lines for an accurate comparison
-        trimmed=$(echo "$output" | sed '/^$/d')
-        # If the output is exactly "No running instances of JAMScript.", skip this container.
-        if [[ "$trimmed" == "No running instances of JAMScript." ]]; then
+
+        # Clean output:
+        # 1. Remove blank lines
+        # 2. Remove internal headers
+        # 3. Remove separator lines
+        # 4. Capture last meaningful line only
+        last_line=$(echo "$output" | sed '/^$/d' | grep -v "^ID[[:space:]]\+NAME[[:space:]]\+PROGRAM" | grep -v '^-*$' | tail -n 1)
+
+        # Skip if empty
+        if [[ -z "$last_line" ]]; then
             continue
         fi
 
-        echo "ContainerID: $container"
-        # Print output line by line, filtering out unwanted error messages
-        while IFS= read -r line; do
-            if echo "$line" | grep -q "cannot access"; then
-                continue
-            fi
-            echo "$line"
-        done <<< "$output"
-        echo
+        # Get mapped TMUX-ID (default to "-")
+        tmuxid="${TMUX_MAP[$container]:--}"
+
+        # Extract columns
+        read -r ID NAME PROGRAM HOST PARENT DSTORE TYPE CNODES _ <<< "$last_line"
+
+        # Final aligned output
+        printf "%-12s %-10s %-15s %-12s %-12s %-15s %-8s %-10s %-20s %-s\n" \
+            "$ID" "$NAME" "$PROGRAM" "$HOST" "$PARENT" "$DSTORE" "$TYPE" "$CNODES" "$tmuxid" "$container"
     done
 }
 

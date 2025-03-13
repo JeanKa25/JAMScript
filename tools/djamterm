@@ -62,44 +62,60 @@ localtmux() {
 dockertmux() {
     local tmuxapp=$1
     local termno=$2
+    local appsfolder="$HOME/.jamruns/apps"
 
-    appsfolder=$HOME"/.jamruns/apps"
-    cd $appsfolder
+    for appdir in "$appsfolder"/*/; do
+        for instance in "$appdir"*/; do
+            if [[ -f "$instance/class" && "$(tr -d '[:space:]' < "$instance/class")" == "docker" ]]; then
+                local docker_id
+                docker_id=$(tr -d '[:space:]' < "$instance/dockerId")
 
-    # echo "Searching for tmux-id: $tmuxapp"
-
-    for jruns in */; do
-        if [ $jruns != "*/" ]; then
-            for jexs in `ls $appsfolder/$jruns`; do
-                dir=$appsfolder/$jruns$jexs
-                if [ -d $dir ] && [ -e $dir/class ]; then
-                    local dcl=`cat $dir/class | tr -d '[:space:]'`
-
-                    if [ $dcl == "docker" ]; then
-                        if [ -e $dir/tmuxid_c ]; then
-                            local dtm=`cat $dir/tmuxid_c | tr -d '[:space:]'`
-                            if [ "$dtm" == "$tmuxapp" ]; then
-                                docker_id=$(cat "$dir/dockerId")
-                                # echo "Found tmux session '$tmuxapp' inside container '$docker_id'"
-
-                                if [[ -t 1 ]]; then
-                                    docker exec -it $docker_id tmux attach -t $tmuxapp
-                                else
-                                    echo "Tmux session '$tmuxapp' is running inside the container '$docker_id'."
-                                    echo "You can attach it manually using:"
-                                    echo "docker exec -it $docker_id tmux attach -t $tmuxapp"
-                                fi
-                                return 0
-                            fi
-                        fi
+                # Check tmuxid_c (device C nodes)
+                if [[ -f "$instance/tmuxid_c" ]]; then
+                    local dtm_c
+                    dtm_c=$(tr -d '[:space:]' < "$instance/tmuxid_c")
+                    if [[ "$dtm_c" == "$tmuxapp" ]]; then
+                        # echo "Match found (Device). Attaching to $tmuxapp in $docker_id"
+                        attach_tmux_in_docker "$docker_id" "$tmuxapp" "$termno"
+                        return 0
                     fi
                 fi
-            done
-        fi
+
+                # Check tmuxid (cloud/fog J nodes)
+                if [[ -f "$instance/tmuxid" ]]; then
+                    local dtm_j
+                    dtm_j=$(tr -d '[:space:]' < "$instance/tmuxid")
+                    if [[ "$dtm_j" == "$tmuxapp" ]]; then
+                        # echo "Match found (Cloud/Fog). Attaching to $tmuxapp in $docker_id"
+                        attach_tmux_in_docker "$docker_id" "$tmuxapp" "$termno"
+                        return 0
+                    fi
+                fi
+            fi
+        done
     done
 
-    echo "No matching tmux session found for tmux-id: $tmuxapp"  # Debug: Print if no match is found
+    # echo "No matching tmux session found for tmux-id: $tmuxapp"
     return 1
+}
+
+
+attach_tmux_in_docker() {
+    local docker_id=$1
+    local tmuxapp=$2
+    local termno=$3
+
+    if [[ -t 1 ]]; then
+        if [ -z "$termno" ]; then
+            docker exec -it $docker_id tmux attach -t $tmuxapp
+        else
+            docker exec -it $docker_id tmux attach -t "$tmuxapp-$termno"
+        fi
+    else
+        echo "Tmux session '$tmuxapp' is running inside the container '$docker_id'."
+        echo "You can attach manually using:"
+        echo "docker exec -it $docker_id tmux attach -t $tmuxapp"
+    fi
 }
 
 ###
@@ -133,8 +149,8 @@ else
     else
         if [ -z $2 ]; then
             txid=$1
-            if [ ${txid: -1} == "c" ]; then
-                dockertmux $txid 1
+            if [[ ${txid: -1} == "c" || ${txid: -1} == "j" ]]; then
+                dockertmux $txid
             else
                 localtmux $txid
             fi

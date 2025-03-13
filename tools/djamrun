@@ -65,21 +65,21 @@ runatcloud() {
     local data=$4
     local tags=$5
 
+    echo "$dockid-j" > $thisappfolder/$dockid/tmuxid
+    echo "$dockid-j" > $appfolder/tmuxid 
 
-    argstr=" --app=$appid --data=$data --num=$num --tmux=$dockid-c --tags=$tags --link=$link --loc=$loc "
+    argstr=" --app=$appid --data=$data --num=$num --tmux=$dockid-j --tags=$tags --link=$link --loc=$loc "
     if [ ! -z $log ]; then
         argstr="$argstr --log"
     fi
 
     buildjargs $argstr
-
     if [ -z $bg ]; then
-        echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec -it $dockerSer tmux new-session -d -s "$dockid-j" "jamrun $file $results"
     else
-        echo $dockid > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec -it $dockerSer tmux new-session -d -s $dockid"-j" "jamrun $file $results"
     fi
+    echo ">>> Cloud started in container $dockid-j"
 
 }
 
@@ -91,20 +91,21 @@ runatfog() {
     local data=$4
     local tags=$5
 
-    argstr=" --app=$appid --data=$data --num=$num --tmux=$dockid-c --tags=$tags --link=$link --loc=$loc "
+    echo "$dockid-j" > $thisappfolder/$dockid/tmuxid
+    echo "$dockid-j" > $appfolder/tmuxid
+
+    argstr=" --app=$appid --data=$data --num=$num --tmux=$dockid-j --tags=$tags --link=$link --loc=$loc "
     if [ ! -z $log ]; then
         argstr="$argstr --log"
     fi
 
     buildjargs $argstr
-
     if [ -z $bg ]; then
-        echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        docker exec -it $dockerSer tmux new-session -d -s "$dockid-j" "jamrun $file $results"
     else
-        echo $dockid > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-j" -d docker exec -it  --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+        tmux new-session -s $dockid"-j" -d docker exec -it $dockerSer tmux new-session -d -s $dockid"-j" "jamrun $file $results"
     fi
+    echo ">>> Fog started in container $dockid-j"
 
 }
 
@@ -117,11 +118,9 @@ runatdevice() {
     local num=$5
     local tags=$6
 
-    echo $num > $thisappfolder/$dockid/cdevs
-    echo "$dockid-c" > $thisappfolder/$dockid/tmuxid_c
-
-    # save for short cut use
-    echo "$dockid-c" > $appfolder/tmuxid
+    echo $num > $thisappfolder/$dockid/cdevs             
+    echo "$dockid-c" > $thisappfolder/$dockid/tmuxid_c     
+    echo "$dockid-c" > $appfolder/tmuxid                
 
     argstr=" --app=$appid --data=$data --num=$num --tmux=$dockid-c --tags=$tags --link=$link --loc=$loc "
     if [ ! -z $log ]; then
@@ -129,14 +128,25 @@ runatdevice() {
     fi
 
     buildjargs $argstr
-    if [ -z $bg ]; then
-        echo "-" > $thisappfolder/$dockid/tmuxid
-        docker exec -it --env NODE_PATH=/usr/local/lib/node_modules:/node_modules $dockerSer jamrun $file $results
+    if [ "$num" -gt 1 ]; then
+        # multiple C nodes
+        for i in $(seq 1 $num); do
+            if [ -z $bg ]; then
+                docker exec -it $dockerSer tmux new-session -d -s "$dockid-c-$i" "jamrun $file $results"
+            else
+                tmux new-session -s "$dockid-c-$i" -d docker exec -it $dockerSer tmux new-session -d -s "$dockid-c-$i" "jamrun $file $results"
+            fi
+        done
     else
-        echo $dockid"-c" > $thisappfolder/$dockid/tmuxid
-        tmux new-session -s $dockid"-c" -d docker exec -it $dockerSer tmux new-session -d -s $dockid"-c" "jamrun $file $results"
+        # Single C node case
+        if [ -z $bg ]; then
+            docker exec -it $dockerSer tmux new-session -d -s "$dockid-c" "jamrun $file $results"
+        else
+            tmux new-session -s "$dockid-c" -d docker exec -it $dockerSer tmux new-session -d -s "$dockid-c" "jamrun $file $results"
+        fi
     fi
-    echo ">>> Device started in container $dockid"
+    echo ">>> Device started in container $dockid-c"
+
 }
 
 
@@ -203,7 +213,6 @@ getdockerid() {
     fi
 
 }
-
 
 make_container() {
     local type=$1
