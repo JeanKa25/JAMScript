@@ -78,9 +78,10 @@ run_djamlist() {
     fi
 
     # Optional: Print headers if needed
-    printf "%-12s %-10s %-15s %-12s %-12s %-15s %-8s %-10s %-20s %-s\n" \
-        "ID" "NAME" "PROGRAM" "HOST" "PARENT" "D-STORE" "TYPE" "C-NODES" "TMUX-ID" "CONTAINER-ID"
-    printf '%*s\n' 136 '' | tr ' ' '-'
+    echo
+    printf "%-15s %-10s %-15s %-12s %-12s %-15s %-8s %-10s %-20s %-s\n" \
+        "CONTAINER-ID" "NAME" "PROGRAM" "HOST" "PARENT" "D-STORE" "TYPE" "C-NODES" "TMUX-ID" 
+    printf '%*s\n' 125 '' | tr ' ' '-'
 
     # Process each container
     for container in $containers; do
@@ -105,8 +106,8 @@ run_djamlist() {
         read -r ID NAME PROGRAM HOST PARENT DSTORE TYPE CNODES _ <<< "$last_line"
 
         # Final aligned output
-        printf "%-12s %-10s %-15s %-12s %-12s %-15s %-8s %-10s %-20s %-s\n" \
-            "$ID" "$NAME" "$PROGRAM" "$HOST" "$PARENT" "$DSTORE" "$TYPE" "$CNODES" "$tmuxid" "$container"
+        printf "%-15s %-10s %-15s %-12s %-12s %-15s %-8s %-10s %-20s %-s\n" \
+            "$container" "$NAME" "$PROGRAM" "$HOST" "$PARENT" "$DSTORE" "$TYPE" "$CNODES" "$tmuxid" 
     done
 }
 
