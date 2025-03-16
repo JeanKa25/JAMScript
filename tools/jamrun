@@ -711,6 +711,7 @@ if [ -e "$file" ]; then
                 create_missingdir $folder/$iport
                 create_conffile "${folder}/${iport}/mqtt.conf"  $iport
                 getappid $jamfolder $folder/$iport $app
+                setuptmux $folder/$iport
                 dojamout $type $iport $folder
             ;;
             device)
