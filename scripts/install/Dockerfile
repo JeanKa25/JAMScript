@@ -41,7 +41,7 @@ WORKDIR /home/admin
 RUN wget https://deb.nodesource.com/setup_20.x && chmod +x ./setup_20.x && echo admin | sudo -S ./setup_20.x && \
         sudo apt-get install -y -q nodejs
 
-RUN git clone --branch master https://github.com/JeanKa25/JAMScript && cd JAMScript/tools && chmod 777 *
+RUN git clone --branch ansible-setup https://github.com/JeanKa25/JAMScript && cd JAMScript/tools && chmod 777 *
 
 
 WORKDIR /home/admin/JAMScript/deps
