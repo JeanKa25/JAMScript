@@ -20,4 +20,3 @@ for i in {1..100}; do
 done
 
 echo "All commands executed."
-

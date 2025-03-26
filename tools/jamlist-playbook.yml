@@ -8,6 +8,6 @@
         chdir: /home/jamtools/JAMScript/tools
 
     - name: Run JAMRun command and store logs
-      shell: zx wrapper.mjs jamlist > jamlist.log 2>&1
+      shell: zx wrapper.mjs jamlist --serverIP={{ ansible_host }} > jamlist.log 2>&1
       args:
         chdir: /home/jamtools/JAMScript/tools

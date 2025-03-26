@@ -4,9 +4,24 @@ import commandLineArgs from 'command-line-args';
 import fetch from "node-fetch";
 import {getBatchArgs} from './parser.mjs';
 
+//Define default server IP
+let serverIP = "10.140.16.105";
+
+// Read SSH key from client
+const sshPublicKey = fs.readFileSync('/home/jamtools/.ssh/id_rsa.pub', 'utf8').trim();
 
 // Get the command-line arguments
 const endpointArgs = process.argv.slice(3);
+
+// Check if a custom server IP is provided via --serverIP=
+const serverArgIndex = endpointArgs.findIndex((arg) => arg.startsWith("--serverIP="));
+if (serverArgIndex !== -1) {
+  serverIP = endpointArgs[serverArgIndex].split("=")[1];
+  console.log(serverIP)
+  // Remove the serverIP argument so it doesn't interfere with other processing
+  endpointArgs.splice(serverArgIndex, 1);
+}
+
 
 // ex: zx wrapper.mjs jamrun jt1.jxe --app="DEMO"
 // Validate and process the arguments
@@ -92,16 +107,19 @@ if (endpointArgs[0] === "jamrun") {
   if (localName) payload.local = locName;
 
   // Send the POST request to the server
-  const endpoint = "http://0.0.0.0:3000/jamrun";
+  const endpoint = `http://${serverIP}:3000/jamrun`;
   fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+                "x-ssh-public-key": sshPublicKey,
+     },
     body: JSON.stringify(payload),
   })
-    .then((response) => {
+    .then(async (response) => {
       // Ensure response status is OK
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text(); // Read error message from server
+        throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
       }
 
       // Handle streaming response with Node.js readable stream
@@ -203,16 +221,19 @@ if (endpointArgs[0] === "jambatch") {
     if (localName) payload.local = locName;
 
     // Send the POST request to the server
-    const endpoint = "http://0.0.0.0:3000/jamrun";
+    const endpoint = `http://${serverIP}:3000/jamrun`;
     fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+                  "x-ssh-public-key": sshPublicKey,
+       },
       body: JSON.stringify(payload),
     })
-      .then((response) => {
+      .then(async (response) => {
         // Ensure response status is OK
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+          const errorText = await response.text(); // Read error message from server
+          throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
         }
 
         // Handle streaming response with Node.js readable stream
@@ -279,16 +300,19 @@ if (endpointArgs[0] === "jamlog") {
   if (jName) payload.j = jName;
 
   // Send the POST request to the server
-  const endpoint = "http://0.0.0.0:3000/jamlog";
+  const endpoint = `http://${serverIP}:3000/jamlog`;
   fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+                "x-ssh-public-key": sshPublicKey,
+     },
     body: JSON.stringify(payload),
   })
-    .then((response) => {
+    .then(async (response) => {
       // Ensure response status is OK
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text(); // Read error message from server
+        throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
       }
 
       // Handle streaming response with Node.js readable stream
@@ -354,16 +378,19 @@ if (endpointArgs[0] === "jamlist") {
   if (programName) payload.prog = programName;
   
   // Send the POST request to the server
-  const endpoint = "http://0.0.0.0:3000/jamlist";
+  const endpoint = `http://${serverIP}:3000/jamlist`;
   fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+                "x-ssh-public-key": sshPublicKey,
+     },
     body: JSON.stringify(payload),
   })
-    .then((response) => {
+    .then(async (response) => {
       // Ensure response status is OK
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text(); // Read error message from server
+        throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
       }
 
       // Handle streaming response with Node.js readable stream
@@ -420,16 +447,19 @@ if (endpointArgs[0] === "jamkill") {
 
 
   // Send the POST request to the server
-  const endpoint = "http://0.0.0.0:3000/jamkill";
+  const endpoint = `http://${serverIP}:3000/jamkill`;
   fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+                "x-ssh-public-key": sshPublicKey,
+     },
     body: JSON.stringify(payload),
   })
-    .then((response) => {
+    .then(async (response) => {
       // Ensure response status is OK
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text(); // Read error message from server
+        throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
       }
 
       // Handle streaming response with Node.js readable stream
@@ -488,16 +518,19 @@ if (endpointArgs[0] === "jamterm") {
   if (termNum) payload.terminal_number = termNum;
  
   // Send the POST request to the server
-  const endpoint = "http://0.0.0.0:3000/jamterm";
+  const endpoint = `http://${serverIP}:3000/jamterm`;
   fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+                "x-ssh-public-key": sshPublicKey,
+     },
     body: JSON.stringify(payload),
   })
-    .then((response) => {
+    .then(async (response) => {
       // Ensure response status is OK
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text(); // Read error message from server
+        throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
       }
 
       // Handle streaming response with Node.js readable stream
@@ -539,16 +572,19 @@ if (endpointArgs[0] === "djambatch") {
   };
 
   // Send the POST request to the server
-  const endpoint = "http://0.0.0.0:3000/jambatch";
+  const endpoint = `http://${serverIP}:3000/jambatch`;
   fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+                "x-ssh-public-key": sshPublicKey,
+     },
     body: JSON.stringify(payload),
   })
-    .then((response) => {
+    .then(async (response) => {
       // Ensure response status is OK
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text(); // Read error message from server
+        throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
       }
 
       // Handle streaming response with Node.js readable stream

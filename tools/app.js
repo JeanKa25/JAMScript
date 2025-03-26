@@ -6,9 +6,9 @@ const app = express();
 
 const port = 3000;
 const host = '0.0.0.0';
+const hostIp = '10.140.16.105';
 
 //Start ssh authentication
-
 const fs = require('fs');
 
 
@@ -22,16 +22,15 @@ const authorizedKeys = fs
 
 function checkSSHKey(req, res, next) {
   const clientIp = req.connection.remoteAddress;
-  
   // Allow local requests without SSH key verification
-  if (clientIp === '127.0.0.1' || clientIp === '::1') {
+  if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === hostIp) {
     return next(); // Skip SSH key check for local requests
   }
   
   // Get the SSH key from headers or request body (depending on your client setup)
-  const sshPublicKey = req.headers['x-ssh-public-key']; // Assuming SSH key sent in a header
-  console.log(sshPublicKey);
+  const sshPublicKey = req.headers['x-ssh-public-key']; // SSH key sent in a header
   if (!sshPublicKey) {
+    console.log('Access Denied: No SSH Key');
     return res.status(401).json({ error: 'No SSH public key provided' });
   }
 
@@ -39,6 +38,7 @@ function checkSSHKey(req, res, next) {
   if (authorizedKeys.includes(sshPublicKey)) {
     return next(); // Allow the request if key matches
   } else {
+    console.log('Access Denied: SSH Key not authorized');
     return res.status(403).json({ error: 'SSH key not authorized' });
   }
 };

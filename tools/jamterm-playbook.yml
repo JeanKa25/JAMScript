@@ -19,7 +19,7 @@
         seconds: 5
 
     - name: Run JAMRun command and store logs
-      shell: zx wrapper.mjs jamrun "{{ file }}" "{{ app }}" --bg > jamrun.log 2>&1
+      shell: zx wrapper.mjs jamrun "{{ file }}" "{{ app }}" --bg --serverIP={{ ansible_host }} > jamrun.log 2>&1
       args:
         chdir: /home/jamtools/JAMScript/tools
 

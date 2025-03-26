@@ -1,9 +1,50 @@
 const express = require('express');
 const { exec } = require('child_process');
+const { Client } = require('ssh2');
+
 const app = express();
 
 const port = 3000;
 const host = '0.0.0.0';
+const hostIp = '10.140.16.105';
+
+//Start ssh authentication
+const fs = require('fs');
+
+
+// List of authorized SSH public keys
+const authorizedKeys = fs
+  .readFileSync('/home/jamtools/.ssh/authorized_keys', 'utf8')
+  .split('\n') // Split file into individual keys
+  .map(key => key.trim()) // Trim spaces and newlines
+  .filter(key => key.length > 0); // Remove empty lines
+
+
+function checkSSHKey(req, res, next) {
+  const clientIp = req.connection.remoteAddress;
+  // Allow local requests without SSH key verification
+  if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === hostIp) {
+    return next(); // Skip SSH key check for local requests
+  }
+  
+  // Get the SSH key from headers or request body (depending on your client setup)
+  const sshPublicKey = req.headers['x-ssh-public-key']; // SSH key sent in a header
+  if (!sshPublicKey) {
+    console.log('Access Denied: No SSH Key');
+    return res.status(401).json({ error: 'No SSH public key provided' });
+  }
+
+  // Check if the provided SSH key matches any authorized keys
+  if (authorizedKeys.includes(sshPublicKey)) {
+    return next(); // Allow the request if key matches
+  } else {
+    console.log('Access Denied: SSH Key not authorized');
+    return res.status(403).json({ error: 'SSH key not authorized' });
+  }
+};
+
+app.use(checkSSHKey);
+/////////////////// end ssh key authentication
 
 /// SET WORKING DIRECTORY FOR JAMTOOLS ///
 const JAM_HOME = '/home/jamtools/JAMScript';
