@@ -1,0 +1,41 @@
+[2025-03-26 19:19:55] app-docker.js not running.
+[2025-03-26 19:19:57] app-docker.js not running.
+[2025-03-26 19:19:59] app-docker.js not running.
+[2025-03-26 19:21:40] ALERT: PID 2293772 CPU=1% MEM=50MB | System MEM=6036MB
+[2025-03-26 19:21:40] 🔪 Killing app-docker.js (PID 2293772)
+[2025-03-26 19:21:40] app-docker.js killed.
+[2025-03-26 19:21:40] 🔪 Killing stress script (PID 2296600)
+[2025-03-26 19:21:40] Stress script killed.
+[2025-03-26 19:21:40] SYSTEM ALERT: Total memory usage = 6036MB
+[2025-03-26 19:21:42] app-docker.js not running.
+[2025-03-26 19:21:44] app-docker.js not running.
+[2025-03-26 19:21:46] app-docker.js not running.
+[2025-03-26 19:21:48] app-docker.js not running.
+[2025-03-26 19:21:50] app-docker.js not running.
+[2025-03-26 19:21:52] app-docker.js not running.
+[2025-03-26 19:21:54] app-docker.js not running.
+[2025-03-26 19:21:56] app-docker.js not running.
+[2025-03-26 19:21:59] app-docker.js not running.
+[2025-03-26 19:22:01] app-docker.js not running.
+[2025-03-26 19:22:03] app-docker.js not running.
+[2025-03-26 19:22:05] app-docker.js not running.
+[2025-03-26 19:22:07] app-docker.js not running.
+[2025-03-26 19:22:09] app-docker.js not running.
+[2025-03-26 19:22:11] app-docker.js not running.
+[2025-03-26 19:22:13] app-docker.js not running.
+[2025-03-26 19:22:15] app-docker.js not running.
+[2025-03-26 19:22:17] app-docker.js not running.
+[2025-03-26 19:22:19] app-docker.js not running.
+[2025-03-26 19:22:21] app-docker.js not running.
+[2025-03-26 19:22:23] app-docker.js not running.
+[2025-03-26 19:22:25] app-docker.js not running.
+[2025-03-26 19:22:27] app-docker.js not running.
+[2025-03-26 19:22:29] app-docker.js not running.
+[2025-03-26 19:22:32] app-docker.js not running.
+[2025-03-26 19:22:34] app-docker.js not running.
+[2025-03-26 19:22:36] app-docker.js not running.
+[2025-03-26 19:22:38] app-docker.js not running.
+[2025-03-26 19:22:40] app-docker.js not running.
+[2025-03-26 19:26:02] app-docker.js not running.
+[2025-03-26 19:26:04] app-docker.js not running.
+[2025-03-26 20:02:51] app-docker.js not running.

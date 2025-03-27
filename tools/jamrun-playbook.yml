@@ -20,10 +20,6 @@
         port: 3000
         delay: 3
         timeout: 30
-    
-    - name: Debug the final JAMRun command
-      debug:
-        msg: 'zx wrapper.mjs jamrun "{{ file }}" "{{ app }}" --bg --serverIP={{ ansible_host }} > jamrun.log 2>&1'
 
     - name: Run JAMRun command and store logs
       shell: zx wrapper.mjs jamrun "{{ file }}" "{{ app }}" --bg --serverIP={{ ansible_host }} > jamrun.log 2>&1
