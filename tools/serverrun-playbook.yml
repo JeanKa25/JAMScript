@@ -1,0 +1,22 @@
+- name: Start JAMScript Tools Server
+  hosts: "{{ server }}"
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Start the server (Express API) in the background
+      shell: nohup node app-docker.js > server.log 2>&1 &
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+      async: 10
+      poll: 0
+
+    - name: Wait until the server port is open
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: 3000
+        delay: 3
+        timeout: 30

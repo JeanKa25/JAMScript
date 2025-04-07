@@ -1,17 +1,12 @@
 #!/usr/bin/env zx
-import fetch from 'node-fetch';
 import os from 'os';
 import process from 'process';
 
-const TOTAL_REQUESTS = 100;
+const TOTAL_REQUESTS = 75;
 const CONCURRENCY = 5;
-const endpoint = 'http://0.0.0.0:3000/jamrun';
-
-const payload = {
-  file: "jt1.jxe",
-  app_name: "DEMO",
-  bg: "bg"
-};
+const FILE = 'jt1.jxe';
+const APP = 'DEMO';
+const BG = true;
 
 let active = 0;
 let completed = 0;
@@ -22,33 +17,22 @@ const requestDurations = [];
 
 console.time('Test Duration');
 
-const sendRequest = async (i) => {
+const runJamrun = async (i) => {
+  const args = ['jamrun.mjs', FILE, `--app=${APP}`];
+  if (BG) args.push('--bg');
+
   const start = Date.now();
   try {
-    active++;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
+    await $`zx ${args}`;
     const duration = Date.now() - start;
     requestDurations[i] = duration;
-
-    if (!res.ok) {
-      console.error(`[${i}] Failed: ${res.status}`);
-      failed++;
-    } else {
-      console.log(`[${i}] Success`);
-    }
+    console.log(`[${i}] Success`);
   } catch (err) {
-    console.error(`[${i}] Error: ${err.message}`);
+    console.error(`[${i}] Failed: ${err.message}`);
     failed++;
   } finally {
     completed++;
-    active--;
 
-    // Record checkpoint every 10 completed requests
     if (completed % 10 === 0) {
       const avgDuration = requestDurations
         .slice(completed - 10, completed)
@@ -67,9 +51,9 @@ const sendRequest = async (i) => {
   }
 };
 
-const runLoadTest = async () => {
+const runTest = async () => {
   for (let i = 0; i < TOTAL_REQUESTS; i++) {
-    const task = sendRequest(i);
+    const task = runJamrun(i);
     queue.push(task);
 
     if (queue.length >= CONCURRENCY) {
@@ -78,16 +62,15 @@ const runLoadTest = async () => {
     }
   }
 
-  // Await remaining requests
-  await Promise.all(queue);
+  await Promise.all(queue); // Finish remaining
 };
 
-await runLoadTest();
+await runTest();
 console.timeEnd('Test Duration');
 
 console.log(`\nResults: ${completed} completed, ${failed} failed.`);
 
-// Print summary
+// Output checkpoint table
 console.log('\nCheckpoint Summary (Every 10 Requests)');
 console.log('Reqs\tAvg Time (ms)\tMemory (MB)\tCPU Load');
 checkpoints.forEach(cp => {

@@ -79,6 +79,9 @@ startzonemach() {
             count=$(( $newcount + 1 ))
         fi
 
+        # Remove existing container with same name if it exists
+        docker rm -f $machname 2>/dev/null
+
         echo "Machine: " $machname " starting with IP: " 10.$subnet.$zonenum.$count
 
         # Create the machine
@@ -133,6 +136,9 @@ startglobalmach() {
         if [ $newcount != $count ]; then
             count=$(( $newcount + 1 ))
         fi
+
+        # Remove existing container with same name if it exists
+        docker rm -f $machname 2>/dev/null
 
         # Create the machine
         if [ -z $dport ] && [ -z $hport ]; then

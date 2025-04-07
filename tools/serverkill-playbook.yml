@@ -1,0 +1,22 @@
+- name: Kill JAMScript Server on Port 3000
+  hosts: "{{ server }}"
+  gather_facts: no
+  tasks:
+    - name: Ensure the working directory is correct
+      shell: pwd
+      args:
+        chdir: /home/jamtools/JAMScript/tools
+
+    - name: Kill server process running on port 3000 and log result
+      shell: |
+        {
+          PID=$(lsof -ti:3000)
+          if [ -n "$PID" ]; then
+            kill -9 $PID
+            echo "$(date) - Killed server on port 3000 (PID $PID)"
+          else
+            echo "$(date) - No server process found on port 3000"
+          fi
+        } > serverkill.log 2>&1
+      args:
+        chdir: /home/jamtools/JAMScript/tools
