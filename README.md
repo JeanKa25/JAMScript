@@ -39,7 +39,7 @@ source ~/.bashrc
 ```
 
 
-## ⚙️ Installing Dependenceis with Ansible
+## ⚙️ Installing Dependencies with Ansible
 
 You can set up your environment using Ansible with the provided playbook:
 
