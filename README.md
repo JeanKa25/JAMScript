@@ -11,8 +11,6 @@ Start by cloning the repository and switching to the appropriate branch:
 
 ```bash
 git clone https://github.com/JeanKa25/JAMScript.git
-cd JAMScript
-git checkout new-jamtools-main
 ```
 
 Then run the install.sh to install all the dependencies:
@@ -22,7 +20,6 @@ Then run the install.sh to install all the dependencies:
 Export the following global variables:
 
 ```bash
-export JAM_HOME=~/JAMScript
 export JAMHOME=~/JAMScript
 export PATH=$JAM_HOME/tools:$PATH
 export JAMDATA=~/JAMScript/data
@@ -31,7 +28,6 @@ export JAMDATA=~/JAMScript/data
 To make these changes permanent, add them to your .bashrc:
 
 ```bash
-echo 'export JAM_HOME=~/JAMScript' >> ~/.bashrc
 echo 'export JAMHOME=~/JAMScript' >> ~/.bashrc
 echo 'export PATH=$JAM_HOME/tools:$PATH' >> ~/.bashrc
 echo 'export JAMDATA=~/JAMScript/data' >> ~/.bashrc
